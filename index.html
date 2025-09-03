@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ürün Bulma Uygulaması</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        h1, h2, h3 {
+            color: #ffffff;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4a4a4a;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.3s, transform 0.1s;
+            width: 100%;
+            display: block;
+        }
+        button:hover {
+            background-color: #5a5a5a;
+            transform: scale(1.02);
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        input, textarea {
+            padding: 12px;
+            font-size: 16px;
+            margin: 10px 0;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            background-color: #3a3a3a;
+            color: #e0e0e0;
+        }
+        #resetButton {
+            background-color: #8b0000;
+        }
+        #resetButton:hover {
+            background-color: #a00000;
+        }
+        .hidden {
+            display: none;
+        }
+        #result {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #3a3a3a;
+            border-radius: 4px;
+            text-align: center;
+        }
+        #poweredByArda {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 5px 10px;
+            font-size: 12px;
+            background-color: #4a4a4a;
+            color: #e0e0e0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #2a2a2a;
+            padding: 20px;
+            width: 300px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            display: none;
+            z-index: 1000;
+        }
+        #popup textarea {
+            height: 150px;
+        }
+        #popup button {
+            width: 100%;
+        }
+        #popupCloseButton {
+            background-color: #8b0000;
+        }
+    
+.keyboard-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 10px;
+    cursor: pointer;
+    background-color: #4a4a4a;
+    padding: 8px;
+    border-radius: 6px;
+    transition: background-color 0.3s;
+    user-select: none;
+}
+.keyboard-toggle:hover {
+    background-color: #5a5a5a;
+}
+.keyboard-toggle input {
+    display: none;
+}
+.keyboard-toggle span {
+    margin-left: 8px;
+}
+.keyboard-icon {
+    font-size: 18px;
+}
+
+</style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ürün Bulma Uygulaması</h1>
+        
+        <button id="addLocationButton">Ürün Ekle</button>
+        <button id="findProductButton">Ürün Bul</button>
+        <button id="resetButton">Sıfırla</button>
+
+        <div id="addLocationSection" class="hidden">
+            <h2>Ürün Ekle</h2>
+            <input type="text" id="barcodeInput" placeholder="Ürünü Okutunuz" autofocus>
+    <label class="keyboard-toggle">
+        <input type="checkbox" id="disableKeyboardCheckbox">
+        <span class="keyboard-icon">⌨️</span>
+        <span>Klavyeyi Kapat</span>
+    </label>
+        </div>
+
+        <div id="findProductSection" class="hidden">
+            <h2>Ürün Bul</h2>
+            <input type="text" id="searchBarcodeInput" placeholder="EAN Barkodu Okutun" autofocus>
+    <label class="keyboard-toggle">
+        <input type="checkbox" id="disableKeyboardSearch">
+        <span class="keyboard-icon">⌨️</span>
+        <span>Klavyeyi Kapat</span>
+    </label>
+            <p id="result"></p>
+        </div>
+
+        <button id="downloadButton">Verileri İndir</button>
+        <input type="file" id="fileInput" accept=".json" style="display: none;">
+        <button id="uploadButton">Verileri Yükle</button>
+    </div>
+
+    <button id="poweredByArda">Powered by Arda</button>
+
+    <div id="popup">
+        <h3>Barkodları Ekleyin</h3>
+        <textarea id="barcodeTextarea" placeholder="Her satıra bir EAN barkodu ekleyin..."></textarea>
+        <button id="saveBarcodesButton">Barkodları Kaydet</button>
+        <button id="popupCloseButton">Kapat</button>
+    </div>
+
+    <script>
+        let products = JSON.parse(localStorage.getItem('products')) || {};
+        let ardaClickCount = 0;
+
+        function toggleSection(sectionToShow) {
+            const sections = ['addLocationSection', 'findProductSection'];
+            sections.forEach(section => {
+                document.getElementById(section).classList.toggle('hidden', section !== sectionToShow);
+            });
+        }
+
+        document.getElementById('addLocationButton').addEventListener('click', () => {
+            toggleSection('addLocationSection');
+            document.getElementById('barcodeInput').focus();
+        });
+
+        document.getElementById('findProductButton').addEventListener('click', () => {
+            toggleSection('findProductSection');
+            document.getElementById('searchBarcodeInput').focus();
+        });
+
+        document.getElementById('barcodeInput').addEventListener('input', function() {
+            if (this.value.length >= 13) {
+                saveProduct();
+            }
+        });
+
+        function saveProduct() {
+            const barcode = document.getElementById('barcodeInput').value;
+            
+            if (barcode) {
+                if (!products[barcode]) {
+                    products[barcode] = {};
+                }
+                products[barcode]['default'] = (products[barcode]['default'] || 0) + 1;
+                localStorage.setItem('products', JSON.stringify(products));
+                document.getElementById('barcodeInput').value = '';
+                document.getElementById('barcodeInput').focus();
+            } else {
+                alert('Lütfen barkodu girin!');
+            }
+        }
+
+        document.getElementById('searchBarcodeInput').addEventListener('input', function() {
+            if (this.value.length >= 13) {
+                searchProduct();
+            }
+        });
+
+        function searchProduct() {
+            const barcode = document.getElementById('searchBarcodeInput').value;
+            const result = document.getElementById('result');
+            
+            if (products[barcode] && Object.keys(products[barcode]).length > 0) {
+                result.textContent = 'Ürün Bulundu!';
+                result.style.backgroundColor = 'green';
+                const audio = new Audio('find.mp3');
+                audio.play();
+            } else {
+                result.textContent = 'Ürün bulunamadı!';
+                result.style.backgroundColor = 'red';
+            }
+            document.getElementById('searchBarcodeInput').value = '';
+            document.getElementById('searchBarcodeInput').focus();
+        }
+
+        document.getElementById('resetButton').addEventListener('click', () => {
+            if (confirm('Tüm verileri silmek istediğinizden emin misiniz?')) {
+                products = {};
+                localStorage.setItem('products', JSON.stringify(products));
+                alert('Tüm veriler silindi!');
+            }
+        });
+
+        document.getElementById('downloadButton').addEventListener('click', () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(products));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "product_locations.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        });
+
+        document.getElementById('uploadButton').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
+        document.getElementById('fileInput').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        products = JSON.parse(e.target.result);
+                        localStorage.setItem('products', JSON.stringify(products));
+                        alert('Veriler başarıyla yüklendi!');
+                    } catch (error) {
+                        console.error('Dosya okuma hatası:', error);
+                        alert('Dosya okunamadı. Lütfen geçerli bir JSON dosyası seçin.');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        document.getElementById('poweredByArda').addEventListener('click', () => {
+            ardaClickCount++;
+            if (ardaClickCount === 3) {
+                document.getElementById('popup').style.display = 'block';
+                ardaClickCount = 0;
+            }
+        });
+
+        document.getElementById('popupCloseButton').addEventListener('click', () => {
+            document.getElementById('popup').style.display = 'none';
+        });
+
+        document.getElementById('saveBarcodesButton').addEventListener('click', () => {
+            const barcodes = document.getElementById('barcodeTextarea').value.trim().split('\n');
+            barcodes.forEach(barcode => {
+                barcode = barcode.trim();
+                if (barcode) {
+                    if (!products[barcode]) {
+                        products[barcode] = {};
+                    }
+                    products[barcode]['default'] = (products[barcode]['default'] || 0) + 1;
+                }
+            });
+            localStorage.setItem('products', JSON.stringify(products));
+            alert('Barkodlar kaydedildi!');
+            document.getElementById('popup').style.display = 'none';
+        });
+    
+// Ürün Ekle kısmı için
+document.getElementById('disableKeyboardCheckbox').addEventListener('change', function() {
+    const input = document.getElementById('barcodeInput');
+    if (this.checked) {
+        input.setAttribute('readonly', true);
+    } else {
+        input.removeAttribute('readonly');
+    }
+});
+
+// Ürün Bul kısmı için
+document.getElementById('disableKeyboardSearch').addEventListener('change', function() {
+    const input = document.getElementById('searchBarcodeInput');
+    if (this.checked) {
+        input.setAttribute('readonly', true);
+    } else {
+        input.removeAttribute('readonly');
+    }
+});
+
+</script>
+</body>
+</html>
