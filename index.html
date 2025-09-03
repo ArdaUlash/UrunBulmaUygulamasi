@@ -77,12 +77,7 @@
             text-align: center;
             font-weight: 600;
         }
-        .kbd-tip {
-            font-size: 12px;
-            opacity: .8;
-            margin-top: -2px;
-            margin-bottom: 8px;
-        }
+        .kbd-tip { font-size: 12px; opacity: .8; margin-top: -2px; margin-bottom: 8px; }
         .toolbar { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
         #resetButton { background-color: var(--danger); }
         #resetButton:hover { background-color: var(--danger-hover); }
@@ -100,12 +95,7 @@
         }
         .keyboard-toggle:hover { background-color: var(--btn-hover); }
         .keyboard-toggle input { display: none; }
-        .note {
-            font-size: 12px;
-            opacity: .75;
-            text-align: center;
-        }
-        /* Offscreen sink that never opens soft keyboard */
+        .note { font-size: 12px; opacity: .75; text-align: center; }
         #hidSink {
             position: fixed;
             inset: 0 auto auto 0;
@@ -160,7 +150,7 @@
             <input type="text" id="barcodeInput" placeholder="Barkodu okutun veya yazın" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus>
             <label class="keyboard-toggle" for="disableKeyboardCheckbox">
                 <input type="checkbox" id="disableKeyboardCheckbox">
-                <span>⌨️ Klavyeyi Kapat</span>
+                <span>⌨️ Klavyeyi Kapat (harici okuyucu serbest)</span>
             </label>
             <div class="kbd-tip"></div>
         </div>
@@ -170,7 +160,7 @@
             <input type="text" id="searchBarcodeInput" placeholder="EAN barkodunu okutun" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             <label class="keyboard-toggle" for="disableKeyboardSearch">
                 <input type="checkbox" id="disableKeyboardSearch">
-                <span>⌨️ Klavyeyi Kapat</span>
+                <span>⌨️ Klavyeyi Kapat (harici okuyucu serbest)</span>
             </label>
             <p id="result"></p>
         </div>
@@ -180,7 +170,7 @@
             <input type="file" id="fileInput" accept=".json" style="display:none;">
             <button id="uploadButton">Verileri Yükle</button>
         </div>
-        <div class="note">info: arda.ulash@gmail.com </div>
+        <div class="note">info: <strong>arda.ulash@gmail.com</strong></div>
     </div>
 
     <button id="poweredByArda">Powered by Arda</button>
@@ -192,15 +182,12 @@
         <button id="popupCloseButton">Kapat</button>
     </div>
 
-    <!-- invisible sink to keep focus without opening soft keyboard -->
     <input id="hidSink" inputmode="none" aria-hidden="true">
 
     <script>
-        // --- State ---
         let products = JSON.parse(localStorage.getItem('products')) || {};
         let ardaClickCount = 0;
 
-        // Helper to switch visible section
         function toggleSection(sectionToShow) {
             const sections = ['addLocationSection', 'findProductSection'];
             sections.forEach(section => {
@@ -208,7 +195,6 @@
             });
         }
 
-        // Buttons
         document.getElementById('addLocationButton').addEventListener('click', () => {
             toggleSection('addLocationSection');
             document.getElementById('barcodeInput').focus();
@@ -218,7 +204,6 @@
             document.getElementById('searchBarcodeInput').focus();
         });
 
-        // --- Core actions ---
         function saveProduct() {
             const el = document.getElementById('barcodeInput');
             const barcode = el.value.trim();
@@ -244,24 +229,19 @@
             el.value = '';
         }
 
-        // Input listeners for normal mode (soft keyboard allowed)
+        // Auto-save when barcode reaches 12 or 13 chars
         document.getElementById('barcodeInput').addEventListener('input', function() {
-            if (this.value.length >= 8) { // 8+ to tolerate kısa barkodlar
-                // if a scanner sends newline later, ENTER will also trigger.
+            if (this.value.length === 12 || this.value.length === 13) {
+                saveProduct();
             }
         });
-        document.getElementById('searchBarcodeInput').addEventListener('input', function() {
-            // passive
-        });
 
-        // --- Keyboard suppression but allow external HID ---
+        // Keyboard suppression + HID support
         const hidSink = document.getElementById('hidSink');
-
         function setKeyboardSuppressed(inputEl, suppress) {
             if (suppress) {
                 inputEl.readOnly = true;
                 inputEl.setAttribute('inputmode', 'none');
-                // keep a minimal focus target that never opens the keyboard
                 hidSink.focus({ preventScroll: true });
             } else {
                 inputEl.readOnly = false;
@@ -269,7 +249,6 @@
                 inputEl.focus();
             }
         }
-
         document.getElementById('disableKeyboardCheckbox').addEventListener('change', function() {
             setKeyboardSuppressed(document.getElementById('barcodeInput'), this.checked);
         });
@@ -277,7 +256,6 @@
             setKeyboardSuppressed(document.getElementById('searchBarcodeInput'), this.checked);
         });
 
-        // Determine current target input depending on visible section
         function currentTarget() {
             const addVisible = !document.getElementById('addLocationSection').classList.contains('hidden');
             return addVisible ? document.getElementById('barcodeInput') : document.getElementById('searchBarcodeInput');
@@ -287,14 +265,11 @@
             return addVisible ? document.getElementById('disableKeyboardCheckbox') : document.getElementById('disableKeyboardSearch');
         }
 
-        // Accept characters from external keyboards/scanners while readOnly
         window.addEventListener('keydown', (ev) => {
             const inputEl = currentTarget();
             const suppress = currentSuppressCheckbox().checked;
 
-            if (!suppress) return; // normal flow
-
-            // Allow navigation keys for robustness
+            if (!suppress) return;
             if (ev.key === 'Enter') {
                 ev.preventDefault();
                 if (inputEl.id === 'barcodeInput') saveProduct();
@@ -309,11 +284,12 @@
             if (ev.key.length === 1 && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
                 ev.preventDefault();
                 inputEl.value += ev.key;
-                return;
+                if (inputEl.id === 'barcodeInput' && (inputEl.value.length === 12 || inputEl.value.length === 13)) {
+                    saveProduct();
+                }
             }
         }, { capture: true });
 
-        // --- Download/Upload/Reset ---
         document.getElementById('resetButton').addEventListener('click', () => {
             if (confirm('Tüm verileri silmek istediğinizden emin misiniz?')) {
                 products = {};
@@ -349,7 +325,6 @@
             reader.readAsText(file);
         });
 
-        // --- Hidden popup (easter-egg) ---
         document.getElementById('poweredByArda').addEventListener('click', () => {
             ardaClickCount++;
             if (ardaClickCount === 3) {
@@ -373,7 +348,6 @@
             document.getElementById('popup').style.display = 'none';
         });
 
-        // Default section on load
         toggleSection('addLocationSection');
         document.getElementById('barcodeInput').focus();
     </script>
