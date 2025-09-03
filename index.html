@@ -4,85 +4,127 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ürün Bulma Uygulaması</title>
+    <meta name="description" content="Barkod ile ürün ekleme ve bulma. Klavyeyi kapatıp harici barkod okuyucu/klavye ile güvenli giriş.">
     <style>
+        :root {
+            --bg: #1a1a1a;
+            --panel: #2a2a2a;
+            --muted: #3a3a3a;
+            --text: #e0e0e0;
+            --btn: #4a4a4a;
+            --btn-hover: #5a5a5a;
+            --danger: #8b0000;
+            --danger-hover: #a00000;
+            --success: #0f5132;
+            --error: #842029;
+        }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
             margin: 0;
             padding: 20px;
-            background-color: #1a1a1a;
-            color: #e0e0e0;
+            background-color: var(--bg);
+            color: var(--text);
         }
         .container {
-            max-width: 600px;
+            max-width: 720px;
             margin: 0 auto;
-            background-color: #2a2a2a;
+            background-color: var(--panel);
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border-radius: 12px;
+            box-shadow: 0 6px 30px rgba(0,0,0,0.35);
         }
         h1, h2, h3 {
-            color: #ffffff;
+            color: #fff;
             text-align: center;
-            margin-bottom: 20px;
+            margin: 8px 0 16px 0;
         }
+        .row { display: grid; grid-template-columns: 1fr; gap: 10px; }
         button {
-            padding: 15px;
-            margin: 10px 0;
+            padding: 14px 16px;
+            margin: 6px 0;
             font-size: 16px;
             cursor: pointer;
-            background-color: #4a4a4a;
+            background-color: var(--btn);
             color: white;
             border: none;
-            border-radius: 4px;
-            transition: background-color 0.3s, transform 0.1s;
+            border-radius: 10px;
+            transition: background-color .2s, transform .05s;
             width: 100%;
             display: block;
         }
-        button:hover {
-            background-color: #5a5a5a;
-            transform: scale(1.02);
-        }
-        button:active {
-            transform: scale(0.98);
-        }
+        button:hover { background-color: var(--btn-hover); transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
         input, textarea {
             padding: 12px;
-            font-size: 16px;
-            margin: 10px 0;
+            font-size: 18px;
+            margin: 6px 0;
             width: 100%;
-            box-sizing: border-box;
-            border: 1px solid #4a4a4a;
-            border-radius: 4px;
-            background-color: #3a3a3a;
-            color: #e0e0e0;
+            border: 1px solid var(--btn);
+            border-radius: 10px;
+            background-color: var(--muted);
+            color: var(--text);
+            caret-color: #fff;
         }
-        #resetButton {
-            background-color: #8b0000;
-        }
-        #resetButton:hover {
-            background-color: #a00000;
-        }
-        .hidden {
-            display: none;
-        }
+        input[readonly] { caret-color: transparent; }
+        .hidden { display: none; }
         #result {
             margin-top: 10px;
-            padding: 10px;
-            background-color: #3a3a3a;
-            border-radius: 4px;
+            padding: 12px;
+            background-color: var(--muted);
+            border-radius: 10px;
             text-align: center;
+            font-weight: 600;
+        }
+        .kbd-tip {
+            font-size: 12px;
+            opacity: .8;
+            margin-top: -2px;
+            margin-bottom: 8px;
+        }
+        .toolbar { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+        #resetButton { background-color: var(--danger); }
+        #resetButton:hover { background-color: var(--danger-hover); }
+        .keyboard-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 8px;
+            cursor: pointer;
+            background-color: var(--btn);
+            padding: 10px;
+            border-radius: 10px;
+            user-select: none;
+        }
+        .keyboard-toggle:hover { background-color: var(--btn-hover); }
+        .keyboard-toggle input { display: none; }
+        .note {
+            font-size: 12px;
+            opacity: .75;
+            text-align: center;
+        }
+        /* Offscreen sink that never opens soft keyboard */
+        #hidSink {
+            position: fixed;
+            inset: 0 auto auto 0;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
         }
         #poweredByArda {
             position: fixed;
             bottom: 10px;
             left: 50%;
             transform: translateX(-50%);
-            padding: 5px 10px;
+            padding: 6px 10px;
             font-size: 12px;
-            background-color: #4a4a4a;
-            color: #e0e0e0;
+            background-color: var(--btn);
+            color: var(--text);
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;
             cursor: pointer;
         }
         #popup {
@@ -90,98 +132,75 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: #2a2a2a;
+            background-color: var(--panel);
             padding: 20px;
-            width: 300px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            width: 320px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.5);
             display: none;
             z-index: 1000;
         }
-        #popup textarea {
-            height: 150px;
-        }
-        #popup button {
-            width: 100%;
-        }
-        #popupCloseButton {
-            background-color: #8b0000;
-        }
-    
-.keyboard-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 10px;
-    cursor: pointer;
-    background-color: #4a4a4a;
-    padding: 8px;
-    border-radius: 6px;
-    transition: background-color 0.3s;
-    user-select: none;
-}
-.keyboard-toggle:hover {
-    background-color: #5a5a5a;
-}
-.keyboard-toggle input {
-    display: none;
-}
-.keyboard-toggle span {
-    margin-left: 8px;
-}
-.keyboard-icon {
-    font-size: 18px;
-}
-
-</style>
+        #popup textarea { height: 150px; }
+        #popup button { width: 100%; }
+        #popupCloseButton { background-color: var(--danger); }
+    </style>
 </head>
 <body>
     <div class="container">
         <h1>Ürün Bulma Uygulaması</h1>
-        
-        <button id="addLocationButton">Ürün Ekle</button>
-        <button id="findProductButton">Ürün Bul</button>
-        <button id="resetButton">Sıfırla</button>
+
+        <div class="toolbar">
+            <button id="addLocationButton">Ürün Ekle</button>
+            <button id="findProductButton">Ürün Bul</button>
+            <button id="resetButton">Sıfırla</button>
+        </div>
 
         <div id="addLocationSection" class="hidden">
             <h2>Ürün Ekle</h2>
-            <input type="text" id="barcodeInput" placeholder="Ürünü Okutunuz" autofocus>
-    <label class="keyboard-toggle">
-        <input type="checkbox" id="disableKeyboardCheckbox">
-        <span class="keyboard-icon">⌨️</span>
-        <span>Klavyeyi Kapat</span>
-    </label>
+            <input type="text" id="barcodeInput" placeholder="Barkodu okutun veya yazın" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus>
+            <label class="keyboard-toggle" for="disableKeyboardCheckbox">
+                <input type="checkbox" id="disableKeyboardCheckbox">
+                <span>⌨️ Klavyeyi Kapat</span>
+            </label>
+            <div class="kbd-tip">info: arda.ulash@gmail.com</div>
         </div>
 
         <div id="findProductSection" class="hidden">
             <h2>Ürün Bul</h2>
-            <input type="text" id="searchBarcodeInput" placeholder="EAN Barkodu Okutun" autofocus>
-    <label class="keyboard-toggle">
-        <input type="checkbox" id="disableKeyboardSearch">
-        <span class="keyboard-icon">⌨️</span>
-        <span>Klavyeyi Kapat</span>
-    </label>
+            <input type="text" id="searchBarcodeInput" placeholder="EAN barkodunu okutun" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <label class="keyboard-toggle" for="disableKeyboardSearch">
+                <input type="checkbox" id="disableKeyboardSearch">
+                <span>⌨️ Klavyeyi Kapat</span>
+            </label>
             <p id="result"></p>
         </div>
 
-        <button id="downloadButton">Verileri İndir</button>
-        <input type="file" id="fileInput" accept=".json" style="display: none;">
-        <button id="uploadButton">Verileri Yükle</button>
+        <div class="row">
+            <button id="downloadButton">Verileri İndir</button>
+            <input type="file" id="fileInput" accept=".json" style="display:none;">
+            <button id="uploadButton">Verileri Yükle</button>
+        </div>
+        <div class="note">Tüm veriler tarayıcıdaki <strong>localStorage</strong>'da saklanır.</div>
     </div>
 
     <button id="poweredByArda">Powered by Arda</button>
 
     <div id="popup">
-        <h3>Barkodları Ekleyin</h3>
-        <textarea id="barcodeTextarea" placeholder="Her satıra bir EAN barkodu ekleyin..."></textarea>
+        <h3>Barkodları Toplu Ekleyin</h3>
+        <textarea id="barcodeTextarea" placeholder="Her satıra bir EAN..."></textarea>
         <button id="saveBarcodesButton">Barkodları Kaydet</button>
         <button id="popupCloseButton">Kapat</button>
     </div>
 
+    <!-- invisible sink to keep focus without opening soft keyboard -->
+    <input id="hidSink" inputmode="none" aria-hidden="true">
+
     <script>
+        // --- State ---
         let products = JSON.parse(localStorage.getItem('products')) || {};
         let ardaClickCount = 0;
 
+        // Helper to switch visible section
         function toggleSection(sectionToShow) {
             const sections = ['addLocationSection', 'findProductSection'];
             sections.forEach(section => {
@@ -189,61 +208,112 @@
             });
         }
 
+        // Buttons
         document.getElementById('addLocationButton').addEventListener('click', () => {
             toggleSection('addLocationSection');
             document.getElementById('barcodeInput').focus();
         });
-
         document.getElementById('findProductButton').addEventListener('click', () => {
             toggleSection('findProductSection');
             document.getElementById('searchBarcodeInput').focus();
         });
 
-        document.getElementById('barcodeInput').addEventListener('input', function() {
-            if (this.value.length >= 13) {
-                saveProduct();
-            }
-        });
-
+        // --- Core actions ---
         function saveProduct() {
-            const barcode = document.getElementById('barcodeInput').value;
-            
-            if (barcode) {
-                if (!products[barcode]) {
-                    products[barcode] = {};
-                }
-                products[barcode]['default'] = (products[barcode]['default'] || 0) + 1;
-                localStorage.setItem('products', JSON.stringify(products));
-                document.getElementById('barcodeInput').value = '';
-                document.getElementById('barcodeInput').focus();
-            } else {
-                alert('Lütfen barkodu girin!');
-            }
+            const el = document.getElementById('barcodeInput');
+            const barcode = el.value.trim();
+            if (!barcode) return;
+            if (!products[barcode]) products[barcode] = {};
+            products[barcode]['default'] = (products[barcode]['default'] || 0) + 1;
+            localStorage.setItem('products', JSON.stringify(products));
+            el.value = '';
         }
-
-        document.getElementById('searchBarcodeInput').addEventListener('input', function() {
-            if (this.value.length >= 13) {
-                searchProduct();
-            }
-        });
 
         function searchProduct() {
-            const barcode = document.getElementById('searchBarcodeInput').value;
+            const el = document.getElementById('searchBarcodeInput');
+            const barcode = el.value.trim();
             const result = document.getElementById('result');
-            
-            if (products[barcode] && Object.keys(products[barcode]).length > 0) {
-                result.textContent = 'Ürün Bulundu!';
-                result.style.backgroundColor = 'green';
-                const audio = new Audio('find.mp3');
-                audio.play();
+            if (barcode && products[barcode] && Object.keys(products[barcode]).length > 0) {
+                result.textContent = 'Ürün bulundu!';
+                result.style.backgroundColor = 'var(--success)';
+                new Audio('find.mp3').play().catch(()=>{});
             } else {
                 result.textContent = 'Ürün bulunamadı!';
-                result.style.backgroundColor = 'red';
+                result.style.backgroundColor = 'var(--error)';
             }
-            document.getElementById('searchBarcodeInput').value = '';
-            document.getElementById('searchBarcodeInput').focus();
+            el.value = '';
         }
 
+        // Input listeners for normal mode (soft keyboard allowed)
+        document.getElementById('barcodeInput').addEventListener('input', function() {
+            if (this.value.length >= 8) { // 8+ to tolerate kısa barkodlar
+                // if a scanner sends newline later, ENTER will also trigger.
+            }
+        });
+        document.getElementById('searchBarcodeInput').addEventListener('input', function() {
+            // passive
+        });
+
+        // --- Keyboard suppression but allow external HID ---
+        const hidSink = document.getElementById('hidSink');
+
+        function setKeyboardSuppressed(inputEl, suppress) {
+            if (suppress) {
+                inputEl.readOnly = true;
+                inputEl.setAttribute('inputmode', 'none');
+                // keep a minimal focus target that never opens the keyboard
+                hidSink.focus({ preventScroll: true });
+            } else {
+                inputEl.readOnly = false;
+                inputEl.removeAttribute('inputmode');
+                inputEl.focus();
+            }
+        }
+
+        document.getElementById('disableKeyboardCheckbox').addEventListener('change', function() {
+            setKeyboardSuppressed(document.getElementById('barcodeInput'), this.checked);
+        });
+        document.getElementById('disableKeyboardSearch').addEventListener('change', function() {
+            setKeyboardSuppressed(document.getElementById('searchBarcodeInput'), this.checked);
+        });
+
+        // Determine current target input depending on visible section
+        function currentTarget() {
+            const addVisible = !document.getElementById('addLocationSection').classList.contains('hidden');
+            return addVisible ? document.getElementById('barcodeInput') : document.getElementById('searchBarcodeInput');
+        }
+        function currentSuppressCheckbox() {
+            const addVisible = !document.getElementById('addLocationSection').classList.contains('hidden');
+            return addVisible ? document.getElementById('disableKeyboardCheckbox') : document.getElementById('disableKeyboardSearch');
+        }
+
+        // Accept characters from external keyboards/scanners while readOnly
+        window.addEventListener('keydown', (ev) => {
+            const inputEl = currentTarget();
+            const suppress = currentSuppressCheckbox().checked;
+
+            if (!suppress) return; // normal flow
+
+            // Allow navigation keys for robustness
+            if (ev.key === 'Enter') {
+                ev.preventDefault();
+                if (inputEl.id === 'barcodeInput') saveProduct();
+                else searchProduct();
+                return;
+            }
+            if (ev.key === 'Backspace') {
+                ev.preventDefault();
+                inputEl.value = inputEl.value.slice(0, -1);
+                return;
+            }
+            if (ev.key.length === 1 && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
+                ev.preventDefault();
+                inputEl.value += ev.key;
+                return;
+            }
+        }, { capture: true });
+
+        // --- Download/Upload/Reset ---
         document.getElementById('resetButton').addEventListener('click', () => {
             if (confirm('Tüm verileri silmek istediğinizden emin misiniz?')) {
                 products = {};
@@ -251,39 +321,35 @@
                 alert('Tüm veriler silindi!');
             }
         });
-
         document.getElementById('downloadButton').addEventListener('click', () => {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(products));
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", "product_locations.json");
-            document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
+            const a = document.createElement('a');
+            a.href = dataStr;
+            a.download = "product_locations.json";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
         });
-
         document.getElementById('uploadButton').addEventListener('click', () => {
             document.getElementById('fileInput').click();
         });
-
         document.getElementById('fileInput').addEventListener('change', (event) => {
             const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        products = JSON.parse(e.target.result);
-                        localStorage.setItem('products', JSON.stringify(products));
-                        alert('Veriler başarıyla yüklendi!');
-                    } catch (error) {
-                        console.error('Dosya okuma hatası:', error);
-                        alert('Dosya okunamadı. Lütfen geçerli bir JSON dosyası seçin.');
-                    }
-                };
-                reader.readAsText(file);
-            }
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    products = JSON.parse(e.target.result);
+                    localStorage.setItem('products', JSON.stringify(products));
+                    alert('Veriler başarıyla yüklendi!');
+                } catch (err) {
+                    alert('Dosya okunamadı. Geçerli bir JSON seçin.');
+                }
+            };
+            reader.readAsText(file);
         });
 
+        // --- Hidden popup (easter-egg) ---
         document.getElementById('poweredByArda').addEventListener('click', () => {
             ardaClickCount++;
             if (ardaClickCount === 3) {
@@ -291,47 +357,25 @@
                 ardaClickCount = 0;
             }
         });
-
         document.getElementById('popupCloseButton').addEventListener('click', () => {
             document.getElementById('popup').style.display = 'none';
         });
-
         document.getElementById('saveBarcodesButton').addEventListener('click', () => {
-            const barcodes = document.getElementById('barcodeTextarea').value.trim().split('\n');
-            barcodes.forEach(barcode => {
-                barcode = barcode.trim();
-                if (barcode) {
-                    if (!products[barcode]) {
-                        products[barcode] = {};
-                    }
-                    products[barcode]['default'] = (products[barcode]['default'] || 0) + 1;
-                }
-            });
+            const lines = document.getElementById('barcodeTextarea').value.split(/\r?\n/);
+            for (let raw of lines) {
+                const barcode = raw.trim();
+                if (!barcode) continue;
+                if (!products[barcode]) products[barcode] = {};
+                products[barcode]['default'] = (products[barcode]['default'] || 0) + 1;
+            }
             localStorage.setItem('products', JSON.stringify(products));
             alert('Barkodlar kaydedildi!');
             document.getElementById('popup').style.display = 'none';
         });
-    
-// Ürün Ekle kısmı için
-document.getElementById('disableKeyboardCheckbox').addEventListener('change', function() {
-    const input = document.getElementById('barcodeInput');
-    if (this.checked) {
-        input.setAttribute('readonly', true);
-    } else {
-        input.removeAttribute('readonly');
-    }
-});
 
-// Ürün Bul kısmı için
-document.getElementById('disableKeyboardSearch').addEventListener('change', function() {
-    const input = document.getElementById('searchBarcodeInput');
-    if (this.checked) {
-        input.setAttribute('readonly', true);
-    } else {
-        input.removeAttribute('readonly');
-    }
-});
-
-</script>
+        // Default section on load
+        toggleSection('addLocationSection');
+        document.getElementById('barcodeInput').focus();
+    </script>
 </body>
 </html>
