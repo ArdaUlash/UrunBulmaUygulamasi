@@ -116,6 +116,22 @@
             border-radius: 8px;
             cursor: pointer;
         }
+        #popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--panel);
+            padding: 20px;
+            width: 320px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.5);
+            display: none;
+            z-index: 1000;
+        }
+        #popup textarea { height: 150px; }
+        #popup button { width: 100%; }
+        #popupCloseButton { background-color: var(--danger); }
     </style>
 </head>
 <body>
@@ -133,7 +149,7 @@
             <input type="text" id="barcodeInput" placeholder="Barkodu okutun veya yazın" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus>
             <label class="keyboard-toggle" for="disableKeyboardCheckbox">
                 <input type="checkbox" id="disableKeyboardCheckbox">
-                <span>⌨️ Klavyeyi Kapat</span>
+                <span>⌨️ Klavyeyi Kapat (harici okuyucu serbest)</span>
             </label>
             <div class="kbd-tip"></div>
         </div>
@@ -143,7 +159,7 @@
             <input type="text" id="searchBarcodeInput" placeholder="EAN barkodunu okutun" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             <label class="keyboard-toggle" for="disableKeyboardSearch">
                 <input type="checkbox" id="disableKeyboardSearch">
-                <span>⌨️ Klavyeyi Kapat</span>
+                <span>⌨️ Klavyeyi Kapat (harici okuyucu serbest)</span>
             </label>
             <p id="result"></p>
         </div>
@@ -156,10 +172,20 @@
         <div class="note">info: <strong>arda.ulash@gmail.com</strong></div>
     </div>
 
+    <button id="poweredByArda">Powered by Arda</button>
+
+    <div id="popup">
+        <h3>Barkodları Toplu Ekleyin</h3>
+        <textarea id="barcodeTextarea" placeholder="Her satıra bir EAN..."></textarea>
+        <button id="saveBarcodesButton">Barkodları Kaydet</button>
+        <button id="popupCloseButton">Kapat</button>
+    </div>
+
     <input id="hidSink" inputmode="none" aria-hidden="true">
 
     <script>
         let products = JSON.parse(localStorage.getItem('products')) || {};
+        let ardaClickCount = 0;
 
         function toggleSection(sectionToShow) {
             const sections = ['addLocationSection', 'findProductSection'];
@@ -202,7 +228,6 @@
             el.value = '';
         }
 
-        // Auto-save & auto-search on 12 or 13 chars
         document.getElementById('barcodeInput').addEventListener('input', function() {
             if (this.value.length === 12 || this.value.length === 13) saveProduct();
         });
@@ -210,7 +235,6 @@
             if (this.value.length === 12 || this.value.length === 13) searchProduct();
         });
 
-        // HID support
         const hidSink = document.getElementById('hidSink');
         function setKeyboardSuppressed(inputEl, suppress) {
             if (suppress) {
@@ -296,6 +320,29 @@
                 }
             };
             reader.readAsText(file);
+        });
+
+        document.getElementById('poweredByArda').addEventListener('click', () => {
+            ardaClickCount++;
+            if (ardaClickCount === 3) {
+                document.getElementById('popup').style.display = 'block';
+                ardaClickCount = 0;
+            }
+        });
+        document.getElementById('popupCloseButton').addEventListener('click', () => {
+            document.getElementById('popup').style.display = 'none';
+        });
+        document.getElementById('saveBarcodesButton').addEventListener('click', () => {
+            const lines = document.getElementById('barcodeTextarea').value.split(/\r?\n/);
+            for (let raw of lines) {
+                const barcode = raw.trim();
+                if (!barcode) continue;
+                if (!products[barcode]) products[barcode] = {};
+                products[barcode]['default'] = (products[barcode]['default'] || 0) + 1;
+            }
+            localStorage.setItem('products', JSON.stringify(products));
+            alert('Barkodlar kaydedildi!');
+            document.getElementById('popup').style.display = 'none';
         });
 
         toggleSection('addLocationSection');
