@@ -1,10 +1,50 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script>```html
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ürün Bulma Uygulaması</title>
-    <meta name="description" content="Ürünleri barkodu ile kaydedip daha sonra tarayarak kolayca bulabilirsiniz..">
+    <meta name="description" content="Ürünleri barkodu ile kaydedip daha sonra tarayarak kolayca bulabilirsiniz.">
     <style>
         :root {
             --bg: #1a1a1a;
@@ -68,7 +108,7 @@
         }
         input[readonly] { caret-color: transparent; }
         .hidden { display: none; }
-        #result {
+        .result {
             margin-top: 10px;
             padding: 12px;
             background-color: var(--muted);
@@ -146,22 +186,23 @@
 
         <div id="addLocationSection" class="hidden">
             <h2>Ürün Ekle</h2>
-            <input type="text" id="barcodeInput" placeholder="Barkodu okutun veya yazın" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus>
+            <input type="text" id="barcodeInput" placeholder="Barkodu okutun veya yazın (12-13 hane)" pattern="[0-9]{12,13}" minlength="12" maxlength="13" required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus>
             <label class="keyboard-toggle" for="disableKeyboardCheckbox">
                 <input type="checkbox" id="disableKeyboardCheckbox">
                 <span>⌨️ Klavyeyi Kapat</span>
             </label>
             <div class="kbd-tip"></div>
+            <p id="addResult" class="result"></p>
         </div>
 
         <div id="findProductSection" class="hidden">
             <h2>Ürün Bul</h2>
-            <input type="text" id="searchBarcodeInput" placeholder="EAN barkodunu okutun" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <input type="text" id="searchBarcodeInput" placeholder="EAN barkodunu okutun (12-13 hane)" pattern="[0-9]{12,13}" minlength="12" maxlength="13" required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             <label class="keyboard-toggle" for="disableKeyboardSearch">
                 <input type="checkbox" id="disableKeyboardSearch">
                 <span>⌨️ Klavyeyi Kapat</span>
             </label>
-            <p id="result"></p>
+            <p id="result" class="result"></p>
         </div>
 
         <div class="row">
@@ -169,14 +210,15 @@
             <input type="file" id="fileInput" accept=".json" style="display:none;">
             <button id="uploadButton">Verileri Yükle</button>
         </div>
-        <div class="note">info: <strong>arda.ulash@gmail.com</strong></div>
+        <div class="note">info: <strong><a href="mailto:arda.ulash@gmail.com">arda.ulash@gmail.com</a></strong></div>
     </div>
 
     <button id="poweredByArda">Powered by Arda</button>
 
     <div id="popup">
         <h3>Barkodları Toplu Ekleyin</h3>
-        <textarea id="barcodeTextarea" placeholder="Her satıra bir EAN..."></textarea>
+        <textarea id="barcodeTextarea" placeholder="Her satıra bir EAN (12-13 hane)..."></textarea>
+        <p id="bulkResult" class="result"></p>
         <button id="saveBarcodesButton">Barkodları Kaydet</button>
         <button id="popupCloseButton">Kapat</button>
     </div>
@@ -187,11 +229,46 @@
         let products = JSON.parse(localStorage.getItem('products')) || {};
         let ardaClickCount = 0;
 
+        // Barkod türünü belirleme ve kontrol hanesi doğrulama
+        function getBarcodeType(barcode) {
+            if (!/^[0-9]{12,13}$/.test(barcode)) return null;
+            if (barcode.length === 12) return 'UPC';
+            if (barcode.length === 13) return barcode.startsWith('0') ? 'UPC' : 'EAN';
+            return null;
+        }
+
+        function validateCheckDigit(barcode) {
+            const digits = barcode.split('').map(Number);
+            const checkDigit = digits.pop();
+            let sum = 0;
+            if (barcode.length === 12) { // UPC-A
+                for (let i = 0; i < digits.length; i++) {
+                    sum += i % 2 === 0 ? digits[i] * 3 : digits[i];
+                }
+            } else { // EAN-13
+                for (let i = 0; i < digits.length; i++) {
+                    sum += i % 2 === 0 ? digits[i] : digits[i] * 3;
+                }
+            }
+            const calculatedCheckDigit = (10 - (sum % 10)) % 10;
+            return calculatedCheckDigit === checkDigit;
+        }
+
         function toggleSection(sectionToShow) {
             const sections = ['addLocationSection', 'findProductSection'];
             sections.forEach(section => {
                 document.getElementById(section).classList.toggle('hidden', section !== sectionToShow);
             });
+            clearResults();
+        }
+
+        function clearResults() {
+            document.getElementById('addResult').textContent = '';
+            document.getElementById('addResult').style.backgroundColor = 'var(--muted)';
+            document.getElementById('result').textContent = '';
+            document.getElementById('result').style.backgroundColor = 'var(--muted)';
+            document.getElementById('bulkResult').textContent = '';
+            document.getElementById('bulkResult').style.backgroundColor = 'var(--muted)';
         }
 
         document.getElementById('addLocationButton').addEventListener('click', () => {
@@ -206,10 +283,28 @@
         function saveProduct() {
             const el = document.getElementById('barcodeInput');
             const barcode = el.value.trim();
-            if (!barcode) return;
-            if (!products[barcode]) products[barcode] = {};
+            const result = document.getElementById('addResult');
+            if (!barcode) {
+                result.textContent = 'Lütfen bir barkod girin!';
+                result.style.backgroundColor = 'var(--error)';
+                return;
+            }
+            const barcodeType = getBarcodeType(barcode);
+            if (!barcodeType) {
+                result.textContent = 'Geçersiz barkod! Lütfen 12 veya 13 haneli bir EAN/UPC barkod girin.';
+                result.style.backgroundColor = 'var(--error)';
+                return;
+            }
+            if (!validateCheckDigit(barcode)) {
+                result.textContent = `Geçersiz ${barcodeType} barkod! Kontrol hanesi hatalı.`;
+                result.style.backgroundColor = 'var(--error)';
+                return;
+            }
+            if (!products[barcode]) products[barcode] = { type: barcodeType };
             products[barcode]['default'] = (products[barcode]['default'] || 0) + 1;
             localStorage.setItem('products', JSON.stringify(products));
+            result.textContent = `${barcodeType} barkod eklendi: ${barcode}`;
+            result.style.backgroundColor = 'var(--success)';
             el.value = '';
         }
 
@@ -217,22 +312,38 @@
             const el = document.getElementById('searchBarcodeInput');
             const barcode = el.value.trim();
             const result = document.getElementById('result');
-            if (barcode && products[barcode] && Object.keys(products[barcode]).length > 0) {
-                result.textContent = 'Ürün bulundu!';
+            if (!barcode) {
+                result.textContent = 'Lütfen bir barkod girin!';
+                result.style.backgroundColor = 'var(--error)';
+                return;
+            }
+            const barcodeType = getBarcodeType(barcode);
+            if (!barcodeType) {
+                result.textContent = 'Geçersiz barkod! Lütfen 12 veya 13 haneli bir EAN/UPC barkod girin.';
+                result.style.backgroundColor = 'var(--error)';
+                return;
+            }
+            if (!validateCheckDigit(barcode)) {
+                result.textContent = `Geçersiz ${barcodeType} barkod! Kontrol hanesi hatalı.`;
+                result.style.backgroundColor = 'var(--error)';
+                return;
+            }
+            if (products[barcode] && Object.keys(products[barcode]).length > 0) {
+                result.textContent = `${barcodeType} barkod bulundu!`;
                 result.style.backgroundColor = 'var(--success)';
-                new Audio('find.mp3').play().catch(()=>{});
+                new Audio('find.mp3').play().catch(() => {});
             } else {
-                result.textContent = 'Ürün bulunamadı!';
+                result.textContent = `${barcodeType} barkod bulunamadı!`;
                 result.style.backgroundColor = 'var(--error)';
             }
             el.value = '';
         }
 
         document.getElementById('barcodeInput').addEventListener('input', function() {
-            if (this.value.length === 12 || this.value.length === 13) saveProduct();
+            if (this.value.length >= 12) saveProduct();
         });
         document.getElementById('searchBarcodeInput').addEventListener('input', function() {
-            if (this.value.length === 12 || this.value.length === 13) searchProduct();
+            if (this.value.length >= 12) searchProduct();
         });
 
         const hidSink = document.getElementById('hidSink');
@@ -282,8 +393,8 @@
             if (ev.key.length === 1 && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
                 ev.preventDefault();
                 inputEl.value += ev.key;
-                if (inputEl.id === 'barcodeInput' && (inputEl.value.length === 12 || inputEl.value.length === 13)) saveProduct();
-                if (inputEl.id === 'searchBarcodeInput' && (inputEl.value.length === 12 || inputEl.value.length === 13)) searchProduct();
+                if (inputEl.id === 'barcodeInput' && inputEl.value.length >= 12) saveProduct();
+                if (inputEl.id === 'searchBarcodeInput' && inputEl.value.length >= 12) searchProduct();
             }
         }, { capture: true });
 
@@ -292,6 +403,7 @@
                 products = {};
                 localStorage.setItem('products', JSON.stringify(products));
                 alert('Tüm veriler silindi!');
+                clearResults();
             }
         });
         document.getElementById('downloadButton').addEventListener('click', () => {
@@ -303,9 +415,6 @@
             a.click();
             a.remove();
         });
-        document.getElementById('uploadButton').addEventListener('click', () => {
-            document.getElementById('fileInput').click();
-        });
         document.getElementById('fileInput').addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -315,33 +424,57 @@
                     products = JSON.parse(e.target.result);
                     localStorage.setItem('products', JSON.stringify(products));
                     alert('Veriler başarıyla yüklendi!');
+                    clearResults();
                 } catch (err) {
                     alert('Dosya okunamadı. Geçerli bir JSON seçin.');
                 }
             };
             reader.readAsText(file);
         });
+        document.getElementById('uploadButton').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
 
         document.getElementById('poweredByArda').addEventListener('click', () => {
             ardaClickCount++;
             if (ardaClickCount === 3) {
                 document.getElementById('popup').style.display = 'block';
+                document.getElementById('barcodeTextarea').focus();
                 ardaClickCount = 0;
             }
         });
         document.getElementById('popupCloseButton').addEventListener('click', () => {
             document.getElementById('popup').style.display = 'none';
+            clearResults();
         });
         document.getElementById('saveBarcodesButton').addEventListener('click', () => {
             const lines = document.getElementById('barcodeTextarea').value.split(/\r?\n/);
+            const result = document.getElementById('bulkResult');
+            let validBarcodes = [];
             for (let raw of lines) {
                 const barcode = raw.trim();
                 if (!barcode) continue;
-                if (!products[barcode]) products[barcode] = {};
+                const barcodeType = getBarcodeType(barcode);
+                if (!barcodeType) {
+                    result.textContent = `Geçersiz barkod: ${barcode}. Lütfen 12 veya 13 haneli bir EAN/UPC barkod girin.`;
+                    result.style.backgroundColor = 'var(--error)';
+                    return;
+                }
+                if (!validateCheckDigit(barcode)) {
+                    result.textContent = `Geçersiz ${barcodeType} barkod: ${barcode}. Kontrol hanesi hatalı.`;
+                    result.style.backgroundColor = 'var(--error)';
+                    return;
+                }
+                validBarcodes.push({ barcode, type: barcodeType });
+            }
+            for (let { barcode, type } of validBarcodes) {
+                if (!products[barcode]) products[barcode] = { type };
                 products[barcode]['default'] = (products[barcode]['default'] || 0) + 1;
             }
             localStorage.setItem('products', JSON.stringify(products));
-            alert('Barkodlar kaydedildi!');
+            result.textContent = 'Barkodlar kaydedildi!';
+            result.style.backgroundColor = 'var(--success)';
+            document.getElementById('barcodeTextarea').value = '';
             document.getElementById('popup').style.display = 'none';
         });
 
