@@ -2,238 +2,465 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ürün Bulma Uygulaması</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stok Terminali V15</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+
+        :root {
+            --bg-dark: #07090f;
+            --panel-bg: rgba(16, 22, 34, 0.85);
+            --accent-cyan: #00f3ff;
+            --accent-red: #ff003c;
+            --accent-green: #00ff66;
+            --text-main: #e2e8f0;
+            --text-muted: #64748b;
+            --border-glow: 0 0 10px rgba(0, 243, 255, 0.2), inset 0 0 10px rgba(0, 243, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
             margin: 0;
-            padding: 20px;
-            background-color: #1a1a1a;
-            color: #e0e0e0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
         }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #2a2a2a;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Rajdhani', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-image: 
+                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
         }
-        h1, h2, h3 {
-            color: #ffffff;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        button {
-            padding: 15px;
-            margin: 10px 0;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #4a4a4a;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            transition: background-color 0.3s, transform 0.1s;
+
+        .terminal-container {
             width: 100%;
-            display: block;
+            max-width: 500px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* --- BAŞLIK (HEADER) --- */
+        .header {
+            text-align: center;
+            border-bottom: 2px solid var(--accent-cyan);
+            padding-bottom: 10px;
+            position: relative;
+        }
+        .header h1 {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--accent-cyan);
+            font-size: 28px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-shadow: 0 0 8px rgba(0, 243, 255, 0.4);
+        }
+        .header .subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            letter-spacing: 4px;
+            margin-top: 5px;
+        }
+
+        /* --- PANELLER --- */
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: var(--border-glow);
+            position: relative;
+            overflow: hidden;
+        }
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 30px; height: 30px;
+            border-top: 2px solid var(--accent-cyan);
+            border-left: 2px solid var(--accent-cyan);
+        }
+        .panel::after {
+            content: '';
+            position: absolute;
+            bottom: 0; right: 0; width: 30px; height: 30px;
+            border-bottom: 2px solid var(--accent-cyan);
+            border-right: 2px solid var(--accent-cyan);
+        }
+
+        .panel-title {
+            font-size: 18px;
+            color: var(--text-main);
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* --- INPUTLAR --- */
+        input[type="text"] {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            color: var(--accent-cyan);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 20px;
+            padding: 15px;
+            text-align: center;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+            background: rgba(0, 243, 255, 0.05);
+        }
+        input[type="text"]::placeholder {
+            color: rgba(100, 116, 139, 0.5);
+        }
+
+        /* --- BUTONLAR --- */
+        button {
+            width: 100%;
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--accent-cyan);
+            padding: 15px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+            border-radius: 4px;
+            margin-top: 10px;
         }
         button:hover {
-            background-color: #5a5a5a;
-            transform: scale(1.02);
+            background: rgba(0, 243, 255, 0.1);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
         }
         button:active {
             transform: scale(0.98);
         }
-        input, textarea {
-            padding: 12px;
-            font-size: 16px;
-            margin: 10px 0;
-            width: 100%;
-            box-sizing: border-box;
-            border: 1px solid #4a4a4a;
-            border-radius: 4px;
-            background-color: #3a3a3a;
-            color: #e0e0e0;
+        .btn-danger {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
         }
-        #resetButton {
-            background-color: #8b0000;
+        .btn-danger:hover {
+            background: rgba(255, 0, 60, 0.1);
+            box-shadow: 0 0 15px rgba(255, 0, 60, 0.4);
         }
-        #resetButton:hover {
-            background-color: #a00000;
-        }
-        .hidden {
-            display: none;
-        }
+
+        /* --- SONUÇ EKRANI --- */
         #result {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #3a3a3a;
+            margin-top: 15px;
+            padding: 15px;
+            text-align: center;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 22px;
+            display: none;
             border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; text-shadow: 0 0 10px currentColor; }
+            100% { opacity: 0.8; }
+        }
+
+        /* --- TOGGLE (KLAVYE GİZLEME) --- */
+        .cyber-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px 15px;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 4px;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        .cyber-toggle span {
+            font-size: 14px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+        .cyber-toggle input[type="checkbox"] {
+            accent-color: var(--accent-cyan);
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* --- SİSTEM BİLGİSİ (ARDA İMZASI) --- */
+        .system-footer {
+            margin-top: auto;
+            padding: 20px;
             text-align: center;
         }
         #poweredByArda {
-            position: fixed;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 5px 10px;
-            font-size: 12px;
-            background-color: #4a4a4a;
-            color: #e0e0e0;
+            background: none;
             border: none;
-            border-radius: 4px;
-            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 12px;
+            letter-spacing: 3px;
+            width: auto;
+            padding: 5px 10px;
+            margin: 0 auto;
         }
+        #poweredByArda:hover {
+            color: var(--accent-cyan);
+            box-shadow: none;
+            text-shadow: 0 0 5px var(--accent-cyan);
+        }
+
+        /* --- GİZLİ POPUP (EASTER EGG) --- */
         #popup {
             position: fixed;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            background-color: #2a2a2a;
-            padding: 20px;
-            width: 300px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            display: none;
+            background: var(--bg-dark);
+            border: 1px solid var(--accent-cyan);
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
+            padding: 25px;
+            width: 90%;
+            max-width: 400px;
             z-index: 1000;
+            display: none;
+        }
+        #popup h3 {
+            color: var(--accent-cyan);
+            margin-bottom: 15px;
+            text-align: center;
+            font-family: 'Share Tech Mono', monospace;
         }
         #popup textarea {
-            height: 150px;
-        }
-        #popup button {
             width: 100%;
+            height: 150px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid var(--text-muted);
+            color: var(--accent-green);
+            font-family: 'Share Tech Mono', monospace;
+            padding: 10px;
+            margin-bottom: 15px;
+            resize: none;
         }
-        #popupCloseButton {
-            background-color: #8b0000;
+        #popup textarea:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
         }
         #popupInfo {
-            font-size: 12px;
-            color: #cccccc;
+            font-size: 11px;
+            color: var(--text-muted);
             text-align: center;
-            margin-top: 10px;
-            font-style: italic;
+            margin-top: 15px;
+            font-family: monospace;
         }
+
+        /* Tab Butonları Göstergesi */
+        .tab-btn { opacity: 0.5; }
+        .tab-btn.active { opacity: 1; background: rgba(0, 243, 255, 0.1); border-color: var(--accent-cyan); }
+        .hidden { display: none !important; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Ürün Bulma Uygulaması</h1>
+
+    <div class="terminal-container">
         
-        <button id="addLocationButton">Ürün Ekle</button>
-        <button id="findProductButton">Ürün Bul</button>
-        <button id="resetButton">Sıfırla</button>
-
-        <div id="addLocationSection" class="hidden">
-            <h2>Ürün Ekle</h2>
-            <input type="text" id="barcodeInput" placeholder="Ürünü Okutunuz" autofocus>
+        <div class="header">
+            <h1>TERMİNAL 4254</h1>
+            <div class="subtitle">PARK BORNOVA AVM - AKTİF BAĞLANTI</div>
         </div>
 
-        <div id="findProductSection" class="hidden">
-            <h2>Ürün Bul</h2>
-            <input type="text" id="searchBarcodeInput" placeholder="EAN Barkodu Okutun" autofocus>
-            <p id="result"></p>
+        <div class="grid-2">
+            <button id="addLocationButton" class="tab-btn active" onclick="switchMode('add')">Ürün Ekle</button>
+            <button id="findProductButton" class="tab-btn" onclick="switchMode('find')">Ürün Bul</button>
         </div>
 
-        <button id="downloadButton">Verileri İndir</button>
-        <input type="file" id="fileInput" accept=".json" style="display: none;">
-        <button id="uploadButton">Verileri Yükle</button>
+        <label class="cyber-toggle" id="keyboardToggleContainer">
+            <span>Donanım Okuyucu Modu</span>
+            <input type="checkbox" id="keyboardToggle" onchange="toggleKeyboardMode()">
+        </label>
+
+        <div id="addLocationSection" class="panel">
+            <div class="panel-title">
+                <span>VERİ GİRİŞİ</span>
+                <span style="font-size: 12px; color: var(--accent-green);">● BEKLENİYOR</span>
+            </div>
+            <input type="text" id="barcodeInput" placeholder="BARKOD TARAYIN..." autofocus>
+        </div>
+
+        <div id="findProductSection" class="panel hidden">
+            <div class="panel-title">
+                <span>SİSTEM SORGUSU</span>
+                <span style="font-size: 12px; color: var(--accent-cyan);">● AKTİF</span>
+            </div>
+            <input type="text" id="searchBarcodeInput" placeholder="EAN BARKODU GİRİN...">
+            <div id="result"></div>
+        </div>
+
+        <div class="panel" style="margin-top: 10px;">
+            <div class="panel-title">VERİ AKTARIMI (TXT)</div>
+            <div class="grid-2" style="margin-bottom: 0;">
+                <button id="downloadButton" style="margin-top: 0;">İNDİR</button>
+                <button id="uploadButton" style="margin-top: 0;">YÜKLE</button>
+            </div>
+            <input type="file" id="fileInput" accept=".txt" style="display: none;">
+            
+            <button id="resetButton" class="btn-danger" style="margin-top: 15px;">TÜM SİSTEMİ SIFIRLA</button>
+        </div>
+
     </div>
 
-    <button id="poweredByArda">Powered by Arda</button>
+    <div class="system-footer">
+        <button id="poweredByArda">Powered by Arda</button>
+    </div>
 
     <div id="popup">
-        <h3>Barkodları Ekleyin</h3>
-        <textarea id="barcodeTextarea" placeholder="Her satıra bir EAN barkodu ekleyin..."></textarea>
-        <button id="saveBarcodesButton">Barkodları Kaydet</button>
-        <button id="popupCloseButton">Kapat</button>
-        <p id="popupInfo">info arda@ardaulas.online  version 15</p>
+        <h3>SİSTEME TOPLU GİRİŞ</h3>
+        <textarea id="barcodeTextarea" placeholder="EAN_KODU..."></textarea>
+        <button id="saveBarcodesButton" style="background: rgba(0, 243, 255, 0.1);">KAYDET</button>
+        <button id="popupCloseButton" class="btn-danger">KAPAT</button>
+        <div id="popupInfo">info arda.ulash@gmail.com | version 15</div>
     </div>
+
+    <audio id="audioSuccess" src="find.mp3" preload="auto"></audio>
+    <audio id="audioError" src="unmatched.mp3" preload="auto"></audio>
 
     <script>
         let products = JSON.parse(localStorage.getItem('products')) || {};
         let ardaClickCount = 0;
+        let currentMode = 'add';
 
-        function toggleSection(sectionToShow) {
-            const sections = ['addLocationSection', 'findProductSection'];
-            sections.forEach(section => {
-                document.getElementById(section).classList.toggle('hidden', section !== sectionToShow);
-            });
+        // --- ARAYÜZ KONTROLLERİ ---
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            document.getElementById('addLocationSection').classList.toggle('hidden', mode !== 'add');
+            document.getElementById('findProductSection').classList.toggle('hidden', mode !== 'find');
+            
+            document.getElementById('addLocationButton').classList.toggle('active', mode === 'add');
+            document.getElementById('findProductButton').classList.toggle('active', mode === 'find');
+            
+            document.getElementById('result').style.display = 'none';
+            
+            setTimeout(() => {
+                document.getElementById(mode === 'add' ? 'barcodeInput' : 'searchBarcodeInput').focus();
+            }, 50);
         }
 
-        document.getElementById('addLocationButton').addEventListener('click', () => {
-            toggleSection('addLocationSection');
-            document.getElementById('barcodeInput').focus();
-        });
+        function toggleKeyboardMode() {
+            const isChecked = document.getElementById('keyboardToggle').checked;
+            const inputMode = isChecked ? 'none' : 'text';
+            
+            document.getElementById('barcodeInput').setAttribute('inputmode', inputMode);
+            document.getElementById('searchBarcodeInput').setAttribute('inputmode', inputMode);
+            
+            document.getElementById(currentMode === 'add' ? 'barcodeInput' : 'searchBarcodeInput').focus();
+        }
 
-        document.getElementById('findProductButton').addEventListener('click', () => {
-            toggleSection('findProductSection');
-            document.getElementById('searchBarcodeInput').focus();
-        });
+        // --- GÖRSEL EFEKTLER (Flash) ---
+        function flashInput(inputId, color) {
+            const el = document.getElementById(inputId);
+            const originalShadow = el.style.boxShadow;
+            el.style.boxShadow = `0 0 20px ${color}`;
+            el.style.borderColor = color;
+            setTimeout(() => {
+                el.style.boxShadow = originalShadow;
+                el.style.borderColor = '';
+            }, 300);
+        }
 
-        document.getElementById('barcodeInput').addEventListener('input', function() {
-            if (this.value.length >= 13) {
-                saveProduct();
-            }
+        // --- VERİ MANTIĞI ---
+        document.getElementById('barcodeInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') saveProduct();
         });
 
         function saveProduct() {
-            const barcode = document.getElementById('barcodeInput').value;
-            
+            const barcode = document.getElementById('barcodeInput').value.trim();
             if (barcode) {
-                if (!products[barcode]) {
-                    products[barcode] = {};
-                }
+                if (!products[barcode]) products[barcode] = {};
                 products[barcode]['default'] = (products[barcode]['default'] || 0) + 1;
                 localStorage.setItem('products', JSON.stringify(products));
+                
+                flashInput('barcodeInput', 'var(--accent-green)');
                 document.getElementById('barcodeInput').value = '';
                 document.getElementById('barcodeInput').focus();
-            } else {
-                alert('Lütfen barkodu girin!');
             }
         }
 
-        document.getElementById('searchBarcodeInput').addEventListener('input', function() {
-            if (this.value.length >= 13) {
-                searchProduct();
-            }
+        document.getElementById('searchBarcodeInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchProduct();
         });
 
         function searchProduct() {
-            const barcode = document.getElementById('searchBarcodeInput').value;
+            const barcode = document.getElementById('searchBarcodeInput').value.trim();
             const result = document.getElementById('result');
             
+            if (!barcode) return;
+
+            result.style.display = 'block';
+            
             if (products[barcode] && Object.keys(products[barcode]).length > 0) {
-                result.textContent = 'Ürün Bulundu!';
-                result.style.backgroundColor = 'green';
-                const audio = new Audio('find.mp3');
-                audio.play();
+                const count = products[barcode]['default'] || 1;
+                result.textContent = `BULUNDU: ${count} ADET`;
+                result.style.color = 'var(--accent-green)';
+                result.style.border = '1px solid var(--accent-green)';
+                result.style.background = 'rgba(0, 255, 102, 0.1)';
+                flashInput('searchBarcodeInput', 'var(--accent-green)');
+                document.getElementById('audioSuccess').play().catch(e=>console.log(e));
             } else {
-                result.textContent = 'Ürün bulunamadı!';
-                result.style.backgroundColor = 'red';
-                const audio = new Audio('unmatched.mp3');
-                audio.play();
+                result.textContent = 'SİSTEMDE YOK';
+                result.style.color = 'var(--accent-red)';
+                result.style.border = '1px solid var(--accent-red)';
+                result.style.background = 'rgba(255, 0, 60, 0.1)';
+                flashInput('searchBarcodeInput', 'var(--accent-red)');
+                document.getElementById('audioError').play().catch(e=>console.log(e));
             }
             document.getElementById('searchBarcodeInput').value = '';
             document.getElementById('searchBarcodeInput').focus();
         }
 
+        // --- SIFIRLA & TXT İŞLEMLERİ ---
         document.getElementById('resetButton').addEventListener('click', () => {
-            if (confirm('Tüm verileri silmek istediğinizden emin misiniz?')) {
+            if (confirm('SİSTEMİ TAMAMEN SIFIRLAMAK ÜZERESİNİZ. ONAYLIYOR MUSUNUZ?')) {
                 products = {};
                 localStorage.setItem('products', JSON.stringify(products));
-                alert('Tüm veriler silindi!');
+                document.getElementById('result').style.display = 'none';
+                alert('SİSTEM TEMİZLENDİ.');
             }
         });
 
         document.getElementById('downloadButton').addEventListener('click', () => {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(products));
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", "product_locations.json");
-            document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
+            if(Object.keys(products).length === 0) return alert("SİSTEMDE VERİ YOK.");
+            let txtContent = "";
+            for (let barcode in products) {
+                let count = products[barcode]['default'] || 1;
+                txtContent += `${barcode}\t${count}\n`;
+            }
+            const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "Terminal_4254_Cikti.txt";
+            link.click();
         });
 
         document.getElementById('uploadButton').addEventListener('click', () => {
@@ -246,18 +473,28 @@
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     try {
-                        products = JSON.parse(e.target.result);
+                        const lines = e.target.result.split('\n');
+                        let added = 0;
+                        lines.forEach(line => {
+                            const parts = line.trim().split(/[\t,; ]+/);
+                            const barcode = parts[0]?.trim();
+                            const count = parseInt(parts[1]) || 1;
+                            if(barcode && barcode.length > 3) {
+                                if (!products[barcode]) products[barcode] = {};
+                                products[barcode]['default'] = (products[barcode]['default'] || 0) + count;
+                                added++;
+                            }
+                        });
                         localStorage.setItem('products', JSON.stringify(products));
-                        alert('Veriler başarıyla yüklendi!');
-                    } catch (error) {
-                        console.error('Dosya okuma hatası:', error);
-                        alert('Dosya okunamadı. Lütfen geçerli bir JSON dosyası seçin.');
-                    }
+                        alert(`${added} KAYIT SİSTEME EKLENDİ.`);
+                    } catch (error) { alert('DOSYA OKUMA HATASI.'); }
                 };
                 reader.readAsText(file);
+                event.target.value = '';
             }
         });
 
+        // --- ARDA İMZASI (GİZLİ MENÜ) ---
         document.getElementById('poweredByArda').addEventListener('click', () => {
             ardaClickCount++;
             if (ardaClickCount === 3) {
@@ -272,17 +509,18 @@
 
         document.getElementById('saveBarcodesButton').addEventListener('click', () => {
             const barcodes = document.getElementById('barcodeTextarea').value.trim().split('\n');
+            let savedCount = 0;
             barcodes.forEach(barcode => {
                 barcode = barcode.trim();
                 if (barcode) {
-                    if (!products[barcode]) {
-                        products[barcode] = {};
-                    }
+                    if (!products[barcode]) products[barcode] = {};
                     products[barcode]['default'] = (products[barcode]['default'] || 0) + 1;
+                    savedCount++;
                 }
             });
             localStorage.setItem('products', JSON.stringify(products));
-            alert('Barkodlar kaydedildi!');
+            alert(`${savedCount} YENİ KAYIT EKLENDİ.`);
+            document.getElementById('barcodeTextarea').value = '';
             document.getElementById('popup').style.display = 'none';
         });
     </script>
