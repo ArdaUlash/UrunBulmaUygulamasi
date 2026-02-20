@@ -1,4 +1,4 @@
-// app.js - v42 (Sunucu Seçim Sorunu Düzeltilmiş & Scanner Odaklı Kesin Sürüm)
+// app.js - v43 (Sıfırlama Modülü ve Seçim Sorunu Kesin Düzeltildi)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -30,27 +30,26 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('online', handleConnectionChange);
     window.addEventListener('offline', handleConnectionChange);
     
-    // SCANNER ODAK: Sadece boşta kalındığında odağı geri çeker
-    document.body.addEventListener('click', (e) => {
-        // Eğer tıklanan yer bir select menüsü veya buton değilse odağı tazele
-        if (e.target.tagName !== 'SELECT' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
-            maintainFocus();
+    document.body.addEventListener('mousedown', (e) => {
+        // Eğer bir menüye veya inputa tıklanıyorsa odaklamayı geçici durdur
+        if (e.target.tagName === 'SELECT' || e.target.tagName === 'OPTION' || e.target.tagName === 'INPUT') {
+            window.isUserInteracting = true;
         }
+    });
+
+    document.body.addEventListener('mouseup', () => {
+        setTimeout(() => { window.isUserInteracting = false; }, 1000);
     });
 
     setInterval(maintainFocus, 3000);
 });
 
-// 🔴 AKILLI ODAK YÖNETİCİSİ
 function maintainFocus() {
     const modals = document.querySelectorAll('.modal');
     let isAnyModalOpen = false;
     modals.forEach(m => { if(m.style.display === 'flex' || m.style.display === 'block') isAnyModalOpen = true; });
     
-    // Seçim menüsü açıkken odaklamayı durdur (Sunucu seçebilmek için)
-    const isSelecting = document.activeElement.tagName === 'SELECT';
-    
-    if (isAnyModalOpen || isSelecting) return;
+    if (isAnyModalOpen || window.isUserInteracting || document.activeElement.tagName === 'SELECT') return;
 
     const target = isCurrentWorkspaceReadOnly ? 'searchBarcodeInput' : (currentMode === 'add' ? 'barcodeInput' : 'searchBarcodeInput');
     const el = document.getElementById(target);
@@ -81,6 +80,8 @@ function listenWorkspaces() {
 
 function renderWorkspaceDropdown() {
     const select = document.getElementById('workspaceSelect');
+    if (window.isUserInteracting) return; // Kullanıcı seçim yaparken listeyi yenileme
+
     const currentValue = select.value; 
     select.innerHTML = '<option value="LOCAL">GENEL KULLANICI</option>';
     globalWorkspaces.forEach(ws => {
@@ -148,17 +149,12 @@ function changeWorkspace() {
     }
     document.getElementById('result').style.display = 'none';
     updateDataPanelVisibility();
-    maintainFocus();
 }
 
 function updateDataPanelVisibility() {
     const dataPanel = document.getElementById('dataPanel');
     if (!dataPanel) return;
-    if (currentMode === 'find' || isCurrentWorkspaceReadOnly) {
-        dataPanel.style.display = 'none';
-    } else {
-        dataPanel.style.display = 'block';
-    }
+    dataPanel.style.display = (currentMode === 'find' || isCurrentWorkspaceReadOnly) ? 'none' : 'block';
 }
 
 function switchMode(mode) {
@@ -171,26 +167,14 @@ function switchMode(mode) {
     maintainFocus();
 }
 
-document.getElementById('barcodeInput').addEventListener('keydown', e => { 
-    if (e.key === 'Enter' || e.keyCode === 13) {
-        e.preventDefault();
-        saveProduct(); 
-    }
-});
-
-document.getElementById('searchBarcodeInput').addEventListener('keydown', e => { 
-    if (e.key === 'Enter' || e.keyCode === 13) {
-        e.preventDefault();
-        searchProduct(); 
-    }
-});
+document.getElementById('barcodeInput').addEventListener('keydown', e => { if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); saveProduct(); } });
+document.getElementById('searchBarcodeInput').addEventListener('keydown', e => { if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); searchProduct(); } });
 
 async function saveProduct() {
     if (isCurrentWorkspaceReadOnly) return;
     const input = document.getElementById('barcodeInput');
     const barcode = input.value.trim();
     if (!barcode) return;
-
     if (appMode === 'LOCAL') {
         localDB[barcode] = (localDB[barcode] || 0) + 1;
         flashInput('barcodeInput', 'var(--accent-warning)');
@@ -201,7 +185,6 @@ async function saveProduct() {
         }
     }
     input.value = '';
-    maintainFocus();
 }
 
 async function searchProduct() {
@@ -210,13 +193,11 @@ async function searchProduct() {
     if (!barcode) return;
     const result = document.getElementById('result');
     result.style.display = 'block';
-    
     let dbInv = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
     let dbDesc = appMode === 'LOCAL' ? {} : (JSON.parse(localStorage.getItem(`desc_${currentWorkspace}`)) || {});
-    
     if (dbInv.hasOwnProperty(barcode) || dbDesc.hasOwnProperty(barcode)) {
-        let descText = dbDesc[barcode] ? `<br><span style="font-size: 16px; color: var(--accent-primary);">(${dbDesc[barcode]})</span>` : "";
-        result.innerHTML = `BULUNDU${descText}`;
+        let desc = dbDesc[barcode] ? `<br><span style="font-size: 16px; color: var(--accent-primary);">(${dbDesc[barcode]})</span>` : "";
+        result.innerHTML = `BULUNDU${desc}`;
         result.style.color = 'var(--accent-green)';
         result.style.border = '1px solid var(--accent-green)';
         result.style.background = 'rgba(0, 230, 118, 0.1)';
@@ -229,7 +210,35 @@ async function searchProduct() {
         document.getElementById('audioError').play().catch(()=>{});
     }
     input.value = '';
-    maintainFocus();
+}
+
+// 🔴 SIFIRLAMA MODÜLÜ KESİN DÜZELTME
+async function resetSystemData() {
+    if (confirm('Tüm veriler silinecek. Onaylıyor musunuz?')) {
+        if (appMode === 'LOCAL') {
+            localDB = {}; 
+            alert('LOKAL SIFIRLANDI.');
+        } else {
+            try {
+                // Sadece mevcut sunucunun envanterini (inv_) siler
+                const snap = await db.collection(`inv_${currentWorkspace}`).get();
+                if (snap.empty) return alert('Sunucuda silinecek veri yok.');
+                
+                let batch = db.batch();
+                let count = 0;
+                snap.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                    count++;
+                    if(count === 400) { batch.commit(); batch = db.batch(); count = 0; }
+                });
+                if(count > 0) await batch.commit();
+                
+                logAction(currentWorkspace, "SIFIRLAMA", "Barkod verileri temizlendi.");
+                alert('SUNUCU SIFIRLANDI.');
+            } catch(e) { alert("Sıfırlama Hatası: " + e.message); }
+        }
+        document.getElementById('result').style.display = 'none';
+    }
 }
 
 function loginAdmin() {
@@ -241,7 +250,7 @@ function loginAdmin() {
         document.getElementById('rootControls').classList.remove('hidden');
         document.getElementById('adminPanelModal').style.display = 'flex';
         refreshServerList();
-    } else { alert("Yetkisiz Giriş Reddedildi."); }
+    } else alert("Hatalı!");
 }
 
 function refreshServerList() {
@@ -249,15 +258,13 @@ function refreshServerList() {
     if(!area) return;
     area.innerHTML = '';
     globalWorkspaces.forEach(ws => {
-        const isLocked = ws.allowDataEntry === false;
-        const lockText = isLocked ? 'KİLİTLİ' : 'AÇIK';
-        const lockColor = isLocked ? 'var(--accent-red)' : 'var(--accent-green)';
-        area.innerHTML += `<div style="display:flex; flex-direction:column; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
-            <span style="font-family: monospace; font-size:14px; margin-bottom:5px;">[${ws.code}] ${ws.name}</span>
-            <div style="display:flex; gap:5px;">
-                <button style="flex:1; padding:6px; font-size:11px; margin:0; border-color:${lockColor}; color:${lockColor};" onclick="toggleDataEntry('${ws.code}')">YAZMA: ${lockText}</button>
-                <button style="flex:1; padding:6px; font-size:11px; margin:0;" onclick="openDescPanel('${ws.code}')">TANIMLAR</button>
-                <button style="width:auto; padding:6px 12px; font-size:11px; margin:0;" class="btn-danger" onclick="deleteWorkspace('${ws.code}')">SİL</button>
+        const lockCol = ws.allowDataEntry === false ? 'var(--accent-red)' : 'var(--accent-green)';
+        area.innerHTML += `<div style="margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">
+            <span style="font-family:monospace; font-size:14px;">[${ws.code}] ${ws.name}</span>
+            <div style="display:flex; gap:5px; margin-top:5px;">
+                <button style="flex:1; padding:6px; font-size:11px; border-color:${lockCol}; color:${lockCol};" onclick="toggleDataEntry('${ws.code}')">YAZMA: ${ws.allowDataEntry?'AÇIK':'KİLİTLİ'}</button>
+                <button style="flex:1; padding:6px; font-size:11px;" onclick="openDescPanel('${ws.code}')">TANIMLAR</button>
+                <button style="width:auto; padding:6px 12px; font-size:11px;" class="btn-danger" onclick="deleteWorkspace('${ws.code}')">SİL</button>
             </div>
         </div>`;
     });
@@ -270,48 +277,38 @@ function flashInput(id, col) { let el = document.getElementById(id); if(el) { el
 
 async function openDescPanel(code) {
     document.getElementById('descServerCode').value = code;
-    document.getElementById('descModalTitle').innerText = `[${code}] BARKOD TANIMLARI`;
+    document.getElementById('descModalTitle').innerText = `[${code}] TANIMLAR`;
     document.getElementById('descModal').style.display = 'flex';
     const [invSnap, descSnap] = await Promise.all([db.collection(`inv_${code}`).get(), db.collection(`desc_${code}`).get()]);
-    let barcodes = new Set();
-    let descMap = {};
-    descSnap.forEach(doc => { barcodes.add(doc.id); descMap[doc.id] = doc.data().text || ""; });
-    invSnap.forEach(doc => barcodes.add(doc.id));
-    let txt = '';
-    barcodes.forEach(b => { txt += descMap[b] ? `${b} ${descMap[b]}\n` : `${b} \n`; });
+    let bset = new Set(); let dmap = {};
+    descSnap.forEach(doc => { bset.add(doc.id); dmap[doc.id] = doc.data().text || ""; });
+    invSnap.forEach(doc => bset.add(doc.id));
+    let txt = ''; bset.forEach(b => { txt += dmap[b] ? `${b} ${dmap[b]}\n` : `${b} \n`; });
     document.getElementById('descTextarea').value = txt;
 }
 
 async function saveDescriptions() {
     const code = document.getElementById('descServerCode').value;
     const lines = document.getElementById('descTextarea').value.trim().split('\n');
-    let newSet = new Set();
-    let newMap = {};
+    let nset = new Set(); let nmap = {};
     lines.forEach(l => {
-        const parts = l.trim().split(/[\t, ]+/);
-        const b = parts.shift();
-        const d = parts.join(' ').trim();
-        if(b) { newMap[b] = d; newSet.add(b); }
+        const p = l.trim().split(/[\t, ]+/); const b = p.shift(); const d = p.join(' ').trim();
+        if(b) { nmap[b] = d; nset.add(b); }
     });
-    const [invSnap, descSnap] = await Promise.all([db.collection(`inv_${code}`).get(), db.collection(`desc_${code}`).get()]);
+    const [iS, dS] = await Promise.all([db.collection(`inv_${code}`).get(), db.collection(`desc_${code}`).get()]);
     let batch = db.batch();
-    descSnap.docs.forEach(doc => { if (!newSet.has(doc.id)) batch.delete(doc.ref); });
-    invSnap.docs.forEach(doc => { if (!newSet.has(doc.id)) batch.delete(doc.ref); });
-    for (let b in newMap) batch.set(db.collection(`desc_${code}`).doc(b), { text: newMap[b] }, { merge: true });
+    dS.docs.forEach(doc => { if (!nset.has(doc.id)) batch.delete(doc.ref); });
+    iS.docs.forEach(doc => { if (!nset.has(doc.id)) batch.delete(doc.ref); });
+    for (let b in nmap) batch.set(db.collection(`desc_${code}`).doc(b), { text: nmap[b] }, { merge: true });
     await batch.commit();
-    alert("Başarıyla senkronize edildi!");
-    closeModal('descModal');
+    alert("Kaydedildi."); closeModal('descModal');
 }
 
 function downloadTXT() {
     let target = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
-    let txt = "";
-    for (let b in target) { for (let i = 0; i < target[b]; i++) txt += `${b}\n`; }
+    let txt = ""; for (let b in target) { for (let i = 0; i < target[b]; i++) txt += `${b}\n`; }
     const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `Cikti_${currentWorkspace}.txt`;
-    link.click();
+    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${currentWorkspace}_Cikti.txt`; link.click();
 }
 
 async function uploadTXT(event) {
@@ -326,8 +323,7 @@ async function uploadTXT(event) {
                 batch.set(db.collection(`inv_${currentWorkspace}`).doc(b), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
                 count++; if(count > 400) { await batch.commit(); batch = db.batch(); count = 0; }
             }
-            if(count > 0) await batch.commit();
-            alert("Yüklendi.");
+            if(count > 0) await batch.commit(); alert("Yüklendi.");
         };
         reader.readAsText(file);
     }
@@ -339,14 +335,19 @@ function toggleDataEntry(code) {
     if(ws) db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
 }
 
+function toggleKeyboardMode() {
+    const isChecked = document.getElementById('keyboardToggle').checked;
+    document.getElementById('barcodeInput').setAttribute('inputmode', isChecked ? 'none' : 'text');
+    document.getElementById('searchBarcodeInput').setAttribute('inputmode', isChecked ? 'none' : 'text');
+}
+
 async function viewLogs() {
     document.getElementById('logsModal').style.display = 'flex';
-    const area = document.getElementById('logsArea'); area.innerHTML = 'Yükleniyor...';
-    const snap = await db.collection('system_logs').orderBy('timestamp', 'desc').limit(500).get();
+    const area = document.getElementById('logsArea'); area.innerHTML = '...';
+    const snap = await db.collection('system_logs').orderBy('timestamp', 'desc').limit(200).get();
     area.innerHTML = '';
     snap.forEach(doc => {
-        const data = doc.data();
-        const time = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString('tr-TR') : '...';
-        area.innerHTML += `<div style="border-bottom:1px solid #333; padding:5px;">[${time}] ${data.workspace}: ${data.details}</div>`;
+        const d = doc.data(); const time = d.timestamp ? new Date(d.timestamp.toDate()).toLocaleString() : '...';
+        area.innerHTML += `<div style="border-bottom:1px solid #333; padding:5px;">[${time}] ${d.workspace}: ${d.details}</div>`;
     });
 }
