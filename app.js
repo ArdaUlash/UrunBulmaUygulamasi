@@ -1,4 +1,4 @@
-// app.js - v35 (Saf Firebase Mimarisi - Önbellek İnatlaşması Giderildi)
+// app.js - Firebase Entegreli Bulut Mimarisi & Tam Senkronizasyon (v36)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -6,10 +6,11 @@ const firebaseConfig = {
     projectId: "urun-bulucu",
     storageBucket: "urun-bulucu.firebasestorage.app",
     messagingSenderId: "425563783414",
-    appId: "1:425563783414:web:ec64a106ad6b1abac7ecd7"
+    appId: "1:425563783414:web:ec64a106ad6b1abac7ecd7",
+    measurementId: "G-8M7RYZYSX3"
 };
 
-// 1. Firebase başlat (Offline Persistence KAPATILDI - Sadece Canlı Veri)
+// 1. Firebase başlat (Sadece Canlı Veri)
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
@@ -20,7 +21,7 @@ let offlineQueue = JSON.parse(localStorage.getItem('offlineQueue')) || [];
 let isCurrentWorkspaceReadOnly = false; 
 let currentUser = { role: null, token: null }; 
 
-// YENİ: Firebase'in tek gerçek kaynağı (Source of Truth)
+// Firebase'in tek gerçek kaynağı (Source of Truth)
 let globalWorkspaces = []; 
 
 let unsubInv = null;
@@ -52,7 +53,7 @@ function handleConnectionChange() {
     }
 }
 
-// 2. SUNUCULARI DİNLEME (Local Storage İptal Edildi)
+// --- SUNUCULARI DİNLEME (Sadece Bulut) ---
 function listenWorkspaces() {
     db.collection('workspaces').onSnapshot(snapshot => {
         globalWorkspaces = [];
@@ -145,7 +146,7 @@ function changeWorkspace() {
             dataPanel.style.display = currentMode === 'add' ? 'block' : 'none';
         }
 
-        // STOK VE TANIMLARI DİNLE
+        // STOK VE TANIMLARI CANLI DİNLE
         unsubInv = db.collection(`inv_${currentWorkspace}`).onSnapshot(snapshot => {
             let serverDB = {};
             snapshot.forEach(doc => serverDB[doc.id] = doc.data().count);
@@ -164,7 +165,7 @@ function changeWorkspace() {
     setTimeout(() => { document.getElementById(targetInput).focus(); }, 50);
 }
 
-// BARKOD GİRİŞİ
+// --- BARKOD İŞLEMLERİ (DONANIM TETİĞİ EKLİ) ---
 document.getElementById('barcodeInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter' || e.keyCode === 13) {
         e.preventDefault(); 
@@ -278,6 +279,7 @@ async function syncOfflineQueue() {
     document.getElementById('offlineBadge').style.display = 'none';
 }
 
+// --- TXT YÖNETİMİ ---
 function downloadTXT() {
     let targetDB = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
     if(Object.keys(targetDB).length === 0) return alert("İndirilecek veri yok.");
@@ -386,6 +388,7 @@ async function resetSystemData() {
     }
 }
 
+// --- ARAYÜZ YARDIMCILARI ---
 function switchMode(mode) {
     if (isCurrentWorkspaceReadOnly && mode === 'add') return;
     currentMode = mode;
@@ -419,6 +422,7 @@ function flashInput(inputId, color) {
     setTimeout(() => { el.style.boxShadow = ''; el.style.borderColor = ''; }, 300);
 }
 
+// --- ADMIN PANELI YÖNETİMİ ---
 function openAdminLogin() {
     if(currentUser.role === 'ROOT') document.getElementById('adminPanelModal').style.display = 'flex';
     else {
@@ -455,13 +459,11 @@ function logoutAdmin() {
     closeModal('adminPanelModal');
 }
 
-// 3. SUNUCU EKLEME
 async function createWorkspace() {
     const code = document.getElementById('newServerCode').value.trim();
     const name = document.getElementById('newServerName').value.trim();
 
     if(!code || !name) return;
-
     if(globalWorkspaces.find(ws => ws.code === code)) return alert("Bu sunucu numarası zaten kullanılıyor!");
 
     try {
@@ -483,7 +485,6 @@ function toggleDataEntry(code) {
     }
 }
 
-// 4. SUNUCU SİLME
 async function deleteWorkspace(code) {
     if(confirm(`DİKKAT: ${code} sunucusu ve içindeki tüm veriler KALICI OLARAK silinecektir. Onaylıyor musunuz?`)) {
         try {
@@ -509,7 +510,7 @@ async function deleteWorkspace(code) {
     }
 }
 
-// 5. TANIMLAR ALANI
+// --- TANIMLAR YÖNETİMİ (SİLME/EKLEME ÇİFT YÖNLÜ SENKRONİZASYON) ---
 async function openDescPanel(code) {
     document.getElementById('descServerCode').value = code;
     document.getElementById('descModalTitle').innerText = `[${code}] BARKOD TANIMLARI`;
@@ -550,35 +551,58 @@ async function saveDescriptions() {
     const code = document.getElementById('descServerCode').value;
     const lines = document.getElementById('descTextarea').value.trim().split('\n');
     
-    let batches = [];
-    let batch = db.batch();
-    let batchCount = 0;
-    
+    // Ekranda (Textarea) olan her şeyi bir listeye al
+    let newDescMap = {};
     lines.forEach(line => {
         const parts = line.trim().split(/[\t, ]+/); 
         const barcode = parts.shift();
-        const desc = parts.join(' '); 
-        
+        const desc = parts.join(' ').trim(); 
         if(barcode) {
-            const docRef = db.collection(`desc_${code}`).doc(barcode);
-            batch.set(docRef, { text: desc || "" }, { merge: true });
-            batchCount++;
-            if(batchCount === 490) {
-                batches.push(batch.commit());
-                batch = db.batch();
-                batchCount = 0;
-            }
+            newDescMap[barcode] = desc;
         }
     });
     
     try {
+        document.getElementById('descTextarea').value = "Değişiklikler Firebase ile senkronize ediliyor, lütfen bekleyin...";
+        
+        // Firebase'deki mevcut (eski) tanımları çek
+        const descSnap = await db.collection(`desc_${code}`).get();
+        
+        let batches = [];
+        let batch = db.batch();
+        let batchCount = 0;
+        
+        // ADIM 1: SİLME İŞLEMİ (Ekranda silinenleri veya açıklaması silinenleri Firebase'den de sil)
+        descSnap.docs.forEach(doc => {
+            const barcode = doc.id;
+            if (!newDescMap.hasOwnProperty(barcode) || newDescMap[barcode] === "") {
+                batch.delete(doc.ref);
+                batchCount++;
+                if(batchCount === 490) { batches.push(batch.commit()); batch = db.batch(); batchCount = 0; }
+            }
+        });
+
+        // ADIM 2: EKLEME VE GÜNCELLEME İŞLEMİ (Sadece gerçekten açıklaması olanları kaydet)
+        for (let barcode in newDescMap) {
+            const desc = newDescMap[barcode];
+            if (desc !== "") { 
+                const docRef = db.collection(`desc_${code}`).doc(barcode);
+                batch.set(docRef, { text: desc }); 
+                batchCount++;
+                if(batchCount === 490) { batches.push(batch.commit()); batch = db.batch(); batchCount = 0; }
+            }
+        }
+        
         if(batchCount > 0) batches.push(batch.commit());
         await Promise.all(batches);
-        logAction(code, "TANIMLAMA_YAPILDI", "Admin tarafından tanımlar güncellendi.");
-        alert(`Tanımlar buluta başarıyla kaydedildi.`);
+        
+        logAction(code, "TANIMLAMA_YAPILDI", "Admin tarafından tanımlar eklendi/silindi.");
+        alert(`Tanımlar başarıyla senkronize edildi!`);
         closeModal('descModal');
+        
     } catch (e) {
         alert("Tanımlar kaydedilemedi: " + e.message);
+        document.getElementById('descTextarea').value = "Hata oluştu, tekrar deneyin.";
     }
 }
 
@@ -586,7 +610,6 @@ function refreshServerList() {
     const area = document.getElementById('serverListArea');
     area.innerHTML = '';
     
-    // Doğrudan globalWorkspaces üzerinden listeleme yapar (Hayalet veriler olmaz)
     globalWorkspaces.forEach(ws => {
         const isLocked = ws.allowDataEntry === false;
         const lockText = isLocked ? 'KİLİTLİ' : 'AÇIK';
