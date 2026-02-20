@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('offline', handleConnectionChange);
 });
 
-// --- MERKEZİ LOG SİSTEMİ ---
+// --- MERKEZİ LOG SİSTEMİ (SINIR KALDIRILDI) ---
 function logAction(workspace, actionType, details) {
     if (appMode === 'LOCAL' && actionType !== 'SUNUCU_SILINDI') return; 
     db.collection('system_logs').add({
@@ -58,8 +58,9 @@ function initApp() {
     let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
     
     if(!isInitialized) {
-        db.collection('workspaces').doc('4254').set({ code: '4254', name: 'Park Bornova', active: true, allowDataEntry: true });
-        localStorage.setItem('app_initialized', 'true');
+        db.collection('workspaces').doc('4254').set({ code: '4254', name: 'Park Bornova', active: true, allowDataEntry: true })
+            .then(() => localStorage.setItem('app_initialized', 'true'))
+            .catch(e => console.error("İlk kurulum hatası:", e));
     }
     renderWorkspaceDropdown(workspaces);
 }
@@ -74,6 +75,8 @@ function listenWorkspaces() {
         if(document.getElementById('adminPanelModal').style.display === 'flex') {
             refreshServerList(); 
         }
+    }, err => {
+        console.error("Sunucular dinlenemedi:", err);
     });
 }
 
@@ -169,7 +172,7 @@ function changeWorkspace() {
 // --- BARKOD İŞLEMLERİ (DONANIM TETİĞİ EKLENDİ) ---
 document.getElementById('barcodeInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter' || e.keyCode === 13) {
-        e.preventDefault(); // Scanner'ın form tetiklemesini engeller
+        e.preventDefault(); 
         saveProduct();
     }
 });
@@ -453,7 +456,7 @@ function logoutAdmin() {
     closeModal('adminPanelModal');
 }
 
-function createWorkspace() {
+async function createWorkspace() {
     const code = document.getElementById('newServerCode').value.trim();
     const name = document.getElementById('newServerName').value.trim();
 
@@ -462,51 +465,60 @@ function createWorkspace() {
     let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
     if(workspaces.find(ws => ws.code === code)) return alert("Bu sunucu numarası kullanılıyor!");
 
-    db.collection('workspaces').doc(code).set({ code: code, name: name, active: true, allowDataEntry: true });
-    logAction(code, 'YENI_SUNUCU', `${name} isimli sunucu oluşturuldu.`);
-    
-    document.getElementById('newServerCode').value = '';
-    document.getElementById('newServerName').value = '';
+    try {
+        await db.collection('workspaces').doc(code).set({ code: code, name: name, active: true, allowDataEntry: true });
+        logAction(code, 'YENI_SUNUCU', `${name} isimli sunucu oluşturuldu.`);
+        document.getElementById('newServerCode').value = '';
+        document.getElementById('newServerName').value = '';
+    } catch (e) {
+        alert("Sunucu oluşturulamadı. Güvenlik kurallarını kontrol edin: " + e.message);
+    }
 }
 
 function toggleDataEntry(code) {
     let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
     let ws = workspaces.find(w => w.code === code);
     if(ws) {
-        db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
-        logAction(code, 'YETKI_DEGISIMI', ws.allowDataEntry ? 'Sunucu salt okunur yapıldı.' : 'Sunucu veri girişine açıldı.');
+        db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry })
+          .then(() => logAction(code, 'YETKI_DEGISIMI', !ws.allowDataEntry ? 'Sunucu veri girişine açıldı.' : 'Sunucu salt okunur yapıldı.'))
+          .catch(e => alert("Yetki değiştirilemedi: " + e.message));
     }
 }
 
 async function deleteWorkspace(code) {
     if(confirm(`DİKKAT: ${code} sunucusu ve içindeki tüm envanter/tanım verileri KALICI OLARAK silinecektir. Onaylıyor musunuz?`)) {
-        
-        const invSnap = await db.collection(`inv_${code}`).get();
-        let batch = db.batch();
-        invSnap.docs.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
+        try {
+            const invSnap = await db.collection(`inv_${code}`).get();
+            let batch = db.batch();
+            invSnap.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
 
-        const descSnap = await db.collection(`desc_${code}`).get();
-        batch = db.batch();
-        descSnap.docs.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
+            const descSnap = await db.collection(`desc_${code}`).get();
+            batch = db.batch();
+            descSnap.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
 
-        await db.collection('workspaces').doc(code).delete();
-        logAction(code, 'SUNUCU_SILINDI', 'Sunucu tüm verileriyle tamamen yok edildi.');
+            await db.collection('workspaces').doc(code).delete();
+            logAction(code, 'SUNUCU_SILINDI', 'Sunucu tüm verileriyle tamamen yok edildi.');
 
-        if(currentWorkspace === code) document.getElementById('workspaceSelect').value = 'LOCAL';
+            if(currentWorkspace === code) {
+                document.getElementById('workspaceSelect').value = 'LOCAL';
+                changeWorkspace();
+            }
+        } catch (e) {
+            alert("Silme işlemi başarısız: " + e.message);
+        }
     }
 }
 
 // BARKOD TANIMLAMA İŞLEMLERİ (Buluttan Canlı Çekim)
 async function openDescPanel(code) {
     document.getElementById('descServerCode').value = code;
-    document.getElementById('descModalTitle').innerText = `${code} İÇİN BARKOD TANIMLARI`;
-    document.getElementById('descTextarea').value = "Sunucudaki kayıtlı tüm barkodlar çekiliyor, lütfen bekleyin...";
+    document.getElementById('descModalTitle').innerText = `[${code}] BARKOD TANIMLARI`;
+    document.getElementById('descTextarea').value = "Sahadaki tüm barkodlar sunucudan çekiliyor, lütfen bekleyin...";
     document.getElementById('descModal').style.display = 'flex';
     
     try {
-        // Hem stoğu (inv) hem de önceden girilen tanımları (desc) Firebase'den al
         const [invSnap, descSnap] = await Promise.all([
             db.collection(`inv_${code}`).get(),
             db.collection(`desc_${code}`).get()
@@ -527,10 +539,10 @@ async function openDescPanel(code) {
         let txt = '';
         allBarcodes.forEach(b => {
             let desc = descMap[b] ? descMap[b].trim() : "";
-            txt += desc ? `${b} ${desc}\n` : `${b}\n`;
+            txt += desc ? `${b} ${desc}\n` : `${b} \n`; // Kolay yazım için yanına boşluk bıraktım
         });
 
-        document.getElementById('descTextarea').value = txt.trim();
+        document.getElementById('descTextarea').value = txt; // Kullanıcı silsin/düzenlesin diye trim atmadım
     } catch (e) {
         document.getElementById('descTextarea').value = "Bağlantı hatası, veriler çekilemedi.";
         console.error(e);
@@ -596,14 +608,14 @@ function refreshServerList() {
     });
 }
 
-// LOG GÖRÜNTÜLEYİCİ
+// LOG GÖRÜNTÜLEYİCİ (LİMİT 1000'E ÇIKARILDI)
 async function viewLogs() {
     document.getElementById('logsModal').style.display = 'flex';
     const area = document.getElementById('logsArea');
     area.innerHTML = 'Sunucudan veriler çekiliyor...';
 
     try {
-        const snap = await db.collection('system_logs').orderBy('timestamp', 'desc').limit(50).get();
+        const snap = await db.collection('system_logs').orderBy('timestamp', 'desc').limit(1000).get();
         area.innerHTML = '';
         if(snap.empty) {
             area.innerHTML = 'Sistemde henüz işlem kaydı bulunmuyor.';
@@ -611,7 +623,7 @@ async function viewLogs() {
         }
         snap.forEach(doc => {
             const data = doc.data();
-            const time = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString('tr-TR') : 'Zaman Bekleniyor';
+            const time = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString('tr-TR') : 'Az Önce';
             area.innerHTML += `<div style="border-bottom:1px solid #333; padding:8px 0;">
                 <span style="color:var(--accent-warning); font-size:10px;">[${time}]</span> <br>
                 <span style="color:var(--accent-green)">Sunucu: ${data.workspace}</span> | 
