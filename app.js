@@ -1,4 +1,4 @@
-// app.js - v48 (Yönetici Ekranı Tamir Edilmiş & Tam Senkronizasyon)
+// app.js - v49 (Gelişmiş Detaylı Loglama ve Eksiksiz Hata Kontrolü)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -41,8 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(maintainFocus, 3000);
 });
 
+// 🔴 DETAYLANDIRILMIŞ LOG SİSTEMİ
 function logAction(workspace, actionType, details) {
-    if (appMode === 'LOCAL') return; 
+    if (appMode === 'LOCAL' && actionType !== 'SUNUCU_SILINDI') return; 
     db.collection('system_logs').add({
         workspace: workspace,
         action: actionType,
@@ -165,6 +166,7 @@ function switchMode(mode) {
 document.getElementById('barcodeInput').addEventListener('keydown', e => { if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); saveProduct(); } });
 document.getElementById('searchBarcodeInput').addEventListener('keydown', e => { if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); searchProduct(); } });
 
+// 🔴 EKLEME LOGU GERİ GELDİ
 async function saveProduct() {
     if (isCurrentWorkspaceReadOnly) return;
     const input = document.getElementById('barcodeInput');
@@ -176,6 +178,7 @@ async function saveProduct() {
     } else {
         if (navigator.onLine) {
             await db.collection(`inv_${currentWorkspace}`).doc(barcode).set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+            logAction(currentWorkspace, "EKLEME", `Barkod eklendi: ${barcode}`);
             flashInput('barcodeInput', 'var(--accent-green)');
         } else {
             offlineQueue.push({ workspace: currentWorkspace, barcode: barcode });
@@ -186,66 +189,78 @@ async function saveProduct() {
     input.value = '';
 }
 
+// 🔴 ARAMA LOGU EKLENDİ
 async function searchProduct() {
     const input = document.getElementById('searchBarcodeInput');
     const barcode = input.value.trim();
     if (!barcode) return;
     const result = document.getElementById('result');
     result.style.display = 'block';
+    
     let dbInv = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
     let dbDesc = appMode === 'LOCAL' ? {} : (JSON.parse(localStorage.getItem(`desc_${currentWorkspace}`)) || {});
+    let isFound = dbInv.hasOwnProperty(barcode) || dbDesc.hasOwnProperty(barcode);
     
-    if (dbInv.hasOwnProperty(barcode) || dbDesc.hasOwnProperty(barcode)) {
+    if (isFound) {
         let desc = dbDesc[barcode] ? `<br><span style="font-size: 16px; color: var(--accent-primary);">(${dbDesc[barcode]})</span>` : "";
         result.innerHTML = `BULUNDU${desc}`;
         result.style.color = 'var(--accent-green)';
         result.style.border = '1px solid var(--accent-green)';
         result.style.background = 'rgba(0, 230, 118, 0.1)';
         document.getElementById('audioSuccess').play().catch(()=>{});
+        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Barkod arandı: ${barcode} (BULUNDU)`);
     } else {
         result.textContent = 'SİSTEMDE YOK';
         result.style.color = 'var(--accent-red)';
         result.style.border = '1px solid var(--accent-red)';
         result.style.background = 'rgba(255, 51, 51, 0.1)';
         document.getElementById('audioError').play().catch(()=>{});
+        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Barkod arandı: ${barcode} (YOK)`);
     }
     input.value = '';
 }
 
+// 🔴 GARANTİLİ VE LİMİTSİZ SIFIRLAMA
 async function resetSystemData() {
     if (!confirm('DİKKAT: Envanter VE Tanımlar silinecektir. Onaylıyor musunuz?')) return;
     if (appMode === 'LOCAL') {
         localDB = {}; alert('LOKAL TEMİZLENDİ.');
     } else {
         try {
-            const btn = event.target; btn.disabled = true; btn.innerText = "TEMİZLENİYOR...";
+            document.body.style.cursor = 'wait'; // Görsel geribildirim eklendi
+            
             const invSnap = await db.collection(`inv_${currentWorkspace}`).get();
             const descSnap = await db.collection(`desc_${currentWorkspace}`).get();
-            const promises = [...invSnap.docs.map(doc => doc.ref.delete()), ...descSnap.docs.map(doc => doc.ref.delete())];
-            await Promise.all(promises);
-            logAction(currentWorkspace, "TAM_SIFIRLAMA", "Her şey temizlendi.");
+            
+            let batch = db.batch();
+            let count = 0;
+            const docsToDel = [...invSnap.docs, ...descSnap.docs];
+            
+            for(let doc of docsToDel) {
+                batch.delete(doc.ref);
+                count++;
+                if(count === 400) { await batch.commit(); batch = db.batch(); count = 0; }
+            }
+            if(count > 0) await batch.commit();
+            
+            logAction(currentWorkspace, "TAM_SIFIRLAMA", "Kullanıcı envanteri ve tanımlar temizlendi.");
             alert('SUNUCU TAMAMEN SIFIRLANDI.');
-            btn.disabled = false; btn.innerText = "MEVCUT VERİYİ SIFIRLA";
-        } catch(e) { alert("Hata: " + e.message); }
+            document.body.style.cursor = 'default';
+        } catch(e) { alert("Hata: " + e.message); document.body.style.cursor = 'default'; }
     }
     document.getElementById('result').style.display = 'none';
 }
 
-// 🔴 YÖNETİCİ EKRANI ERİŞİM DÜZELTMESİ
 function loginAdmin() {
     const user = document.getElementById('adminUser').value;
     const pass = document.getElementById('adminPass').value;
     if(user === '87118' && pass === '3094') { 
-        // Modalları ve state'i zorla güncelle
         document.getElementById('adminLoginModal').style.display = 'none';
-        const adminPanel = document.getElementById('adminPanelModal');
-        const rootControls = document.getElementById('rootControls');
-        
-        if(adminPanel) adminPanel.style.display = 'flex';
-        if(rootControls) rootControls.classList.remove('hidden');
-        
+        const rp = document.getElementById('rootControls');
+        if(rp) rp.classList.remove('hidden');
+        document.getElementById('adminPanelModal').style.display = 'flex';
         refreshServerList();
-    } else alert("Hatalı!");
+    } else alert("Hatalı Giriş!");
 }
 
 function refreshServerList() {
@@ -266,7 +281,7 @@ function refreshServerList() {
 
 function openAdminLogin() { document.getElementById('adminLoginModal').style.display = 'flex'; }
 function closeModal(id) { document.getElementById(id).style.display = 'none'; maintainFocus(); }
-function logoutAdmin() { closeModal('adminPanelModal'); }
+function flashInput(id, col) { let el = document.getElementById(id); if(el) { el.style.borderColor = col; setTimeout(()=>el.style.borderColor='', 300); } }
 
 async function openDescPanel(code) {
     document.getElementById('descServerCode').value = code;
@@ -294,14 +309,21 @@ async function saveDescriptions() {
     iS.docs.forEach(doc => { if (!nset.has(doc.id)) batch.delete(doc.ref); });
     for (let b in nmap) batch.set(db.collection(`desc_${code}`).doc(b), { text: nmap[b] }, { merge: true });
     await batch.commit();
+    logAction(code, "TANIMLAMA", "Admin tarafından tanımlar güncellendi.");
     alert("Kaydedildi."); closeModal('descModal');
 }
 
 async function syncOfflineQueue() {
     if(offlineQueue.length === 0) return;
-    let batch = db.batch();
-    offlineQueue.forEach(item => { batch.set(db.collection(`inv_${item.workspace}`).doc(item.barcode), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true }); });
-    await batch.commit(); offlineQueue = []; localStorage.removeItem('offlineQueue');
+    let batch = db.batch(); let count = 0;
+    for(let item of offlineQueue) {
+        batch.set(db.collection(`inv_${item.workspace}`).doc(item.barcode), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+        count++;
+        if(count > 400) { await batch.commit(); batch = db.batch(); count = 0; }
+    }
+    if(count > 0) await batch.commit();
+    logAction("SİSTEM", "OFFLINE_SYNC", offlineQueue.length + " adet çevrimdışı okutma buluta aktarıldı.");
+    offlineQueue = []; localStorage.removeItem('offlineQueue');
 }
 
 function downloadTXT() {
@@ -317,13 +339,16 @@ async function uploadTXT(event) {
     const reader = new FileReader();
     reader.onload = async function(e) {
         const lines = e.target.result.split('\n');
-        let batch = db.batch(); let count = 0;
+        let batch = db.batch(); let count = 0; let total = 0;
         for(let line of lines) {
             let b = line.trim(); if(!b) continue;
             batch.set(db.collection(`inv_${currentWorkspace}`).doc(b), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
-            count++; if(count > 400) { await batch.commit(); batch = db.batch(); count = 0; }
+            count++; total++;
+            if(count > 400) { await batch.commit(); batch = db.batch(); count = 0; }
         }
-        if(count > 0) await batch.commit(); alert("Yüklendi.");
+        if(count > 0) await batch.commit(); 
+        logAction(currentWorkspace, "TOPLU_EKLEME", total + " adet barkod dosyadan aktarıldı.");
+        alert("Yüklendi.");
     };
     reader.readAsText(file);
 }
@@ -334,15 +359,56 @@ function toggleDataEntry(code) {
     if(ws) db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
 }
 
-function flashInput(id, col) { let el = document.getElementById(id); if(el) { el.style.borderColor = col; setTimeout(()=>el.style.borderColor='', 300); } }
-
-async function viewLogs() {
+// 🔴 EKRAN İÇİ SEKMELİ YENİ LOG YÖNETİMİ
+async function viewLogs(tab = 'FETCH') {
     document.getElementById('logsModal').style.display = 'flex';
-    const area = document.getElementById('logsArea'); area.innerHTML = '...';
-    const snap = await db.collection('system_logs').orderBy('timestamp', 'desc').limit(100).get();
-    area.innerHTML = '';
-    snap.forEach(doc => {
-        const d = doc.data(); const time = d.timestamp ? new Date(d.timestamp.toDate()).toLocaleString() : '...';
-        area.innerHTML += `<div style="border-bottom:1px solid #333; padding:5px; font-size:12px;">[${time}] ${d.workspace}: ${d.details}</div>`;
+    const area = document.getElementById('logsArea'); 
+    
+    // Verileri ilk açılışta veya yenilemede çek
+    if (tab === 'FETCH' || !window.cachedLogs) {
+        area.innerHTML = 'Kayıtlar buluttan çekiliyor...';
+        try {
+            const snap = await db.collection('system_logs').orderBy('timestamp', 'desc').limit(500).get();
+            window.cachedLogs = snap.docs.map(doc => doc.data());
+            tab = 'WRITE'; // Başlangıçta işlem loglarını göster
+        } catch(e) {
+            area.innerHTML = 'Hata: ' + e.message; return;
+        }
+    }
+
+    // Seçilen sekmeye göre verileri filtrele
+    let filteredLogs = window.cachedLogs.filter(d => {
+        if (tab === 'READ') return d.action === 'ARAMA';
+        return d.action !== 'ARAMA'; // EKLEME, SİLME, vb..
     });
+
+    // Sekme Butonları Arayüzü (HTML modifiye etmeden dinamik eklendi)
+    let html = `
+    <div style="display:flex; gap:10px; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid #333;">
+        <button style="flex:1; padding:8px; font-size:11px; ${tab==='WRITE' ? 'border-color:var(--accent-green); color:var(--accent-green);' : ''}" onclick="viewLogs('WRITE')">KAYIT / İŞLEM</button>
+        <button style="flex:1; padding:8px; font-size:11px; ${tab==='READ' ? 'border-color:#00bfff; color:#00bfff;' : ''}" onclick="viewLogs('READ')">SORGULAMA</button>
+    </div>
+    <div style="height:280px; overflow-y:auto; padding-right:5px;">`;
+
+    if(filteredLogs.length === 0) html += `<div style="color:#888; text-align:center; padding:20px;">Bu kategoride kayıt bulunamadı.</div>`;
+
+    filteredLogs.forEach(d => {
+        const time = d.timestamp ? new Date(d.timestamp.toDate()).toLocaleString('tr-TR') : 'Az Önce';
+        
+        // Renk Kodlaması
+        let actionColor = "var(--text-muted)";
+        if(d.action === 'EKLEME') actionColor = "var(--accent-green)";
+        else if(d.action === 'ARAMA') actionColor = "#00bfff"; // Sorgulama için Mavi
+        else if(d.action.includes('SIFIRLAMA') || d.action === 'SILME') actionColor = "var(--accent-red)";
+        else if(d.action === 'TANIMLAMA') actionColor = "var(--accent-warning)";
+        
+        html += `<div style="border-bottom:1px solid #222; padding:8px 5px; font-size:11px; line-height:1.4;">
+            <span style="color:#666">[${time}]</span> <br>
+            <b style="color:#fff;">[${d.workspace}]</b> <span style="color:${actionColor}; font-weight:bold;">${d.action}</span> <br>
+            <span style="color:#ccc;">${d.details}</span>
+        </div>`;
+    });
+    
+    html += `</div>`;
+    area.innerHTML = html;
 }
