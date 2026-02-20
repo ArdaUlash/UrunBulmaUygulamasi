@@ -1,4 +1,4 @@
-// app.js - v44 (Hataları Giderilmiş, Eksiksiz Nihai Sürüm)
+// app.js - v45 (Kesin Senkronizasyon & Hatalardan Arındırılmış Nihai Sürüm)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -31,9 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('online', handleConnectionChange);
     window.addEventListener('offline', handleConnectionChange);
     
-    // SCANNER ODAK DENETLEYİCİLERİ
+    // SCANNER ODAK KONTROLÜ
     document.body.addEventListener('mousedown', (e) => {
-        if (e.target.tagName === 'SELECT' || e.target.tagName === 'OPTION' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        if (['SELECT', 'OPTION', 'INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
             window.isUserInteracting = true;
         }
     });
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(maintainFocus, 3000);
 });
 
-// MERKEZİ LOG SİSTEMİ (EKSİKTİ, EKLENDİ)
+// MERKEZİ LOG SİSTEMİ
 function logAction(workspace, actionType, details) {
     if (appMode === 'LOCAL' && actionType !== 'SUNUCU_SILINDI') return; 
     db.collection('system_logs').add({
@@ -58,8 +58,7 @@ function logAction(workspace, actionType, details) {
 
 function maintainFocus() {
     const modals = document.querySelectorAll('.modal');
-    let isAnyModalOpen = false;
-    modals.forEach(m => { if(m.style.display === 'flex' || m.style.display === 'block') isAnyModalOpen = true; });
+    let isAnyModalOpen = Array.from(modals).some(m => m.style.display === 'flex' || m.style.display === 'block');
     
     if (isAnyModalOpen || window.isUserInteracting || document.activeElement.tagName === 'SELECT') return;
 
@@ -113,7 +112,6 @@ function changeWorkspace() {
     currentWorkspace = document.getElementById('workspaceSelect').value;
     const statusText = document.getElementById('connectionStatus');
     const selectorDiv = document.getElementById('serverSelectorDiv');
-    const tabGrid = document.getElementById('tabGrid');
     const addTab = document.getElementById('addLocationButton');
 
     if(unsubInv) unsubInv();
@@ -126,7 +124,6 @@ function changeWorkspace() {
         statusText.style.color = "var(--accent-warning)";
         selectorDiv.className = "server-selector local-mode";
         addTab.style.display = 'block';
-        tabGrid.style.gridTemplateColumns = '1fr 1fr';
     } else {
         appMode = 'SERVER';
         let wsData = globalWorkspaces.find(w => w.code === currentWorkspace);
@@ -137,14 +134,12 @@ function changeWorkspace() {
             statusText.style.color = "var(--accent-red)";
             selectorDiv.className = "server-selector readonly-mode";
             addTab.style.display = 'none';
-            tabGrid.style.gridTemplateColumns = '1fr';
             if(currentMode === 'add') switchMode('find'); 
         } else {
             statusText.textContent = `CANLI VERİ AKTİF (${currentWorkspace})`;
             statusText.style.color = "var(--accent-green)";
             selectorDiv.className = "server-selector online-mode";
             addTab.style.display = 'block';
-            tabGrid.style.gridTemplateColumns = '1fr 1fr';
         }
 
         unsubInv = db.collection(`inv_${currentWorkspace}`).onSnapshot(snapshot => {
@@ -205,6 +200,7 @@ async function searchProduct() {
     if (!barcode) return;
     const result = document.getElementById('result');
     result.style.display = 'block';
+    
     let dbInv = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
     let dbDesc = appMode === 'LOCAL' ? {} : (JSON.parse(localStorage.getItem(`desc_${currentWorkspace}`)) || {});
     
@@ -225,31 +221,31 @@ async function searchProduct() {
     input.value = '';
 }
 
+// 🔴 SIFIRLAMA MODÜLÜ (KESİN ÇÖZÜM)
 async function resetSystemData() {
-    if (confirm('Tüm veriler silinecek. Onaylıyor musunuz?')) {
-        if (appMode === 'LOCAL') {
-            localDB = {}; 
-            alert('LOKAL SIFIRLANDI.');
-        } else {
-            try {
-                const snap = await db.collection(`inv_${currentWorkspace}`).get();
-                if (snap.empty) return alert('Sunucuda silinecek veri yok.');
-                
-                let batch = db.batch();
-                let count = 0;
-                snap.docs.forEach(doc => {
-                    batch.delete(doc.ref);
-                    count++;
-                    if(count === 400) { batch.commit(); batch = db.batch(); count = 0; }
-                });
-                if(count > 0) await batch.commit();
-                
-                logAction(currentWorkspace, "SIFIRLAMA", "Barkod verileri temizlendi.");
+    if (!confirm('DİKKAT: Mevcut sunucudaki TÜM veriler silinecektir. Onaylıyor musunuz?')) return;
+    
+    if (appMode === 'LOCAL') {
+        localDB = {}; 
+        alert('LOKAL SIFIRLANDI.');
+    } else {
+        try {
+            const btn = event.target;
+            btn.disabled = true; btn.innerText = "SİLİNİYOR...";
+            
+            const snap = await db.collection(`inv_${currentWorkspace}`).get();
+            if (snap.empty) {
+                alert('Silinecek veri yok.');
+            } else {
+                const deletePromises = snap.docs.map(doc => doc.ref.delete());
+                await Promise.all(deletePromises);
+                logAction(currentWorkspace, "SIFIRLAMA", "Veriler temizlendi.");
                 alert('SUNUCU SIFIRLANDI.');
-            } catch(e) { alert("Sıfırlama Hatası: " + e.message); }
-        }
-        document.getElementById('result').style.display = 'none';
+            }
+            btn.disabled = false; btn.innerText = "MEVCUT VERİYİ SIFIRLA";
+        } catch(e) { alert("Hata: " + e.message); }
     }
+    document.getElementById('result').style.display = 'none';
 }
 
 function loginAdmin() {
@@ -266,8 +262,7 @@ function loginAdmin() {
 
 function refreshServerList() {
     const area = document.getElementById('serverListArea');
-    if(!area) return;
-    area.innerHTML = '';
+    if(!area) return; area.innerHTML = '';
     globalWorkspaces.forEach(ws => {
         const lockCol = ws.allowDataEntry === false ? 'var(--accent-red)' : 'var(--accent-green)';
         area.innerHTML += `<div style="margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">
@@ -344,13 +339,6 @@ async function deleteWorkspace(code) { if(confirm(`${code} silinsin mi?`)) await
 function toggleDataEntry(code) { 
     let ws = globalWorkspaces.find(w => w.code === code);
     if(ws) db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
-}
-
-async function syncOfflineQueue() {
-    if(offlineQueue.length === 0) return;
-    let batch = db.batch();
-    offlineQueue.forEach(item => { batch.set(db.collection(`inv_${item.workspace}`).doc(item.barcode), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true }); });
-    await batch.commit(); offlineQueue = []; localStorage.removeItem('offlineQueue');
 }
 
 async function viewLogs() {
