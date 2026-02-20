@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- MERKEZİ LOG SİSTEMİ ---
 function logAction(workspace, actionType, details) {
-    if (appMode === 'LOCAL' && actionType !== 'SUNUCU_SILINDI') return; // Lokal işlemleri buluta kaydetme
+    if (appMode === 'LOCAL' && actionType !== 'SUNUCU_SILINDI') return; 
     db.collection('system_logs').add({
         workspace: workspace,
         action: actionType,
@@ -166,13 +166,19 @@ function changeWorkspace() {
     setTimeout(() => { document.getElementById(targetInput).focus(); }, 50);
 }
 
-// --- BARKOD İŞLEMLERİ ---
-document.getElementById('barcodeInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') saveProduct();
+// --- BARKOD İŞLEMLERİ (DONANIM TETİĞİ EKLENDİ) ---
+document.getElementById('barcodeInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+        e.preventDefault(); // Scanner'ın form tetiklemesini engeller
+        saveProduct();
+    }
 });
 
-document.getElementById('searchBarcodeInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') searchProduct();
+document.getElementById('searchBarcodeInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+        e.preventDefault();
+        searchProduct();
+    }
 });
 
 async function saveProduct() {
@@ -188,7 +194,8 @@ async function saveProduct() {
         if (navigator.onLine) {
             const docRef = db.collection(`inv_${currentWorkspace}`).doc(barcode);
             docRef.set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
-            logAction(currentWorkspace, "BARKOD_OKUTULDU", `Barkod: ${barcode}`);
+            
+            logAction(currentWorkspace, "BARKOD_OKUTULDU", `Barkod eklendi: ${barcode}`);
             flashInput('barcodeInput', 'var(--accent-green)');
         } else {
             offlineQueue.push({ workspace: currentWorkspace, barcode: barcode, timestamp: Date.now() });
@@ -345,7 +352,6 @@ async function uploadTXT(event) {
     }
 }
 
-// Derin Silme (Deep Delete) Mekanizması
 async function resetSystemData() {
     if (confirm('UYARI: Seçili alandaki (Lokal veya Sunucu) tüm veriler SİLİNECEK. Onaylıyor musunuz?')) {
         if (appMode === 'LOCAL') {
@@ -468,44 +474,67 @@ function toggleDataEntry(code) {
     let ws = workspaces.find(w => w.code === code);
     if(ws) {
         db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
-        logAction(code, 'YETKI_DEGISIMI', ws.allowDataEntry ? 'Sunucu salt okunur (kilitli) yapıldı.' : 'Sunucu veri girişine açıldı.');
+        logAction(code, 'YETKI_DEGISIMI', ws.allowDataEntry ? 'Sunucu salt okunur yapıldı.' : 'Sunucu veri girişine açıldı.');
     }
 }
 
-// Derin Silme İşlemi
 async function deleteWorkspace(code) {
     if(confirm(`DİKKAT: ${code} sunucusu ve içindeki tüm envanter/tanım verileri KALICI OLARAK silinecektir. Onaylıyor musunuz?`)) {
         
-        // 1. Stok Koleksiyonunu Sil
         const invSnap = await db.collection(`inv_${code}`).get();
         let batch = db.batch();
         invSnap.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
 
-        // 2. Tanımlar Koleksiyonunu Sil
         const descSnap = await db.collection(`desc_${code}`).get();
         batch = db.batch();
         descSnap.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
 
-        // 3. Sunucuyu Ana Listeden Sil
         await db.collection('workspaces').doc(code).delete();
-        logAction(code, 'SUNUCU_SILINDI', 'Sunucu, içindeki tüm stok ve tanımlarla birlikte tamamen yok edildi.');
+        logAction(code, 'SUNUCU_SILINDI', 'Sunucu tüm verileriyle tamamen yok edildi.');
 
         if(currentWorkspace === code) document.getElementById('workspaceSelect').value = 'LOCAL';
     }
 }
 
-function openDescPanel(code) {
+// BARKOD TANIMLAMA İŞLEMLERİ (Buluttan Canlı Çekim)
+async function openDescPanel(code) {
     document.getElementById('descServerCode').value = code;
     document.getElementById('descModalTitle').innerText = `${code} İÇİN BARKOD TANIMLARI`;
-    
-    let descDB = JSON.parse(localStorage.getItem(`desc_${code}`)) || {};
-    let txt = '';
-    for(let b in descDB) txt += descDB[b] ? `${b} ${descDB[b]}\n` : `${b}\n`;
-    
-    document.getElementById('descTextarea').value = txt.trim();
+    document.getElementById('descTextarea').value = "Sunucudaki kayıtlı tüm barkodlar çekiliyor, lütfen bekleyin...";
     document.getElementById('descModal').style.display = 'flex';
+    
+    try {
+        // Hem stoğu (inv) hem de önceden girilen tanımları (desc) Firebase'den al
+        const [invSnap, descSnap] = await Promise.all([
+            db.collection(`inv_${code}`).get(),
+            db.collection(`desc_${code}`).get()
+        ]);
+
+        let allBarcodes = new Set();
+        let descMap = {};
+
+        descSnap.forEach(doc => {
+            allBarcodes.add(doc.id);
+            descMap[doc.id] = doc.data().text || "";
+        });
+
+        invSnap.forEach(doc => {
+            allBarcodes.add(doc.id);
+        });
+
+        let txt = '';
+        allBarcodes.forEach(b => {
+            let desc = descMap[b] ? descMap[b].trim() : "";
+            txt += desc ? `${b} ${desc}\n` : `${b}\n`;
+        });
+
+        document.getElementById('descTextarea').value = txt.trim();
+    } catch (e) {
+        document.getElementById('descTextarea').value = "Bağlantı hatası, veriler çekilemedi.";
+        console.error(e);
+    }
 }
 
 async function saveDescriptions() {
@@ -536,7 +565,7 @@ async function saveDescriptions() {
     if(batchCount > 0) batches.push(batch.commit());
     await Promise.all(batches);
     
-    logAction(code, "TANIMLAMA_YAPILDI", "Admin tarafından yeni barkod tanımları listeye eklendi.");
+    logAction(code, "TANIMLAMA_YAPILDI", "Admin tarafından tanımlar güncellendi.");
     alert(`Tanımlar buluta başarıyla kaydedildi.`);
     closeModal('descModal');
 }
