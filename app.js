@@ -1,4 +1,4 @@
-// app.js - v43 (Sıfırlama Modülü ve Seçim Sorunu Kesin Düzeltildi)
+// app.js - v44 (Hataları Giderilmiş, Eksiksiz Nihai Sürüm)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -21,6 +21,7 @@ let isCurrentWorkspaceReadOnly = false;
 let currentUser = { role: null, token: null }; 
 let globalWorkspaces = []; 
 let currentMode = 'add'; 
+window.isUserInteracting = false; 
 
 let unsubInv = null;
 let unsubDesc = null;
@@ -30,9 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('online', handleConnectionChange);
     window.addEventListener('offline', handleConnectionChange);
     
+    // SCANNER ODAK DENETLEYİCİLERİ
     document.body.addEventListener('mousedown', (e) => {
-        // Eğer bir menüye veya inputa tıklanıyorsa odaklamayı geçici durdur
-        if (e.target.tagName === 'SELECT' || e.target.tagName === 'OPTION' || e.target.tagName === 'INPUT') {
+        if (e.target.tagName === 'SELECT' || e.target.tagName === 'OPTION' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
             window.isUserInteracting = true;
         }
     });
@@ -43,6 +44,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setInterval(maintainFocus, 3000);
 });
+
+// MERKEZİ LOG SİSTEMİ (EKSİKTİ, EKLENDİ)
+function logAction(workspace, actionType, details) {
+    if (appMode === 'LOCAL' && actionType !== 'SUNUCU_SILINDI') return; 
+    db.collection('system_logs').add({
+        workspace: workspace,
+        action: actionType,
+        details: details,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(err => console.error("Log hatası:", err));
+}
 
 function maintainFocus() {
     const modals = document.querySelectorAll('.modal');
@@ -80,7 +92,7 @@ function listenWorkspaces() {
 
 function renderWorkspaceDropdown() {
     const select = document.getElementById('workspaceSelect');
-    if (window.isUserInteracting) return; // Kullanıcı seçim yaparken listeyi yenileme
+    if (window.isUserInteracting) return; 
 
     const currentValue = select.value; 
     select.innerHTML = '<option value="LOCAL">GENEL KULLANICI</option>';
@@ -195,9 +207,10 @@ async function searchProduct() {
     result.style.display = 'block';
     let dbInv = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
     let dbDesc = appMode === 'LOCAL' ? {} : (JSON.parse(localStorage.getItem(`desc_${currentWorkspace}`)) || {});
+    
     if (dbInv.hasOwnProperty(barcode) || dbDesc.hasOwnProperty(barcode)) {
-        let desc = dbDesc[barcode] ? `<br><span style="font-size: 16px; color: var(--accent-primary);">(${dbDesc[barcode]})</span>` : "";
-        result.innerHTML = `BULUNDU${desc}`;
+        let descText = dbDesc[barcode] ? `<br><span style="font-size: 16px; color: var(--accent-primary);">(${dbDesc[barcode]})</span>` : "";
+        result.innerHTML = `BULUNDU${descText}`;
         result.style.color = 'var(--accent-green)';
         result.style.border = '1px solid var(--accent-green)';
         result.style.background = 'rgba(0, 230, 118, 0.1)';
@@ -212,7 +225,6 @@ async function searchProduct() {
     input.value = '';
 }
 
-// 🔴 SIFIRLAMA MODÜLÜ KESİN DÜZELTME
 async function resetSystemData() {
     if (confirm('Tüm veriler silinecek. Onaylıyor musunuz?')) {
         if (appMode === 'LOCAL') {
@@ -220,7 +232,6 @@ async function resetSystemData() {
             alert('LOKAL SIFIRLANDI.');
         } else {
             try {
-                // Sadece mevcut sunucunun envanterini (inv_) siler
                 const snap = await db.collection(`inv_${currentWorkspace}`).get();
                 if (snap.empty) return alert('Sunucuda silinecek veri yok.');
                 
@@ -335,10 +346,11 @@ function toggleDataEntry(code) {
     if(ws) db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
 }
 
-function toggleKeyboardMode() {
-    const isChecked = document.getElementById('keyboardToggle').checked;
-    document.getElementById('barcodeInput').setAttribute('inputmode', isChecked ? 'none' : 'text');
-    document.getElementById('searchBarcodeInput').setAttribute('inputmode', isChecked ? 'none' : 'text');
+async function syncOfflineQueue() {
+    if(offlineQueue.length === 0) return;
+    let batch = db.batch();
+    offlineQueue.forEach(item => { batch.set(db.collection(`inv_${item.workspace}`).doc(item.barcode), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true }); });
+    await batch.commit(); offlineQueue = []; localStorage.removeItem('offlineQueue');
 }
 
 async function viewLogs() {
