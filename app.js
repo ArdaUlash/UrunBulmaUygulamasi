@@ -1,4 +1,4 @@
-// app.js - v47 (Tüm Fonksiyonlar Eksiksiz - Tam Yetkili Senkronizasyon)
+// app.js - v48 (Yönetici Ekranı Tamir Edilmiş & Tam Senkronizasyon)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -35,15 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
             window.isUserInteracting = true;
         }
     });
-
     document.body.addEventListener('mouseup', () => {
         setTimeout(() => { window.isUserInteracting = false; }, 1000);
     });
-
     setInterval(maintainFocus, 3000);
 });
 
-// Geri Getirilen ve Güçlendirilen Fonksiyonlar
 function logAction(workspace, actionType, details) {
     if (appMode === 'LOCAL') return; 
     db.collection('system_logs').add({
@@ -52,19 +49,6 @@ function logAction(workspace, actionType, details) {
         details: details,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
     }).catch(err => console.error("Log hatası:", err));
-}
-
-async function syncOfflineQueue() {
-    if(offlineQueue.length === 0) return;
-    let batch = db.batch();
-    offlineQueue.forEach(item => {
-        const docRef = db.collection(`inv_${item.workspace}`).doc(item.barcode);
-        batch.set(docRef, { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
-    });
-    await batch.commit();
-    offlineQueue = [];
-    localStorage.removeItem('offlineQueue');
-    logAction("SİSTEM", "OFFLINE_SYNC", "Çevrimdışı veriler aktarıldı.");
 }
 
 function maintainFocus() {
@@ -160,7 +144,6 @@ function changeWorkspace() {
             localStorage.setItem(`desc_${currentWorkspace}`, JSON.stringify(dDB));
         });
     }
-    document.getElementById('result').style.display = 'none';
     updateDataPanelVisibility();
 }
 
@@ -231,23 +214,15 @@ async function searchProduct() {
 
 async function resetSystemData() {
     if (!confirm('DİKKAT: Envanter VE Tanımlar silinecektir. Onaylıyor musunuz?')) return;
-    
     if (appMode === 'LOCAL') {
         localDB = {}; alert('LOKAL TEMİZLENDİ.');
     } else {
         try {
             const btn = event.target; btn.disabled = true; btn.innerText = "TEMİZLENİYOR...";
-            
             const invSnap = await db.collection(`inv_${currentWorkspace}`).get();
             const descSnap = await db.collection(`desc_${currentWorkspace}`).get();
-            
-            const promises = [
-                ...invSnap.docs.map(doc => doc.ref.delete()),
-                ...descSnap.docs.map(doc => doc.ref.delete())
-            ];
-
+            const promises = [...invSnap.docs.map(doc => doc.ref.delete()), ...descSnap.docs.map(doc => doc.ref.delete())];
             await Promise.all(promises);
-            
             logAction(currentWorkspace, "TAM_SIFIRLAMA", "Her şey temizlendi.");
             alert('SUNUCU TAMAMEN SIFIRLANDI.');
             btn.disabled = false; btn.innerText = "MEVCUT VERİYİ SIFIRLA";
@@ -256,12 +231,19 @@ async function resetSystemData() {
     document.getElementById('result').style.display = 'none';
 }
 
+// 🔴 YÖNETİCİ EKRANI ERİŞİM DÜZELTMESİ
 function loginAdmin() {
     const user = document.getElementById('adminUser').value;
     const pass = document.getElementById('adminPass').value;
     if(user === '87118' && pass === '3094') { 
+        // Modalları ve state'i zorla güncelle
         document.getElementById('adminLoginModal').style.display = 'none';
-        document.getElementById('adminPanelModal').style.display = 'flex';
+        const adminPanel = document.getElementById('adminPanelModal');
+        const rootControls = document.getElementById('rootControls');
+        
+        if(adminPanel) adminPanel.style.display = 'flex';
+        if(rootControls) rootControls.classList.remove('hidden');
+        
         refreshServerList();
     } else alert("Hatalı!");
 }
@@ -284,7 +266,7 @@ function refreshServerList() {
 
 function openAdminLogin() { document.getElementById('adminLoginModal').style.display = 'flex'; }
 function closeModal(id) { document.getElementById(id).style.display = 'none'; maintainFocus(); }
-function flashInput(id, col) { let el = document.getElementById(id); if(el) { el.style.borderColor = col; setTimeout(()=>el.style.borderColor='', 300); } }
+function logoutAdmin() { closeModal('adminPanelModal'); }
 
 async function openDescPanel(code) {
     document.getElementById('descServerCode').value = code;
@@ -313,6 +295,13 @@ async function saveDescriptions() {
     for (let b in nmap) batch.set(db.collection(`desc_${code}`).doc(b), { text: nmap[b] }, { merge: true });
     await batch.commit();
     alert("Kaydedildi."); closeModal('descModal');
+}
+
+async function syncOfflineQueue() {
+    if(offlineQueue.length === 0) return;
+    let batch = db.batch();
+    offlineQueue.forEach(item => { batch.set(db.collection(`inv_${item.workspace}`).doc(item.barcode), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true }); });
+    await batch.commit(); offlineQueue = []; localStorage.removeItem('offlineQueue');
 }
 
 function downloadTXT() {
@@ -344,6 +333,8 @@ function toggleDataEntry(code) {
     let ws = globalWorkspaces.find(w => w.code === code);
     if(ws) db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
 }
+
+function flashInput(id, col) { let el = document.getElementById(id); if(el) { el.style.borderColor = col; setTimeout(()=>el.style.borderColor='', 300); } }
 
 async function viewLogs() {
     document.getElementById('logsModal').style.display = 'flex';
