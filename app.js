@@ -1,4 +1,4 @@
-// app.js - v41 (Scanner Odaklama ve Enter Sorunu Giderilmiş Kesin Sürüm)
+// app.js - v42 (Sunucu Seçim Sorunu Düzeltilmiş & Scanner Odaklı Kesin Sürüm)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -30,23 +30,27 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('online', handleConnectionChange);
     window.addEventListener('offline', handleConnectionChange);
     
-    // SCANNER İÇİN KRİTİK: Sayfada herhangi bir yere tıklandığında odağı geri kazan
-    document.body.addEventListener('click', () => {
-        maintainFocus();
+    // SCANNER ODAK: Sadece boşta kalındığında odağı geri çeker
+    document.body.addEventListener('click', (e) => {
+        // Eğer tıklanan yer bir select menüsü veya buton değilse odağı tazele
+        if (e.target.tagName !== 'SELECT' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+            maintainFocus();
+        }
     });
 
-    // Her 3 saniyede bir odağı kontrol et ve gerekirse düzelt
     setInterval(maintainFocus, 3000);
 });
 
-// 🔴 SCANNER ODAK YÖNETİCİSİ
+// 🔴 AKILLI ODAK YÖNETİCİSİ
 function maintainFocus() {
-    // Eğer herhangi bir modal pencere açıksa odağı zorlama (yazmayı engellememek için)
     const modals = document.querySelectorAll('.modal');
     let isAnyModalOpen = false;
     modals.forEach(m => { if(m.style.display === 'flex' || m.style.display === 'block') isAnyModalOpen = true; });
     
-    if (isAnyModalOpen) return;
+    // Seçim menüsü açıkken odaklamayı durdur (Sunucu seçebilmek için)
+    const isSelecting = document.activeElement.tagName === 'SELECT';
+    
+    if (isAnyModalOpen || isSelecting) return;
 
     const target = isCurrentWorkspaceReadOnly ? 'searchBarcodeInput' : (currentMode === 'add' ? 'barcodeInput' : 'searchBarcodeInput');
     const el = document.getElementById(target);
@@ -167,7 +171,6 @@ function switchMode(mode) {
     maintainFocus();
 }
 
-// 🔴 GELİŞMİŞ ENTER VE SCANNER DİNLEYİCİLERİ
 document.getElementById('barcodeInput').addEventListener('keydown', e => { 
     if (e.key === 'Enter' || e.keyCode === 13) {
         e.preventDefault();
