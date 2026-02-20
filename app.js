@@ -1,4 +1,4 @@
-// app.js - Firebase Entegreli Bulut Mimarisi & Kayıt/İzolasyon Sistemi
+// app.js - Firebase Entegreli Bulut Mimarisi & Hata Bildirimli İzolasyon Sistemi
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('offline', handleConnectionChange);
 });
 
-// --- MERKEZİ LOG SİSTEMİ (SINIR KALDIRILDI) ---
+// --- MERKEZİ LOG SİSTEMİ ---
 function logAction(workspace, actionType, details) {
     if (appMode === 'LOCAL' && actionType !== 'SUNUCU_SILINDI') return; 
     db.collection('system_logs').add({
@@ -55,32 +55,31 @@ function handleConnectionChange() {
 
 function initApp() {
     let isInitialized = localStorage.getItem('app_initialized');
-    let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
-    
     if(!isInitialized) {
         db.collection('workspaces').doc('4254').set({ code: '4254', name: 'Park Bornova', active: true, allowDataEntry: true })
             .then(() => localStorage.setItem('app_initialized', 'true'))
-            .catch(e => console.error("İlk kurulum hatası:", e));
+            .catch(e => console.error("İlk kurulum Firebase yetki hatası:", e));
     }
-    renderWorkspaceDropdown(workspaces);
 }
 
+// YENİ: Firebase Hata Bildiricili Dinleyici
 function listenWorkspaces() {
     unsubWorkspaces = db.collection('workspaces').onSnapshot(snapshot => {
         let workspaces = [];
         snapshot.forEach(doc => workspaces.push(doc.data()));
         localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
         
-        renderWorkspaceDropdown(workspaces);
+        renderWorkspaceDropdown();
         if(document.getElementById('adminPanelModal').style.display === 'flex') {
             refreshServerList(); 
         }
-    }, err => {
-        console.error("Sunucular dinlenemedi:", err);
+    }, error => {
+        alert("KRİTİK HATA: Sunucular Firebase'den çekilemiyor. Lütfen Firebase Rules (Kurallar) ayarlarınızı kontrol edin!\n\nDetay: " + error.message);
     });
 }
 
-function renderWorkspaceDropdown(workspaces) {
+function renderWorkspaceDropdown() {
+    let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
     const select = document.getElementById('workspaceSelect');
     const currentValue = select.value; 
     
@@ -155,13 +154,13 @@ function changeWorkspace() {
             let serverDB = {};
             snapshot.forEach(doc => serverDB[doc.id] = doc.data().count);
             localStorage.setItem(`db_${currentWorkspace}`, JSON.stringify(serverDB));
-        });
+        }, err => console.error("Stok dinleme hatası:", err));
 
         unsubDesc = db.collection(`desc_${currentWorkspace}`).onSnapshot(snapshot => {
             let descDB = {};
             snapshot.forEach(doc => descDB[doc.id] = doc.data().text);
             localStorage.setItem(`desc_${currentWorkspace}`, JSON.stringify(descDB));
-        });
+        }, err => console.error("Tanım dinleme hatası:", err));
     }
     
     document.getElementById('result').style.display = 'none';
@@ -169,7 +168,7 @@ function changeWorkspace() {
     setTimeout(() => { document.getElementById(targetInput).focus(); }, 50);
 }
 
-// --- BARKOD İŞLEMLERİ (DONANIM TETİĞİ EKLENDİ) ---
+// --- BARKOD İŞLEMLERİ ---
 document.getElementById('barcodeInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter' || e.keyCode === 13) {
         e.preventDefault(); 
@@ -195,11 +194,14 @@ async function saveProduct() {
         flashInput('barcodeInput', 'var(--accent-warning)');
     } else {
         if (navigator.onLine) {
-            const docRef = db.collection(`inv_${currentWorkspace}`).doc(barcode);
-            docRef.set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
-            
-            logAction(currentWorkspace, "BARKOD_OKUTULDU", `Barkod eklendi: ${barcode}`);
-            flashInput('barcodeInput', 'var(--accent-green)');
+            try {
+                const docRef = db.collection(`inv_${currentWorkspace}`).doc(barcode);
+                await docRef.set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+                logAction(currentWorkspace, "BARKOD_OKUTULDU", `Barkod eklendi: ${barcode}`);
+                flashInput('barcodeInput', 'var(--accent-green)');
+            } catch(e) {
+                alert("Ekleme Hatası (Firebase): " + e.message);
+            }
         } else {
             offlineQueue.push({ workspace: currentWorkspace, barcode: barcode, timestamp: Date.now() });
             localStorage.setItem('offlineQueue', JSON.stringify(offlineQueue));
@@ -361,25 +363,29 @@ async function resetSystemData() {
             localDB = {}; 
             alert('LOKAL VERİLER SIFIRLANDI.');
         } else {
-            const snapshot = await db.collection(`inv_${currentWorkspace}`).get();
-            let batches = [];
-            let batch = db.batch();
-            let count = 0;
-            
-            snapshot.docs.forEach(doc => {
-                batch.delete(doc.ref);
-                count++;
-                if(count === 490) {
-                    batches.push(batch.commit());
-                    batch = db.batch();
-                    count = 0;
-                }
-            });
-            if(count > 0) batches.push(batch.commit());
-            await Promise.all(batches);
-            
-            logAction(currentWorkspace, "VERI_SIFIRLAMA", "Sunucudaki tüm okutulmuş barkod verisi silindi.");
-            alert('SUNUCU VERİLERİ SIFIRLANDI.');
+            try {
+                const snapshot = await db.collection(`inv_${currentWorkspace}`).get();
+                let batches = [];
+                let batch = db.batch();
+                let count = 0;
+                
+                snapshot.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                    count++;
+                    if(count === 490) {
+                        batches.push(batch.commit());
+                        batch = db.batch();
+                        count = 0;
+                    }
+                });
+                if(count > 0) batches.push(batch.commit());
+                await Promise.all(batches);
+                
+                logAction(currentWorkspace, "VERI_SIFIRLAMA", "Sunucudaki tüm okutulmuş barkod verisi silindi.");
+                alert('SUNUCU VERİLERİ SIFIRLANDI.');
+            } catch(e) {
+                alert("Sıfırlama Hatası: " + e.message);
+            }
         }
         document.getElementById('result').style.display = 'none';
     }
@@ -456,6 +462,7 @@ function logoutAdmin() {
     closeModal('adminPanelModal');
 }
 
+// YENİ: Hata Bildiricili Sunucu Ekleme
 async function createWorkspace() {
     const code = document.getElementById('newServerCode').value.trim();
     const name = document.getElementById('newServerName').value.trim();
@@ -471,7 +478,7 @@ async function createWorkspace() {
         document.getElementById('newServerCode').value = '';
         document.getElementById('newServerName').value = '';
     } catch (e) {
-        alert("Sunucu oluşturulamadı. Güvenlik kurallarını kontrol edin: " + e.message);
+        alert("Sunucu Oluşturma Hatası (Firebase İzni Olmayabilir):\n" + e.message);
     }
 }
 
@@ -485,6 +492,7 @@ function toggleDataEntry(code) {
     }
 }
 
+// YENİ: Hata Bildiricili Sunucu Silme
 async function deleteWorkspace(code) {
     if(confirm(`DİKKAT: ${code} sunucusu ve içindeki tüm envanter/tanım verileri KALICI OLARAK silinecektir. Onaylıyor musunuz?`)) {
         try {
@@ -506,12 +514,11 @@ async function deleteWorkspace(code) {
                 changeWorkspace();
             }
         } catch (e) {
-            alert("Silme işlemi başarısız: " + e.message);
+            alert("Silme işlemi başarısız (Firebase İzni Olmayabilir):\n" + e.message);
         }
     }
 }
 
-// BARKOD TANIMLAMA İŞLEMLERİ (Buluttan Canlı Çekim)
 async function openDescPanel(code) {
     document.getElementById('descServerCode').value = code;
     document.getElementById('descModalTitle').innerText = `[${code}] BARKOD TANIMLARI`;
@@ -539,13 +546,12 @@ async function openDescPanel(code) {
         let txt = '';
         allBarcodes.forEach(b => {
             let desc = descMap[b] ? descMap[b].trim() : "";
-            txt += desc ? `${b} ${desc}\n` : `${b} \n`; // Kolay yazım için yanına boşluk bıraktım
+            txt += desc ? `${b} ${desc}\n` : `${b} \n`; 
         });
 
-        document.getElementById('descTextarea').value = txt; // Kullanıcı silsin/düzenlesin diye trim atmadım
+        document.getElementById('descTextarea').value = txt; 
     } catch (e) {
-        document.getElementById('descTextarea').value = "Bağlantı hatası, veriler çekilemedi.";
-        console.error(e);
+        document.getElementById('descTextarea').value = "Bağlantı hatası, veriler çekilemedi.\nDetay: " + e.message;
     }
 }
 
@@ -574,12 +580,15 @@ async function saveDescriptions() {
         }
     });
     
-    if(batchCount > 0) batches.push(batch.commit());
-    await Promise.all(batches);
-    
-    logAction(code, "TANIMLAMA_YAPILDI", "Admin tarafından tanımlar güncellendi.");
-    alert(`Tanımlar buluta başarıyla kaydedildi.`);
-    closeModal('descModal');
+    try {
+        if(batchCount > 0) batches.push(batch.commit());
+        await Promise.all(batches);
+        logAction(code, "TANIMLAMA_YAPILDI", "Admin tarafından tanımlar güncellendi.");
+        alert(`Tanımlar buluta başarıyla kaydedildi.`);
+        closeModal('descModal');
+    } catch (e) {
+        alert("Tanımlar kaydedilemedi: " + e.message);
+    }
 }
 
 function refreshServerList() {
@@ -608,7 +617,6 @@ function refreshServerList() {
     });
 }
 
-// LOG GÖRÜNTÜLEYİCİ (LİMİT 1000'E ÇIKARILDI)
 async function viewLogs() {
     document.getElementById('logsModal').style.display = 'flex';
     const area = document.getElementById('logsArea');
@@ -632,6 +640,6 @@ async function viewLogs() {
             </div>`;
         });
     } catch(e) {
-        area.innerHTML = 'Loglar yüklenemedi: ' + e.message;
+        area.innerHTML = 'Loglar yüklenemedi. Yetki Hatası Olabilir: ' + e.message;
     }
 }
