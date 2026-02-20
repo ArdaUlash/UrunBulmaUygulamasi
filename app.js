@@ -1,5 +1,24 @@
-// app.js - Ürün Bulucu İstemci ve İzolasyon Mimarisi
+// app.js - Firebase Entegreli Bulut Mimarisi & Merkezi İzolasyon Sistemi
 
+// 1. FIREBASE BAĞLANTISI VE AYARLARI
+const firebaseConfig = {
+    apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
+    authDomain: "urun-bulucu.firebaseapp.com",
+    projectId: "urun-bulucu",
+    storageBucket: "urun-bulucu.firebasestorage.app",
+    messagingSenderId: "425563783414",
+    appId: "1:425563783414:web:ec64a106ad6b1abac7ecd7",
+    measurementId: "G-8M7RYZYSX3"
+};
+
+// Firebase Başlat 
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Çevrimdışı desteği aktifleştirme (Opsiyonel Güvenlik)
+db.enablePersistence().catch((err) => console.warn("Önbellek uyarı:", err.code));
+
+// --- GLOBAL STATE ---
 let appMode = 'LOCAL'; 
 let currentWorkspace = 'LOCAL'; 
 let localDB = {}; 
@@ -7,24 +26,48 @@ let offlineQueue = JSON.parse(localStorage.getItem('offlineQueue')) || [];
 let isCurrentWorkspaceReadOnly = false; 
 let currentUser = { role: null, token: null }; 
 
+// Real-time (Canlı) Veri Dinleyicileri
+let unsubInv = null;
+let unsubDesc = null;
+let unsubWorkspaces = null;
+
 document.addEventListener('DOMContentLoaded', () => {
-    initApp();
+    listenWorkspaces();
     window.addEventListener('online', handleConnectionChange);
     window.addEventListener('offline', handleConnectionChange);
 });
 
-// --- SUNUCU (WORKSPACE) YÖNETİMİ ---
-async function initApp() {
-    let isInitialized = localStorage.getItem('app_initialized');
-    let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
-    
-    // GÜNCELLEME: Sadece sistem ilk kez çalıştığında varsayılan sunucuyu ekler. Silinirse bir daha getirmez.
-    if(!isInitialized) {
-        workspaces = [{ code: '4254', name: 'Park Bornova', active: true, allowDataEntry: true }];
-        localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
-        localStorage.setItem('app_initialized', 'true'); // Kurulum bayrağını dik
+function handleConnectionChange() {
+    const badge = document.getElementById('offlineBadge');
+    if (navigator.onLine) {
+        badge.style.display = 'none';
+        if (appMode === 'SERVER' && offlineQueue.length > 0) syncOfflineQueue();
+    } else {
+        badge.style.display = 'inline-block';
     }
+}
 
+// --- SUNUCU (WORKSPACE) YÖNETİMİ ---
+function listenWorkspaces() {
+    unsubWorkspaces = db.collection('workspaces').onSnapshot(snapshot => {
+        let workspaces = [];
+        snapshot.forEach(doc => workspaces.push(doc.data()));
+        localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
+        
+        if(workspaces.length === 0 && !localStorage.getItem('app_initialized')) {
+            db.collection('workspaces').doc('4254').set({ code: '4254', name: 'Park Bornova', active: true, allowDataEntry: true });
+            localStorage.setItem('app_initialized', 'true');
+        }
+
+        renderWorkspaceDropdown();
+        if(document.getElementById('adminPanelModal').style.display === 'flex') {
+            refreshServerList(); 
+        }
+    });
+}
+
+function renderWorkspaceDropdown() {
+    let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
     const select = document.getElementById('workspaceSelect');
     const currentValue = select.value; 
     
@@ -52,10 +95,13 @@ function changeWorkspace() {
     currentWorkspace = document.getElementById('workspaceSelect').value;
     const statusText = document.getElementById('connectionStatus');
     const selectorDiv = document.getElementById('serverSelectorDiv');
-    
     const tabGrid = document.getElementById('tabGrid');
     const addTab = document.getElementById('addLocationButton');
     const dataPanel = document.getElementById('dataPanel');
+
+    // Eski dinleyicileri kapat (Sunucu değiştiğinde performans için)
+    if(unsubInv) unsubInv();
+    if(unsubDesc) unsubDesc();
 
     if (currentWorkspace === 'LOCAL') {
         appMode = 'LOCAL';
@@ -84,7 +130,7 @@ function changeWorkspace() {
             dataPanel.style.display = 'none';
             if (currentMode === 'add') switchMode('find'); 
         } else {
-            statusText.textContent = `API BAĞLANTISI AKTİF (${currentWorkspace})`;
+            statusText.textContent = `CANLI VERİ AKTİF (${currentWorkspace})`;
             statusText.style.color = "var(--accent-green)";
             selectorDiv.className = "server-selector online-mode";
             
@@ -92,22 +138,24 @@ function changeWorkspace() {
             tabGrid.style.gridTemplateColumns = '1fr 1fr';
             dataPanel.style.display = currentMode === 'add' ? 'block' : 'none';
         }
+
+        // FIREBASE GERÇEK ZAMANLI SENKRONİZASYON
+        unsubInv = db.collection(`inv_${currentWorkspace}`).onSnapshot(snapshot => {
+            let serverDB = {};
+            snapshot.forEach(doc => serverDB[doc.id] = doc.data().count);
+            localStorage.setItem(`db_${currentWorkspace}`, JSON.stringify(serverDB));
+        });
+
+        unsubDesc = db.collection(`desc_${currentWorkspace}`).onSnapshot(snapshot => {
+            let descDB = {};
+            snapshot.forEach(doc => descDB[doc.id] = doc.data().text);
+            localStorage.setItem(`desc_${currentWorkspace}`, JSON.stringify(descDB));
+        });
     }
     
     document.getElementById('result').style.display = 'none';
-    
     const targetInput = isCurrentWorkspaceReadOnly ? 'searchBarcodeInput' : (currentMode === 'add' ? 'barcodeInput' : 'searchBarcodeInput');
     setTimeout(() => { document.getElementById(targetInput).focus(); }, 50);
-}
-
-function handleConnectionChange() {
-    const badge = document.getElementById('offlineBadge');
-    if (navigator.onLine) {
-        badge.style.display = 'none';
-        if (appMode === 'SERVER' && offlineQueue.length > 0) syncOfflineQueue();
-    } else {
-        badge.style.display = 'inline-block';
-    }
 }
 
 // --- BARKOD İŞLEMLERİ ---
@@ -130,9 +178,8 @@ async function saveProduct() {
         flashInput('barcodeInput', 'var(--accent-warning)');
     } else {
         if (navigator.onLine) {
-            let serverDB = JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {};
-            serverDB[barcode] = (serverDB[barcode] || 0) + 1;
-            localStorage.setItem(`db_${currentWorkspace}`, JSON.stringify(serverDB));
+            const docRef = db.collection(`inv_${currentWorkspace}`).doc(barcode);
+            docRef.set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
             flashInput('barcodeInput', 'var(--accent-green)');
         } else {
             offlineQueue.push({ workspace: currentWorkspace, barcode: barcode, timestamp: Date.now() });
@@ -190,11 +237,25 @@ async function searchProduct() {
 
 async function syncOfflineQueue() {
     if(offlineQueue.length === 0) return;
+    
+    let batches = [];
+    let batch = db.batch();
+    let batchCount = 0;
+
     offlineQueue.forEach(item => {
-        let serverDB = JSON.parse(localStorage.getItem(`db_${item.workspace}`)) || {};
-        serverDB[item.barcode] = (serverDB[item.barcode] || 0) + 1;
-        localStorage.setItem(`db_${item.workspace}`, JSON.stringify(serverDB));
+        const docRef = db.collection(`inv_${item.workspace}`).doc(item.barcode);
+        batch.set(docRef, { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+        batchCount++;
+        if(batchCount === 490) {
+            batches.push(batch.commit());
+            batch = db.batch();
+            batchCount = 0;
+        }
     });
+
+    if(batchCount > 0) batches.push(batch.commit());
+    await Promise.all(batches);
+
     offlineQueue = [];
     localStorage.removeItem('offlineQueue');
     document.getElementById('offlineBadge').style.display = 'none';
@@ -220,36 +281,55 @@ function downloadTXT() {
     link.click();
 }
 
-function uploadTXT(event) {
+async function uploadTXT(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
             try {
                 const lines = e.target.result.split('\n');
                 let added = 0;
-                let targetDB = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
                 
-                lines.forEach(line => {
-                    const cleanLine = line.trim();
-                    if(!cleanLine) return; 
-                    
-                    const parts = cleanLine.split(/[\t,; ]+/);
-                    const barcode = parts[0]?.trim();
-                    
-                    let count = 1;
-                    if (parts.length > 1 && !isNaN(parseInt(parts[1]))) {
-                        count = parseInt(parts[1]);
-                    }
+                if (appMode === 'LOCAL') {
+                    lines.forEach(line => {
+                        const cleanLine = line.trim();
+                        if(!cleanLine) return; 
+                        const parts = cleanLine.split(/[\t,; ]+/);
+                        const barcode = parts[0]?.trim();
+                        let count = (parts.length > 1 && !isNaN(parseInt(parts[1]))) ? parseInt(parts[1]) : 1;
+                        if(barcode) { localDB[barcode] = (localDB[barcode] || 0) + count; added++; }
+                    });
+                    alert(`${added} SATIR LOKAL SİSTEME EKLENDİ.`);
+                } else {
+                    alert("Yükleniyor, lütfen bekleyin...");
+                    let batches = [];
+                    let batch = db.batch();
+                    let batchCount = 0;
 
-                    if(barcode) {
-                        targetDB[barcode] = (targetDB[barcode] || 0) + count;
-                        added++;
-                    }
-                });
-
-                if(appMode === 'SERVER') localStorage.setItem(`db_${currentWorkspace}`, JSON.stringify(targetDB));
-                alert(`${added} SATIR BARKOD SİSTEME EKLENDİ.`);
+                    lines.forEach(line => {
+                        const cleanLine = line.trim();
+                        if(!cleanLine) return; 
+                        const parts = cleanLine.split(/[\t,; ]+/);
+                        const barcode = parts[0]?.trim();
+                        let count = (parts.length > 1 && !isNaN(parseInt(parts[1]))) ? parseInt(parts[1]) : 1;
+                        
+                        if(barcode) {
+                            const docRef = db.collection(`inv_${currentWorkspace}`).doc(barcode);
+                            batch.set(docRef, { count: firebase.firestore.FieldValue.increment(count) }, { merge: true });
+                            added++;
+                            batchCount++;
+                            if(batchCount === 490) {
+                                batches.push(batch.commit());
+                                batch = db.batch();
+                                batchCount = 0;
+                            }
+                        }
+                    });
+                    
+                    if(batchCount > 0) batches.push(batch.commit());
+                    await Promise.all(batches);
+                    alert(`${added} SATIR BULUT SİSTEME EKLENDİ.`);
+                }
             } catch (error) { alert('DOSYA OKUMA HATASI.'); }
         };
         reader.readAsText(file);
@@ -257,19 +337,37 @@ function uploadTXT(event) {
     }
 }
 
-function resetSystemData() {
+async function resetSystemData() {
     if (confirm('UYARI: Seçili alandaki (Lokal veya Sunucu) tüm veriler SİLİNECEK. Onaylıyor musunuz?')) {
-        if (appMode === 'LOCAL') localDB = {}; 
-        else localStorage.removeItem(`db_${currentWorkspace}`); 
+        if (appMode === 'LOCAL') {
+            localDB = {}; 
+            alert('LOKAL VERİLER SIFIRLANDI.');
+        } else {
+            const snapshot = await db.collection(`inv_${currentWorkspace}`).get();
+            let batches = [];
+            let batch = db.batch();
+            let count = 0;
+            
+            snapshot.docs.forEach(doc => {
+                batch.delete(doc.ref);
+                count++;
+                if(count === 490) {
+                    batches.push(batch.commit());
+                    batch = db.batch();
+                    count = 0;
+                }
+            });
+            if(count > 0) batches.push(batch.commit());
+            await Promise.all(batches);
+            alert('SUNUCU VERİLERİ SIFIRLANDI.');
+        }
         document.getElementById('result').style.display = 'none';
-        alert('VERİLER SIFIRLANDI.');
     }
 }
 
 // --- ARAYÜZ YARDIMCILARI ---
 function switchMode(mode) {
     if (isCurrentWorkspaceReadOnly && mode === 'add') return;
-    
     currentMode = mode;
     document.getElementById('addLocationSection').classList.toggle('hidden', mode !== 'add');
     document.getElementById('findProductSection').classList.toggle('hidden', mode !== 'find');
@@ -278,11 +376,7 @@ function switchMode(mode) {
     document.getElementById('result').style.display = 'none';
     
     const dataPanel = document.getElementById('dataPanel');
-    if (mode === 'find' || isCurrentWorkspaceReadOnly) {
-        dataPanel.style.display = 'none';
-    } else {
-        dataPanel.style.display = 'block';
-    }
+    dataPanel.style.display = (mode === 'find' || isCurrentWorkspaceReadOnly) ? 'none' : 'block';
 
     setTimeout(() => { document.getElementById(mode === 'add' ? 'barcodeInput' : 'searchBarcodeInput').focus(); }, 50);
 }
@@ -333,14 +427,13 @@ function openDashboard() {
     document.getElementById('adminUser').value = '';
     document.getElementById('adminPass').value = '';
     document.getElementById('rootControls').classList.remove('hidden');
-    refreshServerList();
     document.getElementById('adminPanelModal').style.display = 'flex';
+    refreshServerList();
 }
 
 function logoutAdmin() {
     currentUser = { role: null, token: null };
     closeModal('adminPanelModal');
-    alert("Sistemden çıkış yapıldı.");
 }
 
 function createWorkspace() {
@@ -352,65 +445,43 @@ function createWorkspace() {
     let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
     if(workspaces.find(ws => ws.code === code)) return alert("Bu sunucu numarası kullanılıyor!");
 
-    workspaces.push({ code: code, name: name, active: true, allowDataEntry: true });
-    localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
-
-    alert(`${code} sunucusu yaratıldı.`);
+    db.collection('workspaces').doc(code).set({ code: code, name: name, active: true, allowDataEntry: true });
     document.getElementById('newServerCode').value = '';
     document.getElementById('newServerName').value = '';
-    
-    refreshServerList();
-    initApp(); 
 }
 
 function toggleDataEntry(code) {
     let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
     let ws = workspaces.find(w => w.code === code);
-    if(ws) {
-        ws.allowDataEntry = ws.allowDataEntry === false ? true : false;
-        localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
-        refreshServerList(); 
-        initApp(); 
-    }
+    if(ws) db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
 }
 
-function deleteWorkspace(code) {
+async function deleteWorkspace(code) {
     if(confirm(`${code} Sunucusunu SİLMEK üzeresiniz!`)) {
-        let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
-        workspaces = workspaces.filter(ws => ws.code !== code);
-        localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
-        localStorage.removeItem(`db_${code}`); 
-        localStorage.removeItem(`desc_${code}`); 
-        refreshServerList();
-        
-        // Eğer silinen sunucu şu an seçiliyse, otomatik olarak LOCAL'e düşür
-        if(currentWorkspace === code) {
-            document.getElementById('workspaceSelect').value = 'LOCAL';
-        }
-        initApp();
+        await db.collection('workspaces').doc(code).delete();
+        if(currentWorkspace === code) document.getElementById('workspaceSelect').value = 'LOCAL';
     }
 }
 
-// BARKOD TANIMLAMA İŞLEMLERİ (Admin)
 function openDescPanel(code) {
     document.getElementById('descServerCode').value = code;
     document.getElementById('descModalTitle').innerText = `${code} İÇİN BARKOD TANIMLARI`;
     
     let descDB = JSON.parse(localStorage.getItem(`desc_${code}`)) || {};
     let txt = '';
-    for(let b in descDB) {
-        txt += descDB[b] ? `${b} ${descDB[b]}\n` : `${b}\n`;
-    }
+    for(let b in descDB) txt += descDB[b] ? `${b} ${descDB[b]}\n` : `${b}\n`;
     
     document.getElementById('descTextarea').value = txt.trim();
     document.getElementById('descModal').style.display = 'flex';
 }
 
-function saveDescriptions() {
+async function saveDescriptions() {
     const code = document.getElementById('descServerCode').value;
     const lines = document.getElementById('descTextarea').value.trim().split('\n');
-    let descDB = {};
-    let count = 0;
+    
+    let batches = [];
+    let batch = db.batch();
+    let batchCount = 0;
     
     lines.forEach(line => {
         const parts = line.trim().split(/[\t, ]+/); 
@@ -418,13 +489,21 @@ function saveDescriptions() {
         const desc = parts.join(' '); 
         
         if(barcode) {
-            descDB[barcode] = desc || ""; 
-            count++;
+            const docRef = db.collection(`desc_${code}`).doc(barcode);
+            batch.set(docRef, { text: desc || "" }, { merge: true });
+            batchCount++;
+            if(batchCount === 490) {
+                batches.push(batch.commit());
+                batch = db.batch();
+                batchCount = 0;
+            }
         }
     });
     
-    localStorage.setItem(`desc_${code}`, JSON.stringify(descDB));
-    alert(`${count} adet tanım başarıyla kaydedildi.`);
+    if(batchCount > 0) batches.push(batch.commit());
+    await Promise.all(batches);
+    
+    alert(`Tanımlar buluta başarıyla kaydedildi.`);
     closeModal('descModal');
 }
 
