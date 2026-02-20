@@ -56,7 +56,8 @@
         button { width: 100%; background: transparent; color: var(--text-main); border: 1px solid var(--accent-primary); padding: 15px; font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 600; letter-spacing: 2px; cursor: pointer; transition: 0.3s; border-radius: 4px; margin-top: 10px; text-transform: uppercase; }
         button:hover { background: rgba(255, 255, 255, 0.1); }
         .btn-danger { border-color: var(--accent-red); color: var(--accent-red); }
-        .btn-info { border-color: var(--accent-primary); color: var(--accent-primary); }
+        .btn-warning { border-color: var(--accent-warning); color: var(--accent-warning); }
+        .btn-warning:hover { background: rgba(255, 179, 0, 0.1); }
 
         #result { margin-top: 15px; padding: 15px; text-align: center; font-family: 'Share Tech Mono', monospace; font-size: 24px; font-weight: bold; display: none; border-radius: 4px; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; text-shadow: 0 0 10px currentColor; } 100% { opacity: 0.8; } }
@@ -92,7 +93,7 @@
                 </select>
             </div>
             <div style="margin-top: 10px; font-size: 12px; color: var(--text-muted);">
-                BAĞLANTI: <span id="connectionStatus" style="color: var(--accent-warning);">LOKAL VERİ</span>
+                BAĞLANTI: <span id="connectionStatus" style="color: var(--accent-warning);">LOKAL İZOLASYON</span>
                 <span id="offlineBadge">OFFLINE - KUYRUKTA</span>
             </div>
         </div>
@@ -108,16 +109,12 @@
         </label>
 
         <div id="addLocationSection" class="panel">
-            <div class="panel-title">
-                <span>VERİ GİRİŞİ</span>
-            </div>
+            <div class="panel-title"><span>VERİ GİRİŞİ</span></div>
             <input type="text" id="barcodeInput" placeholder="BARKOD TARAYIN..." autofocus>
         </div>
 
         <div id="findProductSection" class="panel hidden">
-            <div class="panel-title">
-                <span>SİSTEM SORGUSU</span>
-            </div>
+            <div class="panel-title"><span>SİSTEM SORGUSU</span></div>
             <input type="text" id="searchBarcodeInput" placeholder="EAN BARKODU GİRİN...">
             <div id="result"></div>
         </div>
@@ -134,14 +131,14 @@
 
         <div style="text-align: center;">
             <button class="footer-link" onclick="openAdminLogin()">[ YÖNETİCİ GİRİŞİ ]</button>
-            <div style="font-size: 10px; color: var(--text-muted); margin-top: 5px; font-family: monospace;">info mail arda@ardaulas.online | version 36</div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 5px; font-family: monospace;">info mail arda@ardaulas.online | version 37</div>
         </div>
     </div>
 
     <div id="adminLoginModal" class="modal">
         <div class="modal-content">
             <h3>YETKİLİ GİRİŞİ</h3>
-            <input type="text" id="adminUser" placeholder="Kullanıcı Adı" style="margin-bottom: 10px;">
+            <input type="text" id="adminUser" placeholder="Kullanıcı/Sicil No" style="margin-bottom: 10px;">
             <input type="password" id="adminPass" placeholder="Şifre" style="margin-bottom: 15px;">
             <button onclick="loginAdmin()">SİSTEME GİR</button>
             <button class="btn-danger" onclick="closeModal('adminLoginModal')">İPTAL</button>
@@ -157,6 +154,8 @@
                 <button onclick="createWorkspace()" style="padding: 10px; font-size: 14px;">SUNUCUYU BAŞLAT</button>
                 
                 <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+                <button class="btn-warning" onclick="viewLogs()" style="padding: 10px; font-size: 12px; margin-bottom: 15px;">TÜM SUNUCU LOGLARINI GÖR</button>
+                
                 <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">AKTİF SUNUCULAR & YETKİLER:</p>
                 <div id="serverListArea" style="max-height: 250px; overflow-y: auto; font-size: 12px;"></div>
             </div>
@@ -173,6 +172,16 @@
             <button onclick="saveDescriptions()">KAYDET</button>
             <button class="btn-danger" onclick="closeModal('descModal')">KAPAT</button>
             <input type="hidden" id="descServerCode">
+        </div>
+    </div>
+
+    <div id="logsModal" class="modal" style="z-index: 1002;">
+        <div class="modal-content">
+            <h3 style="color: var(--accent-warning);">SİSTEM İŞLEM KAYITLARI</h3>
+            <div id="logsArea" style="max-height: 300px; overflow-y: auto; font-size: 12px; font-family: monospace; text-align: left; margin-bottom: 15px; background: rgba(0,0,0,0.6); padding: 10px; border: 1px solid var(--text-muted);">
+                Yükleniyor...
+            </div>
+            <button class="btn-danger" onclick="closeModal('logsModal')">KAPAT</button>
         </div>
     </div>
 
