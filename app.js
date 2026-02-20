@@ -1,4 +1,4 @@
-// app.js - Firebase Entegreli Bulut Mimarisi & Anında Tepki (Optimistic UI)
+// app.js - Firebase Entegreli Bulut Mimarisi (Kesin Eşzamanlılık)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -64,10 +64,13 @@ function initApp() {
     renderWorkspaceDropdown(workspaces);
 }
 
+// 🔴 SİSTEM ARTIK SADECE FİREBASE'DE NE VARSA ONU ÇİZER (İllüzyonlar Kalktı)
 function listenWorkspaces() {
     unsubWorkspaces = db.collection('workspaces').onSnapshot(snapshot => {
         let workspaces = [];
         snapshot.forEach(doc => workspaces.push(doc.data()));
+        
+        // Firebase'den gelen saf veriyi lokale zorla yaz (Hayaletleri siler)
         localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
         
         renderWorkspaceDropdown(workspaces);
@@ -168,7 +171,6 @@ function changeWorkspace() {
     setTimeout(() => { document.getElementById(targetInput).focus(); }, 50);
 }
 
-// --- BARKOD İŞLEMLERİ ---
 document.getElementById('barcodeInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter' || e.keyCode === 13) {
         e.preventDefault(); 
@@ -279,7 +281,6 @@ async function syncOfflineQueue() {
     document.getElementById('offlineBadge').style.display = 'none';
 }
 
-// --- TXT YÖNETİMİ & SIFIRLAMA ---
 function downloadTXT() {
     let targetDB = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
     if(Object.keys(targetDB).length === 0) return alert("İndirilecek veri yok.");
@@ -388,7 +389,6 @@ async function resetSystemData() {
     }
 }
 
-// --- ARAYÜZ YARDIMCILARI ---
 function switchMode(mode) {
     if (isCurrentWorkspaceReadOnly && mode === 'add') return;
     currentMode = mode;
@@ -422,7 +422,6 @@ function flashInput(inputId, color) {
     setTimeout(() => { el.style.boxShadow = ''; el.style.borderColor = ''; }, 300);
 }
 
-// --- ADMIN PANELI YÖNETİMİ ---
 function openAdminLogin() {
     if(currentUser.role === 'ROOT') document.getElementById('adminPanelModal').style.display = 'flex';
     else {
@@ -459,6 +458,7 @@ function logoutAdmin() {
     closeModal('adminPanelModal');
 }
 
+// 🔴 SADECE FIREBASE'E YAZAR (Hata varsa ekranda uyarır, listeye eklemez)
 async function createWorkspace() {
     const code = document.getElementById('newServerCode').value.trim();
     const name = document.getElementById('newServerName').value.trim();
@@ -466,22 +466,15 @@ async function createWorkspace() {
     if(!code || !name) return;
 
     let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
-    if(workspaces.find(ws => ws.code === code)) return alert("Bu sunucu numarası kullanılıyor!");
+    if(workspaces.find(ws => ws.code === code)) return alert("Bu sunucu numarası zaten kullanılıyor!");
 
-    // Anında HTML Güncelleme (Optimistic UI)
-    workspaces.push({ code: code, name: name, active: true, allowDataEntry: true });
-    localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
-    refreshServerList();
-    renderWorkspaceDropdown(workspaces);
-
-    // Arka Planda Firebase'e Kaydet
     try {
         await db.collection('workspaces').doc(code).set({ code: code, name: name, active: true, allowDataEntry: true });
         logAction(code, 'YENI_SUNUCU', `${name} isimli sunucu oluşturuldu.`);
         document.getElementById('newServerCode').value = '';
         document.getElementById('newServerName').value = '';
     } catch (e) {
-        alert("Sunucu Oluşturma Hatası:\n" + e.message);
+        alert("Sunucu Eklenemedi! Lütfen Firebase Rules ayarlarınızı kontrol edin.\n\nHata: " + e.message);
     }
 }
 
@@ -489,33 +482,15 @@ function toggleDataEntry(code) {
     let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
     let ws = workspaces.find(w => w.code === code);
     if(ws) {
-        // Anında HTML Güncelleme
-        ws.allowDataEntry = !ws.allowDataEntry;
-        localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
-        refreshServerList();
-
-        db.collection('workspaces').doc(code).update({ allowDataEntry: ws.allowDataEntry })
-          .then(() => logAction(code, 'YETKI_DEGISIMI', ws.allowDataEntry ? 'Sunucu veri girişine açıldı.' : 'Sunucu salt okunur yapıldı.'))
+        db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry })
+          .then(() => logAction(code, 'YETKI_DEGISIMI', !ws.allowDataEntry ? 'Sunucu veri girişine açıldı.' : 'Sunucu salt okunur yapıldı.'))
           .catch(e => alert("Yetki değiştirilemedi: " + e.message));
     }
 }
 
+// 🔴 SADECE FIREBASE'DEN SİLER (Firebase onaylarsa listeden düşer)
 async function deleteWorkspace(code) {
-    if(confirm(`DİKKAT: ${code} sunucusu ve içindeki tüm envanter/tanım verileri KALICI OLARAK silinecektir. Onaylıyor musunuz?`)) {
-        
-        // Anında HTML Güncelleme (Optimistic UI)
-        let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
-        workspaces = workspaces.filter(ws => ws.code !== code);
-        localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
-        refreshServerList();
-        renderWorkspaceDropdown(workspaces);
-        
-        if(currentWorkspace === code) {
-            document.getElementById('workspaceSelect').value = 'LOCAL';
-            changeWorkspace();
-        }
-
-        // Arka Planda Firebase Temizliği
+    if(confirm(`DİKKAT: ${code} sunucusu ve içindeki tüm veriler KALICI OLARAK silinecektir. Onaylıyor musunuz?`)) {
         try {
             const invSnap = await db.collection(`inv_${code}`).get();
             let batch = db.batch();
@@ -529,8 +504,12 @@ async function deleteWorkspace(code) {
 
             await db.collection('workspaces').doc(code).delete();
             logAction(code, 'SUNUCU_SILINDI', 'Sunucu tüm verileriyle tamamen yok edildi.');
+
+            if(currentWorkspace === code) {
+                document.getElementById('workspaceSelect').value = 'LOCAL';
+            }
         } catch (e) {
-            console.error("Silme işlemi arka planda başarısız oldu:", e.message);
+            alert("Silme işlemi başarısız. Yetkiniz kısıtlı olabilir.\n\nHata: " + e.message);
         }
     }
 }
