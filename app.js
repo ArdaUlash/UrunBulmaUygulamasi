@@ -1,6 +1,5 @@
-// app.js - Firebase Entegreli Bulut Mimarisi & Merkezi İzolasyon Sistemi
+// app.js - Firebase Entegreli Bulut Mimarisi & Kayıt/İzolasyon Sistemi
 
-// 1. FIREBASE BAĞLANTISI VE AYARLARI
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
     authDomain: "urun-bulucu.firebaseapp.com",
@@ -11,14 +10,10 @@ const firebaseConfig = {
     measurementId: "G-8M7RYZYSX3"
 };
 
-// Firebase Başlat 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-
-// Çevrimdışı desteği aktifleştirme (Opsiyonel Güvenlik)
 db.enablePersistence().catch((err) => console.warn("Önbellek uyarı:", err.code));
 
-// --- GLOBAL STATE ---
 let appMode = 'LOCAL'; 
 let currentWorkspace = 'LOCAL'; 
 let localDB = {}; 
@@ -26,16 +21,27 @@ let offlineQueue = JSON.parse(localStorage.getItem('offlineQueue')) || [];
 let isCurrentWorkspaceReadOnly = false; 
 let currentUser = { role: null, token: null }; 
 
-// Real-time (Canlı) Veri Dinleyicileri
 let unsubInv = null;
 let unsubDesc = null;
 let unsubWorkspaces = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    initApp();
     listenWorkspaces();
     window.addEventListener('online', handleConnectionChange);
     window.addEventListener('offline', handleConnectionChange);
 });
+
+// --- MERKEZİ LOG SİSTEMİ ---
+function logAction(workspace, actionType, details) {
+    if (appMode === 'LOCAL' && actionType !== 'SUNUCU_SILINDI') return; // Lokal işlemleri buluta kaydetme
+    db.collection('system_logs').add({
+        workspace: workspace,
+        action: actionType,
+        details: details,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(err => console.error("Log yazılamadı:", err));
+}
 
 function handleConnectionChange() {
     const badge = document.getElementById('offlineBadge');
@@ -47,27 +53,31 @@ function handleConnectionChange() {
     }
 }
 
-// --- SUNUCU (WORKSPACE) YÖNETİMİ ---
+function initApp() {
+    let isInitialized = localStorage.getItem('app_initialized');
+    let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
+    
+    if(!isInitialized) {
+        db.collection('workspaces').doc('4254').set({ code: '4254', name: 'Park Bornova', active: true, allowDataEntry: true });
+        localStorage.setItem('app_initialized', 'true');
+    }
+    renderWorkspaceDropdown(workspaces);
+}
+
 function listenWorkspaces() {
     unsubWorkspaces = db.collection('workspaces').onSnapshot(snapshot => {
         let workspaces = [];
         snapshot.forEach(doc => workspaces.push(doc.data()));
         localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
         
-        if(workspaces.length === 0 && !localStorage.getItem('app_initialized')) {
-            db.collection('workspaces').doc('4254').set({ code: '4254', name: 'Park Bornova', active: true, allowDataEntry: true });
-            localStorage.setItem('app_initialized', 'true');
-        }
-
-        renderWorkspaceDropdown();
+        renderWorkspaceDropdown(workspaces);
         if(document.getElementById('adminPanelModal').style.display === 'flex') {
             refreshServerList(); 
         }
     });
 }
 
-function renderWorkspaceDropdown() {
-    let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
+function renderWorkspaceDropdown(workspaces) {
     const select = document.getElementById('workspaceSelect');
     const currentValue = select.value; 
     
@@ -99,7 +109,6 @@ function changeWorkspace() {
     const addTab = document.getElementById('addLocationButton');
     const dataPanel = document.getElementById('dataPanel');
 
-    // Eski dinleyicileri kapat (Sunucu değiştiğinde performans için)
     if(unsubInv) unsubInv();
     if(unsubDesc) unsubDesc();
 
@@ -107,7 +116,7 @@ function changeWorkspace() {
         appMode = 'LOCAL';
         isCurrentWorkspaceReadOnly = false;
         localDB = {}; 
-        statusText.textContent = "LOKAL VERİ";
+        statusText.textContent = "LOKAL İZOLASYON";
         statusText.style.color = "var(--accent-warning)";
         selectorDiv.className = "server-selector local-mode";
         
@@ -139,7 +148,6 @@ function changeWorkspace() {
             dataPanel.style.display = currentMode === 'add' ? 'block' : 'none';
         }
 
-        // FIREBASE GERÇEK ZAMANLI SENKRONİZASYON
         unsubInv = db.collection(`inv_${currentWorkspace}`).onSnapshot(snapshot => {
             let serverDB = {};
             snapshot.forEach(doc => serverDB[doc.id] = doc.data().count);
@@ -180,6 +188,7 @@ async function saveProduct() {
         if (navigator.onLine) {
             const docRef = db.collection(`inv_${currentWorkspace}`).doc(barcode);
             docRef.set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+            logAction(currentWorkspace, "BARKOD_OKUTULDU", `Barkod: ${barcode}`);
             flashInput('barcodeInput', 'var(--accent-green)');
         } else {
             offlineQueue.push({ workspace: currentWorkspace, barcode: barcode, timestamp: Date.now() });
@@ -209,7 +218,6 @@ async function searchProduct() {
         let descDB = JSON.parse(localStorage.getItem(`desc_${currentWorkspace}`)) || {};
         
         isFound = (serverDB[barcode] && serverDB[barcode] > 0) || descDB.hasOwnProperty(barcode);
-        
         if (descDB[barcode] && descDB[barcode] !== "") {
             description = ` <br><span style="font-size: 16px; color: var(--accent-primary);">(${descDB[barcode]})</span>`;
         }
@@ -255,13 +263,14 @@ async function syncOfflineQueue() {
 
     if(batchCount > 0) batches.push(batch.commit());
     await Promise.all(batches);
-
+    
+    logAction('SİSTEM', 'OFFLINE_SENKRONIZASYON', `${offlineQueue.length} adet çevrimdışı işlem buluta aktarıldı.`);
     offlineQueue = [];
     localStorage.removeItem('offlineQueue');
     document.getElementById('offlineBadge').style.display = 'none';
 }
 
-// --- TXT YÖNETİMİ ---
+// --- TXT YÖNETİMİ & SIFIRLAMA ---
 function downloadTXT() {
     let targetDB = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
     if(Object.keys(targetDB).length === 0) return alert("İndirilecek veri yok.");
@@ -269,9 +278,7 @@ function downloadTXT() {
     let txtContent = "";
     for (let barcode in targetDB) {
         let count = targetDB[barcode] || 1;
-        for (let i = 0; i < count; i++) {
-            txtContent += `${barcode}\n`;
-        }
+        for (let i = 0; i < count; i++) txtContent += `${barcode}\n`;
     }
     
     const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' });
@@ -328,6 +335,7 @@ async function uploadTXT(event) {
                     
                     if(batchCount > 0) batches.push(batch.commit());
                     await Promise.all(batches);
+                    logAction(currentWorkspace, "TOPLU_TXT_YUKLEME", `${added} adet barkod dosyadan aktarıldı.`);
                     alert(`${added} SATIR BULUT SİSTEME EKLENDİ.`);
                 }
             } catch (error) { alert('DOSYA OKUMA HATASI.'); }
@@ -337,6 +345,7 @@ async function uploadTXT(event) {
     }
 }
 
+// Derin Silme (Deep Delete) Mekanizması
 async function resetSystemData() {
     if (confirm('UYARI: Seçili alandaki (Lokal veya Sunucu) tüm veriler SİLİNECEK. Onaylıyor musunuz?')) {
         if (appMode === 'LOCAL') {
@@ -359,6 +368,8 @@ async function resetSystemData() {
             });
             if(count > 0) batches.push(batch.commit());
             await Promise.all(batches);
+            
+            logAction(currentWorkspace, "VERI_SIFIRLAMA", "Sunucudaki tüm okutulmuş barkod verisi silindi.");
             alert('SUNUCU VERİLERİ SIFIRLANDI.');
         }
         document.getElementById('result').style.display = 'none';
@@ -446,6 +457,8 @@ function createWorkspace() {
     if(workspaces.find(ws => ws.code === code)) return alert("Bu sunucu numarası kullanılıyor!");
 
     db.collection('workspaces').doc(code).set({ code: code, name: name, active: true, allowDataEntry: true });
+    logAction(code, 'YENI_SUNUCU', `${name} isimli sunucu oluşturuldu.`);
+    
     document.getElementById('newServerCode').value = '';
     document.getElementById('newServerName').value = '';
 }
@@ -453,12 +466,32 @@ function createWorkspace() {
 function toggleDataEntry(code) {
     let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
     let ws = workspaces.find(w => w.code === code);
-    if(ws) db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
+    if(ws) {
+        db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
+        logAction(code, 'YETKI_DEGISIMI', ws.allowDataEntry ? 'Sunucu salt okunur (kilitli) yapıldı.' : 'Sunucu veri girişine açıldı.');
+    }
 }
 
+// Derin Silme İşlemi
 async function deleteWorkspace(code) {
-    if(confirm(`${code} Sunucusunu SİLMEK üzeresiniz!`)) {
+    if(confirm(`DİKKAT: ${code} sunucusu ve içindeki tüm envanter/tanım verileri KALICI OLARAK silinecektir. Onaylıyor musunuz?`)) {
+        
+        // 1. Stok Koleksiyonunu Sil
+        const invSnap = await db.collection(`inv_${code}`).get();
+        let batch = db.batch();
+        invSnap.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+
+        // 2. Tanımlar Koleksiyonunu Sil
+        const descSnap = await db.collection(`desc_${code}`).get();
+        batch = db.batch();
+        descSnap.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+
+        // 3. Sunucuyu Ana Listeden Sil
         await db.collection('workspaces').doc(code).delete();
+        logAction(code, 'SUNUCU_SILINDI', 'Sunucu, içindeki tüm stok ve tanımlarla birlikte tamamen yok edildi.');
+
         if(currentWorkspace === code) document.getElementById('workspaceSelect').value = 'LOCAL';
     }
 }
@@ -503,6 +536,7 @@ async function saveDescriptions() {
     if(batchCount > 0) batches.push(batch.commit());
     await Promise.all(batches);
     
+    logAction(code, "TANIMLAMA_YAPILDI", "Admin tarafından yeni barkod tanımları listeye eklendi.");
     alert(`Tanımlar buluta başarıyla kaydedildi.`);
     closeModal('descModal');
 }
@@ -531,4 +565,32 @@ function refreshServerList() {
             </div>
         </div>`;
     });
+}
+
+// LOG GÖRÜNTÜLEYİCİ
+async function viewLogs() {
+    document.getElementById('logsModal').style.display = 'flex';
+    const area = document.getElementById('logsArea');
+    area.innerHTML = 'Sunucudan veriler çekiliyor...';
+
+    try {
+        const snap = await db.collection('system_logs').orderBy('timestamp', 'desc').limit(50).get();
+        area.innerHTML = '';
+        if(snap.empty) {
+            area.innerHTML = 'Sistemde henüz işlem kaydı bulunmuyor.';
+            return;
+        }
+        snap.forEach(doc => {
+            const data = doc.data();
+            const time = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString('tr-TR') : 'Zaman Bekleniyor';
+            area.innerHTML += `<div style="border-bottom:1px solid #333; padding:8px 0;">
+                <span style="color:var(--accent-warning); font-size:10px;">[${time}]</span> <br>
+                <span style="color:var(--accent-green)">Sunucu: ${data.workspace}</span> | 
+                <span style="color:var(--accent-primary)">İşlem: ${data.action}</span> <br>
+                <span style="color:var(--text-muted)">Detay: ${data.details}</span>
+            </div>`;
+        });
+    } catch(e) {
+        area.innerHTML = 'Loglar yüklenemedi: ' + e.message;
+    }
 }
