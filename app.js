@@ -1,4 +1,4 @@
-// app.js - v46 (Envanter + Tanımlar Tam Sıfırlama Modülü)
+// app.js - v47 (Tüm Fonksiyonlar Eksiksiz - Tam Yetkili Senkronizasyon)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -16,6 +16,7 @@ const db = firebase.firestore();
 let appMode = 'LOCAL'; 
 let currentWorkspace = 'LOCAL'; 
 let localDB = {}; 
+let offlineQueue = JSON.parse(localStorage.getItem('offlineQueue')) || []; 
 let isCurrentWorkspaceReadOnly = false; 
 let globalWorkspaces = []; 
 let currentMode = 'add'; 
@@ -42,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(maintainFocus, 3000);
 });
 
+// Geri Getirilen ve Güçlendirilen Fonksiyonlar
 function logAction(workspace, actionType, details) {
     if (appMode === 'LOCAL') return; 
     db.collection('system_logs').add({
@@ -50,6 +52,19 @@ function logAction(workspace, actionType, details) {
         details: details,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
     }).catch(err => console.error("Log hatası:", err));
+}
+
+async function syncOfflineQueue() {
+    if(offlineQueue.length === 0) return;
+    let batch = db.batch();
+    offlineQueue.forEach(item => {
+        const docRef = db.collection(`inv_${item.workspace}`).doc(item.barcode);
+        batch.set(docRef, { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+    });
+    await batch.commit();
+    offlineQueue = [];
+    localStorage.removeItem('offlineQueue');
+    logAction("SİSTEM", "OFFLINE_SYNC", "Çevrimdışı veriler aktarıldı.");
 }
 
 function maintainFocus() {
@@ -66,8 +81,12 @@ function maintainFocus() {
 
 function handleConnectionChange() {
     const badge = document.getElementById('offlineBadge');
-    if (navigator.onLine) badge.style.display = 'none';
-    else badge.style.display = 'inline-block';
+    if (navigator.onLine) {
+        badge.style.display = 'none';
+        syncOfflineQueue();
+    } else {
+        badge.style.display = 'inline-block';
+    }
 }
 
 function listenWorkspaces() {
@@ -75,6 +94,7 @@ function listenWorkspaces() {
         globalWorkspaces = [];
         snapshot.forEach(doc => globalWorkspaces.push(doc.data()));
         renderWorkspaceDropdown();
+        if(document.getElementById('adminPanelModal').style.display === 'flex') refreshServerList();
     });
 }
 
@@ -174,6 +194,10 @@ async function saveProduct() {
         if (navigator.onLine) {
             await db.collection(`inv_${currentWorkspace}`).doc(barcode).set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
             flashInput('barcodeInput', 'var(--accent-green)');
+        } else {
+            offlineQueue.push({ workspace: currentWorkspace, barcode: barcode });
+            localStorage.setItem('offlineQueue', JSON.stringify(offlineQueue));
+            document.getElementById('offlineBadge').style.display = 'inline-block';
         }
     }
     input.value = '';
@@ -205,9 +229,8 @@ async function searchProduct() {
     input.value = '';
 }
 
-// 🔴 TAM SIFIRLAMA (Hem envanter hem tanımlar silinir)
 async function resetSystemData() {
-    if (!confirm('DİKKAT: Bu sunucudaki TÜM barkod sayıları VE tanımlı isimler silinecektir. Emin misiniz?')) return;
+    if (!confirm('DİKKAT: Envanter VE Tanımlar silinecektir. Onaylıyor musunuz?')) return;
     
     if (appMode === 'LOCAL') {
         localDB = {}; alert('LOKAL TEMİZLENDİ.');
@@ -215,17 +238,17 @@ async function resetSystemData() {
         try {
             const btn = event.target; btn.disabled = true; btn.innerText = "TEMİZLENİYOR...";
             
-            // 1. Envanteri Sil
             const invSnap = await db.collection(`inv_${currentWorkspace}`).get();
-            const invPromises = invSnap.docs.map(doc => doc.ref.delete());
-            
-            // 2. Tanımları Sil (İstediğin nokta burasıydı)
             const descSnap = await db.collection(`desc_${currentWorkspace}`).get();
-            const descPromises = descSnap.docs.map(doc => doc.ref.delete());
-
-            await Promise.all([...invPromises, ...descPromises]);
             
-            logAction(currentWorkspace, "TAM_SIFIRLAMA", "Envanter ve Tanımlar silindi.");
+            const promises = [
+                ...invSnap.docs.map(doc => doc.ref.delete()),
+                ...descSnap.docs.map(doc => doc.ref.delete())
+            ];
+
+            await Promise.all(promises);
+            
+            logAction(currentWorkspace, "TAM_SIFIRLAMA", "Her şey temizlendi.");
             alert('SUNUCU TAMAMEN SIFIRLANDI.');
             btn.disabled = false; btn.innerText = "MEVCUT VERİYİ SIFIRLA";
         } catch(e) { alert("Hata: " + e.message); }
@@ -316,7 +339,7 @@ async function uploadTXT(event) {
     reader.readAsText(file);
 }
 
-async function deleteWorkspace(code) { if(confirm(`${code} sunucusu tamamen silinsin mi?`)) await db.collection('workspaces').doc(code).delete(); }
+async function deleteWorkspace(code) { if(confirm(`${code} silinsin mi?`)) await db.collection('workspaces').doc(code).delete(); }
 function toggleDataEntry(code) { 
     let ws = globalWorkspaces.find(w => w.code === code);
     if(ws) db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
