@@ -1,4 +1,4 @@
-// app.js - Firebase Entegreli Bulut Mimarisi (Kesin Eşzamanlılık)
+// app.js - v35 (Saf Firebase Mimarisi - Önbellek İnatlaşması Giderildi)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -6,13 +6,12 @@ const firebaseConfig = {
     projectId: "urun-bulucu",
     storageBucket: "urun-bulucu.firebasestorage.app",
     messagingSenderId: "425563783414",
-    appId: "1:425563783414:web:ec64a106ad6b1abac7ecd7",
-    measurementId: "G-8M7RYZYSX3"
+    appId: "1:425563783414:web:ec64a106ad6b1abac7ecd7"
 };
 
+// 1. Firebase başlat (Offline Persistence KAPATILDI - Sadece Canlı Veri)
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-db.enablePersistence().catch((err) => console.warn("Önbellek uyarı:", err.code));
 
 let appMode = 'LOCAL'; 
 let currentWorkspace = 'LOCAL'; 
@@ -21,13 +20,14 @@ let offlineQueue = JSON.parse(localStorage.getItem('offlineQueue')) || [];
 let isCurrentWorkspaceReadOnly = false; 
 let currentUser = { role: null, token: null }; 
 
+// YENİ: Firebase'in tek gerçek kaynağı (Source of Truth)
+let globalWorkspaces = []; 
+
 let unsubInv = null;
 let unsubDesc = null;
-let unsubWorkspaces = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    initApp();
-    listenWorkspaces();
+    listenWorkspaces(); // Açılır açılmaz sadece Firebase'i dinle
     window.addEventListener('online', handleConnectionChange);
     window.addEventListener('offline', handleConnectionChange);
 });
@@ -52,44 +52,36 @@ function handleConnectionChange() {
     }
 }
 
-function initApp() {
-    let isInitialized = localStorage.getItem('app_initialized');
-    let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
-    
-    if(!isInitialized) {
-        db.collection('workspaces').doc('4254').set({ code: '4254', name: 'Park Bornova', active: true, allowDataEntry: true })
-            .then(() => localStorage.setItem('app_initialized', 'true'))
-            .catch(e => console.error("İlk kurulum Firebase yetki hatası:", e));
-    }
-    renderWorkspaceDropdown(workspaces);
-}
-
-// 🔴 SİSTEM ARTIK SADECE FİREBASE'DE NE VARSA ONU ÇİZER (İllüzyonlar Kalktı)
+// 2. SUNUCULARI DİNLEME (Local Storage İptal Edildi)
 function listenWorkspaces() {
-    unsubWorkspaces = db.collection('workspaces').onSnapshot(snapshot => {
-        let workspaces = [];
-        snapshot.forEach(doc => workspaces.push(doc.data()));
-        
-        // Firebase'den gelen saf veriyi lokale zorla yaz (Hayaletleri siler)
-        localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
-        
-        renderWorkspaceDropdown(workspaces);
+    db.collection('workspaces').onSnapshot(snapshot => {
+        globalWorkspaces = [];
+        snapshot.forEach(doc => {
+            globalWorkspaces.push(doc.data());
+        });
+
+        // Eğer Firebase tamamen boşsa ilk kurulumu yap
+        if(globalWorkspaces.length === 0 && !localStorage.getItem('app_initialized_v2')) {
+            db.collection('workspaces').doc('4254').set({ code: '4254', name: 'Park Bornova', active: true, allowDataEntry: true })
+            .then(() => localStorage.setItem('app_initialized_v2', 'true'));
+        }
+
+        renderWorkspaceDropdown();
         if(document.getElementById('adminPanelModal').style.display === 'flex') {
             refreshServerList(); 
         }
     }, error => {
-        console.error("Sunucular dinlenemedi:", error);
+        console.error("Firebase'den veri çekilemiyor:", error);
     });
 }
 
-function renderWorkspaceDropdown(workspacesList) {
-    let workspaces = workspacesList || JSON.parse(localStorage.getItem('api_workspaces')) || [];
+function renderWorkspaceDropdown() {
     const select = document.getElementById('workspaceSelect');
     const currentValue = select.value; 
     
     select.innerHTML = '<option value="LOCAL">GENEL KULLANICI</option>';
     
-    workspaces.forEach(ws => {
+    globalWorkspaces.forEach(ws => {
         if(ws.active) {
             const option = document.createElement('option');
             option.value = ws.code;
@@ -103,6 +95,7 @@ function renderWorkspaceDropdown(workspacesList) {
     } else {
         select.value = 'LOCAL';
     }
+    
     changeWorkspace();
 }
 
@@ -130,8 +123,7 @@ function changeWorkspace() {
         dataPanel.style.display = currentMode === 'add' ? 'block' : 'none';
     } else {
         appMode = 'SERVER';
-        let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
-        let wsData = workspaces.find(w => w.code === currentWorkspace);
+        let wsData = globalWorkspaces.find(w => w.code === currentWorkspace);
         isCurrentWorkspaceReadOnly = wsData ? (wsData.allowDataEntry === false) : false;
 
         if(isCurrentWorkspaceReadOnly) {
@@ -153,6 +145,7 @@ function changeWorkspace() {
             dataPanel.style.display = currentMode === 'add' ? 'block' : 'none';
         }
 
+        // STOK VE TANIMLARI DİNLE
         unsubInv = db.collection(`inv_${currentWorkspace}`).onSnapshot(snapshot => {
             let serverDB = {};
             snapshot.forEach(doc => serverDB[doc.id] = doc.data().count);
@@ -171,6 +164,7 @@ function changeWorkspace() {
     setTimeout(() => { document.getElementById(targetInput).focus(); }, 50);
 }
 
+// BARKOD GİRİŞİ
 document.getElementById('barcodeInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter' || e.keyCode === 13) {
         e.preventDefault(); 
@@ -196,11 +190,14 @@ async function saveProduct() {
         flashInput('barcodeInput', 'var(--accent-warning)');
     } else {
         if (navigator.onLine) {
-            const docRef = db.collection(`inv_${currentWorkspace}`).doc(barcode);
-            docRef.set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
-            
-            logAction(currentWorkspace, "BARKOD_OKUTULDU", `Barkod eklendi: ${barcode}`);
-            flashInput('barcodeInput', 'var(--accent-green)');
+            try {
+                const docRef = db.collection(`inv_${currentWorkspace}`).doc(barcode);
+                await docRef.set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+                logAction(currentWorkspace, "BARKOD_OKUTULDU", `Barkod eklendi: ${barcode}`);
+                flashInput('barcodeInput', 'var(--accent-green)');
+            } catch(e) {
+                console.error("Firebase Yazma Hatası:", e);
+            }
         } else {
             offlineQueue.push({ workspace: currentWorkspace, barcode: barcode, timestamp: Date.now() });
             localStorage.setItem('offlineQueue', JSON.stringify(offlineQueue));
@@ -458,15 +455,14 @@ function logoutAdmin() {
     closeModal('adminPanelModal');
 }
 
-// 🔴 SADECE FIREBASE'E YAZAR (Hata varsa ekranda uyarır, listeye eklemez)
+// 3. SUNUCU EKLEME
 async function createWorkspace() {
     const code = document.getElementById('newServerCode').value.trim();
     const name = document.getElementById('newServerName').value.trim();
 
     if(!code || !name) return;
 
-    let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
-    if(workspaces.find(ws => ws.code === code)) return alert("Bu sunucu numarası zaten kullanılıyor!");
+    if(globalWorkspaces.find(ws => ws.code === code)) return alert("Bu sunucu numarası zaten kullanılıyor!");
 
     try {
         await db.collection('workspaces').doc(code).set({ code: code, name: name, active: true, allowDataEntry: true });
@@ -474,13 +470,12 @@ async function createWorkspace() {
         document.getElementById('newServerCode').value = '';
         document.getElementById('newServerName').value = '';
     } catch (e) {
-        alert("Sunucu Eklenemedi! Lütfen Firebase Rules ayarlarınızı kontrol edin.\n\nHata: " + e.message);
+        alert("Sunucu Eklenemedi: " + e.message);
     }
 }
 
 function toggleDataEntry(code) {
-    let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
-    let ws = workspaces.find(w => w.code === code);
+    let ws = globalWorkspaces.find(w => w.code === code);
     if(ws) {
         db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry })
           .then(() => logAction(code, 'YETKI_DEGISIMI', !ws.allowDataEntry ? 'Sunucu veri girişine açıldı.' : 'Sunucu salt okunur yapıldı.'))
@@ -488,7 +483,7 @@ function toggleDataEntry(code) {
     }
 }
 
-// 🔴 SADECE FIREBASE'DEN SİLER (Firebase onaylarsa listeden düşer)
+// 4. SUNUCU SİLME
 async function deleteWorkspace(code) {
     if(confirm(`DİKKAT: ${code} sunucusu ve içindeki tüm veriler KALICI OLARAK silinecektir. Onaylıyor musunuz?`)) {
         try {
@@ -509,11 +504,12 @@ async function deleteWorkspace(code) {
                 document.getElementById('workspaceSelect').value = 'LOCAL';
             }
         } catch (e) {
-            alert("Silme işlemi başarısız. Yetkiniz kısıtlı olabilir.\n\nHata: " + e.message);
+            alert("Silme işlemi başarısız: " + e.message);
         }
     }
 }
 
+// 5. TANIMLAR ALANI
 async function openDescPanel(code) {
     document.getElementById('descServerCode').value = code;
     document.getElementById('descModalTitle').innerText = `[${code}] BARKOD TANIMLARI`;
@@ -587,10 +583,11 @@ async function saveDescriptions() {
 }
 
 function refreshServerList() {
-    let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
     const area = document.getElementById('serverListArea');
     area.innerHTML = '';
-    workspaces.forEach(ws => {
+    
+    // Doğrudan globalWorkspaces üzerinden listeleme yapar (Hayalet veriler olmaz)
+    globalWorkspaces.forEach(ws => {
         const isLocked = ws.allowDataEntry === false;
         const lockText = isLocked ? 'KİLİTLİ' : 'AÇIK';
         const lockColor = isLocked ? 'var(--accent-red)' : 'var(--accent-green)';
