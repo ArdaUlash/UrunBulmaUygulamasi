@@ -1,4 +1,4 @@
-// app.js - v45 (Kesin Senkronizasyon & Hatalardan Arındırılmış Nihai Sürüm)
+// app.js - v46 (Envanter + Tanımlar Tam Sıfırlama Modülü)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -16,9 +16,7 @@ const db = firebase.firestore();
 let appMode = 'LOCAL'; 
 let currentWorkspace = 'LOCAL'; 
 let localDB = {}; 
-let offlineQueue = JSON.parse(localStorage.getItem('offlineQueue')) || []; 
 let isCurrentWorkspaceReadOnly = false; 
-let currentUser = { role: null, token: null }; 
 let globalWorkspaces = []; 
 let currentMode = 'add'; 
 window.isUserInteracting = false; 
@@ -31,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('online', handleConnectionChange);
     window.addEventListener('offline', handleConnectionChange);
     
-    // SCANNER ODAK KONTROLÜ
     document.body.addEventListener('mousedown', (e) => {
         if (['SELECT', 'OPTION', 'INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
             window.isUserInteracting = true;
@@ -45,9 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(maintainFocus, 3000);
 });
 
-// MERKEZİ LOG SİSTEMİ
 function logAction(workspace, actionType, details) {
-    if (appMode === 'LOCAL' && actionType !== 'SUNUCU_SILINDI') return; 
+    if (appMode === 'LOCAL') return; 
     db.collection('system_logs').add({
         workspace: workspace,
         action: actionType,
@@ -59,7 +55,6 @@ function logAction(workspace, actionType, details) {
 function maintainFocus() {
     const modals = document.querySelectorAll('.modal');
     let isAnyModalOpen = Array.from(modals).some(m => m.style.display === 'flex' || m.style.display === 'block');
-    
     if (isAnyModalOpen || window.isUserInteracting || document.activeElement.tagName === 'SELECT') return;
 
     const target = isCurrentWorkspaceReadOnly ? 'searchBarcodeInput' : (currentMode === 'add' ? 'barcodeInput' : 'searchBarcodeInput');
@@ -71,28 +66,21 @@ function maintainFocus() {
 
 function handleConnectionChange() {
     const badge = document.getElementById('offlineBadge');
-    if (navigator.onLine) {
-        badge.style.display = 'none';
-        if (appMode === 'SERVER' && offlineQueue.length > 0) syncOfflineQueue();
-    } else {
-        badge.style.display = 'inline-block';
-    }
+    if (navigator.onLine) badge.style.display = 'none';
+    else badge.style.display = 'inline-block';
 }
 
 function listenWorkspaces() {
     db.collection('workspaces').onSnapshot(snapshot => {
         globalWorkspaces = [];
         snapshot.forEach(doc => globalWorkspaces.push(doc.data()));
-        localStorage.setItem('api_workspaces', JSON.stringify(globalWorkspaces));
         renderWorkspaceDropdown();
-        if(document.getElementById('adminPanelModal').style.display === 'flex') refreshServerList();
     });
 }
 
 function renderWorkspaceDropdown() {
     const select = document.getElementById('workspaceSelect');
     if (window.isUserInteracting) return; 
-
     const currentValue = select.value; 
     select.innerHTML = '<option value="LOCAL">GENEL KULLANICI</option>';
     globalWorkspaces.forEach(ws => {
@@ -143,15 +131,13 @@ function changeWorkspace() {
         }
 
         unsubInv = db.collection(`inv_${currentWorkspace}`).onSnapshot(snapshot => {
-            let serverDB = {};
-            snapshot.forEach(doc => serverDB[doc.id] = doc.data().count);
-            localStorage.setItem(`db_${currentWorkspace}`, JSON.stringify(serverDB));
+            let sDB = {}; snapshot.forEach(doc => sDB[doc.id] = doc.data().count);
+            localStorage.setItem(`db_${currentWorkspace}`, JSON.stringify(sDB));
         });
 
         unsubDesc = db.collection(`desc_${currentWorkspace}`).onSnapshot(snapshot => {
-            let descDB = {};
-            snapshot.forEach(doc => descDB[doc.id] = doc.data().text);
-            localStorage.setItem(`desc_${currentWorkspace}`, JSON.stringify(descDB));
+            let dDB = {}; snapshot.forEach(doc => dDB[doc.id] = doc.data().text);
+            localStorage.setItem(`desc_${currentWorkspace}`, JSON.stringify(dDB));
         });
     }
     document.getElementById('result').style.display = 'none';
@@ -160,8 +146,7 @@ function changeWorkspace() {
 
 function updateDataPanelVisibility() {
     const dataPanel = document.getElementById('dataPanel');
-    if (!dataPanel) return;
-    dataPanel.style.display = (currentMode === 'find' || isCurrentWorkspaceReadOnly) ? 'none' : 'block';
+    if (dataPanel) dataPanel.style.display = (currentMode === 'find' || isCurrentWorkspaceReadOnly) ? 'none' : 'block';
 }
 
 function switchMode(mode) {
@@ -200,13 +185,12 @@ async function searchProduct() {
     if (!barcode) return;
     const result = document.getElementById('result');
     result.style.display = 'block';
-    
     let dbInv = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
     let dbDesc = appMode === 'LOCAL' ? {} : (JSON.parse(localStorage.getItem(`desc_${currentWorkspace}`)) || {});
     
     if (dbInv.hasOwnProperty(barcode) || dbDesc.hasOwnProperty(barcode)) {
-        let descText = dbDesc[barcode] ? `<br><span style="font-size: 16px; color: var(--accent-primary);">(${dbDesc[barcode]})</span>` : "";
-        result.innerHTML = `BULUNDU${descText}`;
+        let desc = dbDesc[barcode] ? `<br><span style="font-size: 16px; color: var(--accent-primary);">(${dbDesc[barcode]})</span>` : "";
+        result.innerHTML = `BULUNDU${desc}`;
         result.style.color = 'var(--accent-green)';
         result.style.border = '1px solid var(--accent-green)';
         result.style.background = 'rgba(0, 230, 118, 0.1)';
@@ -221,27 +205,28 @@ async function searchProduct() {
     input.value = '';
 }
 
-// 🔴 SIFIRLAMA MODÜLÜ (KESİN ÇÖZÜM)
+// 🔴 TAM SIFIRLAMA (Hem envanter hem tanımlar silinir)
 async function resetSystemData() {
-    if (!confirm('DİKKAT: Mevcut sunucudaki TÜM veriler silinecektir. Onaylıyor musunuz?')) return;
+    if (!confirm('DİKKAT: Bu sunucudaki TÜM barkod sayıları VE tanımlı isimler silinecektir. Emin misiniz?')) return;
     
     if (appMode === 'LOCAL') {
-        localDB = {}; 
-        alert('LOKAL SIFIRLANDI.');
+        localDB = {}; alert('LOKAL TEMİZLENDİ.');
     } else {
         try {
-            const btn = event.target;
-            btn.disabled = true; btn.innerText = "SİLİNİYOR...";
+            const btn = event.target; btn.disabled = true; btn.innerText = "TEMİZLENİYOR...";
             
-            const snap = await db.collection(`inv_${currentWorkspace}`).get();
-            if (snap.empty) {
-                alert('Silinecek veri yok.');
-            } else {
-                const deletePromises = snap.docs.map(doc => doc.ref.delete());
-                await Promise.all(deletePromises);
-                logAction(currentWorkspace, "SIFIRLAMA", "Veriler temizlendi.");
-                alert('SUNUCU SIFIRLANDI.');
-            }
+            // 1. Envanteri Sil
+            const invSnap = await db.collection(`inv_${currentWorkspace}`).get();
+            const invPromises = invSnap.docs.map(doc => doc.ref.delete());
+            
+            // 2. Tanımları Sil (İstediğin nokta burasıydı)
+            const descSnap = await db.collection(`desc_${currentWorkspace}`).get();
+            const descPromises = descSnap.docs.map(doc => doc.ref.delete());
+
+            await Promise.all([...invPromises, ...descPromises]);
+            
+            logAction(currentWorkspace, "TAM_SIFIRLAMA", "Envanter ve Tanımlar silindi.");
+            alert('SUNUCU TAMAMEN SIFIRLANDI.');
             btn.disabled = false; btn.innerText = "MEVCUT VERİYİ SIFIRLA";
         } catch(e) { alert("Hata: " + e.message); }
     }
@@ -252,9 +237,7 @@ function loginAdmin() {
     const user = document.getElementById('adminUser').value;
     const pass = document.getElementById('adminPass').value;
     if(user === '87118' && pass === '3094') { 
-        currentUser.role = 'ROOT';
         document.getElementById('adminLoginModal').style.display = 'none';
-        document.getElementById('rootControls').classList.remove('hidden');
         document.getElementById('adminPanelModal').style.display = 'flex';
         refreshServerList();
     } else alert("Hatalı!");
@@ -278,7 +261,6 @@ function refreshServerList() {
 
 function openAdminLogin() { document.getElementById('adminLoginModal').style.display = 'flex'; }
 function closeModal(id) { document.getElementById(id).style.display = 'none'; maintainFocus(); }
-function logoutAdmin() { currentUser.role = null; closeModal('adminPanelModal'); }
 function flashInput(id, col) { let el = document.getElementById(id); if(el) { el.style.borderColor = col; setTimeout(()=>el.style.borderColor='', 300); } }
 
 async function openDescPanel(code) {
@@ -311,7 +293,7 @@ async function saveDescriptions() {
 }
 
 function downloadTXT() {
-    let target = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
+    let target = JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {};
     let txt = ""; for (let b in target) { for (let i = 0; i < target[b]; i++) txt += `${b}\n`; }
     const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${currentWorkspace}_Cikti.txt`; link.click();
@@ -319,23 +301,22 @@ function downloadTXT() {
 
 async function uploadTXT(event) {
     const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            const lines = e.target.result.split('\n');
-            let batch = db.batch(); let count = 0;
-            for(let line of lines) {
-                let b = line.trim(); if(!b) continue;
-                batch.set(db.collection(`inv_${currentWorkspace}`).doc(b), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
-                count++; if(count > 400) { await batch.commit(); batch = db.batch(); count = 0; }
-            }
-            if(count > 0) await batch.commit(); alert("Yüklendi.");
-        };
-        reader.readAsText(file);
-    }
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const lines = e.target.result.split('\n');
+        let batch = db.batch(); let count = 0;
+        for(let line of lines) {
+            let b = line.trim(); if(!b) continue;
+            batch.set(db.collection(`inv_${currentWorkspace}`).doc(b), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+            count++; if(count > 400) { await batch.commit(); batch = db.batch(); count = 0; }
+        }
+        if(count > 0) await batch.commit(); alert("Yüklendi.");
+    };
+    reader.readAsText(file);
 }
 
-async function deleteWorkspace(code) { if(confirm(`${code} silinsin mi?`)) await db.collection('workspaces').doc(code).delete(); }
+async function deleteWorkspace(code) { if(confirm(`${code} sunucusu tamamen silinsin mi?`)) await db.collection('workspaces').doc(code).delete(); }
 function toggleDataEntry(code) { 
     let ws = globalWorkspaces.find(w => w.code === code);
     if(ws) db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
@@ -344,10 +325,10 @@ function toggleDataEntry(code) {
 async function viewLogs() {
     document.getElementById('logsModal').style.display = 'flex';
     const area = document.getElementById('logsArea'); area.innerHTML = '...';
-    const snap = await db.collection('system_logs').orderBy('timestamp', 'desc').limit(200).get();
+    const snap = await db.collection('system_logs').orderBy('timestamp', 'desc').limit(100).get();
     area.innerHTML = '';
     snap.forEach(doc => {
         const d = doc.data(); const time = d.timestamp ? new Date(d.timestamp.toDate()).toLocaleString() : '...';
-        area.innerHTML += `<div style="border-bottom:1px solid #333; padding:5px;">[${time}] ${d.workspace}: ${d.details}</div>`;
+        area.innerHTML += `<div style="border-bottom:1px solid #333; padding:5px; font-size:12px;">[${time}] ${d.workspace}: ${d.details}</div>`;
     });
 }
