@@ -1,4 +1,4 @@
-// app.js - Firebase Entegreli Bulut Mimarisi & Hata Bildirimli İzolasyon Sistemi
+// app.js - Firebase Entegreli Bulut Mimarisi & Anında Tepki (Optimistic UI)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -32,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('offline', handleConnectionChange);
 });
 
-// --- MERKEZİ LOG SİSTEMİ ---
 function logAction(workspace, actionType, details) {
     if (appMode === 'LOCAL' && actionType !== 'SUNUCU_SILINDI') return; 
     db.collection('system_logs').add({
@@ -55,31 +54,33 @@ function handleConnectionChange() {
 
 function initApp() {
     let isInitialized = localStorage.getItem('app_initialized');
+    let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
+    
     if(!isInitialized) {
         db.collection('workspaces').doc('4254').set({ code: '4254', name: 'Park Bornova', active: true, allowDataEntry: true })
             .then(() => localStorage.setItem('app_initialized', 'true'))
             .catch(e => console.error("İlk kurulum Firebase yetki hatası:", e));
     }
+    renderWorkspaceDropdown(workspaces);
 }
 
-// YENİ: Firebase Hata Bildiricili Dinleyici
 function listenWorkspaces() {
     unsubWorkspaces = db.collection('workspaces').onSnapshot(snapshot => {
         let workspaces = [];
         snapshot.forEach(doc => workspaces.push(doc.data()));
         localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
         
-        renderWorkspaceDropdown();
+        renderWorkspaceDropdown(workspaces);
         if(document.getElementById('adminPanelModal').style.display === 'flex') {
             refreshServerList(); 
         }
     }, error => {
-        alert("KRİTİK HATA: Sunucular Firebase'den çekilemiyor. Lütfen Firebase Rules (Kurallar) ayarlarınızı kontrol edin!\n\nDetay: " + error.message);
+        console.error("Sunucular dinlenemedi:", error);
     });
 }
 
-function renderWorkspaceDropdown() {
-    let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
+function renderWorkspaceDropdown(workspacesList) {
+    let workspaces = workspacesList || JSON.parse(localStorage.getItem('api_workspaces')) || [];
     const select = document.getElementById('workspaceSelect');
     const currentValue = select.value; 
     
@@ -99,7 +100,6 @@ function renderWorkspaceDropdown() {
     } else {
         select.value = 'LOCAL';
     }
-    
     changeWorkspace();
 }
 
@@ -154,13 +154,13 @@ function changeWorkspace() {
             let serverDB = {};
             snapshot.forEach(doc => serverDB[doc.id] = doc.data().count);
             localStorage.setItem(`db_${currentWorkspace}`, JSON.stringify(serverDB));
-        }, err => console.error("Stok dinleme hatası:", err));
+        });
 
         unsubDesc = db.collection(`desc_${currentWorkspace}`).onSnapshot(snapshot => {
             let descDB = {};
             snapshot.forEach(doc => descDB[doc.id] = doc.data().text);
             localStorage.setItem(`desc_${currentWorkspace}`, JSON.stringify(descDB));
-        }, err => console.error("Tanım dinleme hatası:", err));
+        });
     }
     
     document.getElementById('result').style.display = 'none';
@@ -194,14 +194,11 @@ async function saveProduct() {
         flashInput('barcodeInput', 'var(--accent-warning)');
     } else {
         if (navigator.onLine) {
-            try {
-                const docRef = db.collection(`inv_${currentWorkspace}`).doc(barcode);
-                await docRef.set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
-                logAction(currentWorkspace, "BARKOD_OKUTULDU", `Barkod eklendi: ${barcode}`);
-                flashInput('barcodeInput', 'var(--accent-green)');
-            } catch(e) {
-                alert("Ekleme Hatası (Firebase): " + e.message);
-            }
+            const docRef = db.collection(`inv_${currentWorkspace}`).doc(barcode);
+            docRef.set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+            
+            logAction(currentWorkspace, "BARKOD_OKUTULDU", `Barkod eklendi: ${barcode}`);
+            flashInput('barcodeInput', 'var(--accent-green)');
         } else {
             offlineQueue.push({ workspace: currentWorkspace, barcode: barcode, timestamp: Date.now() });
             localStorage.setItem('offlineQueue', JSON.stringify(offlineQueue));
@@ -425,7 +422,7 @@ function flashInput(inputId, color) {
     setTimeout(() => { el.style.boxShadow = ''; el.style.borderColor = ''; }, 300);
 }
 
-// --- ADMIN PANELI & TANIMLAMALAR ---
+// --- ADMIN PANELI YÖNETİMİ ---
 function openAdminLogin() {
     if(currentUser.role === 'ROOT') document.getElementById('adminPanelModal').style.display = 'flex';
     else {
@@ -462,7 +459,6 @@ function logoutAdmin() {
     closeModal('adminPanelModal');
 }
 
-// YENİ: Hata Bildiricili Sunucu Ekleme
 async function createWorkspace() {
     const code = document.getElementById('newServerCode').value.trim();
     const name = document.getElementById('newServerName').value.trim();
@@ -472,13 +468,20 @@ async function createWorkspace() {
     let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
     if(workspaces.find(ws => ws.code === code)) return alert("Bu sunucu numarası kullanılıyor!");
 
+    // Anında HTML Güncelleme (Optimistic UI)
+    workspaces.push({ code: code, name: name, active: true, allowDataEntry: true });
+    localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
+    refreshServerList();
+    renderWorkspaceDropdown(workspaces);
+
+    // Arka Planda Firebase'e Kaydet
     try {
         await db.collection('workspaces').doc(code).set({ code: code, name: name, active: true, allowDataEntry: true });
         logAction(code, 'YENI_SUNUCU', `${name} isimli sunucu oluşturuldu.`);
         document.getElementById('newServerCode').value = '';
         document.getElementById('newServerName').value = '';
     } catch (e) {
-        alert("Sunucu Oluşturma Hatası (Firebase İzni Olmayabilir):\n" + e.message);
+        alert("Sunucu Oluşturma Hatası:\n" + e.message);
     }
 }
 
@@ -486,15 +489,33 @@ function toggleDataEntry(code) {
     let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
     let ws = workspaces.find(w => w.code === code);
     if(ws) {
-        db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry })
-          .then(() => logAction(code, 'YETKI_DEGISIMI', !ws.allowDataEntry ? 'Sunucu veri girişine açıldı.' : 'Sunucu salt okunur yapıldı.'))
+        // Anında HTML Güncelleme
+        ws.allowDataEntry = !ws.allowDataEntry;
+        localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
+        refreshServerList();
+
+        db.collection('workspaces').doc(code).update({ allowDataEntry: ws.allowDataEntry })
+          .then(() => logAction(code, 'YETKI_DEGISIMI', ws.allowDataEntry ? 'Sunucu veri girişine açıldı.' : 'Sunucu salt okunur yapıldı.'))
           .catch(e => alert("Yetki değiştirilemedi: " + e.message));
     }
 }
 
-// YENİ: Hata Bildiricili Sunucu Silme
 async function deleteWorkspace(code) {
     if(confirm(`DİKKAT: ${code} sunucusu ve içindeki tüm envanter/tanım verileri KALICI OLARAK silinecektir. Onaylıyor musunuz?`)) {
+        
+        // Anında HTML Güncelleme (Optimistic UI)
+        let workspaces = JSON.parse(localStorage.getItem('api_workspaces')) || [];
+        workspaces = workspaces.filter(ws => ws.code !== code);
+        localStorage.setItem('api_workspaces', JSON.stringify(workspaces));
+        refreshServerList();
+        renderWorkspaceDropdown(workspaces);
+        
+        if(currentWorkspace === code) {
+            document.getElementById('workspaceSelect').value = 'LOCAL';
+            changeWorkspace();
+        }
+
+        // Arka Planda Firebase Temizliği
         try {
             const invSnap = await db.collection(`inv_${code}`).get();
             let batch = db.batch();
@@ -508,13 +529,8 @@ async function deleteWorkspace(code) {
 
             await db.collection('workspaces').doc(code).delete();
             logAction(code, 'SUNUCU_SILINDI', 'Sunucu tüm verileriyle tamamen yok edildi.');
-
-            if(currentWorkspace === code) {
-                document.getElementById('workspaceSelect').value = 'LOCAL';
-                changeWorkspace();
-            }
         } catch (e) {
-            alert("Silme işlemi başarısız (Firebase İzni Olmayabilir):\n" + e.message);
+            console.error("Silme işlemi arka planda başarısız oldu:", e.message);
         }
     }
 }
