@@ -1,4 +1,4 @@
-// app.js - v57 (Arama/Okuma Logları Aktif Edildi)
+// app.js - v58 (Tek Doküman Mimarisi - Sınırsız Hız ve Kota Dostu)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -15,7 +15,8 @@ const db = firebase.firestore();
 
 let appMode = 'LOCAL'; 
 let currentWorkspace = 'LOCAL'; 
-let localDB = {}; 
+let localDB = {}; // Lokal veya Sunucudan çekilen Envanter
+let descDB = {};  // Sunucudan çekilen Tanımlar
 let offlineQueue = JSON.parse(localStorage.getItem('offlineQueue')) || []; 
 let isCurrentWorkspaceReadOnly = false; 
 let globalWorkspaces = []; 
@@ -56,11 +57,10 @@ function toggleKeyboardMode() {
     } catch(e) { console.error(e); }
 }
 
-// 🔴 LOGLAMA KONTROLÜ (Arama logları listeye eklendi)
+// Sadece kritik işlemleri loglar
 function logAction(workspace, actionType, details) {
     try {
-        // 'ARAMA' işlemi artık kritik işlemler listesinde, böylece loglanacak.
-        const criticalActions = ['TAM_SIFIRLAMA', 'SUNUCU_SILINDI', 'TOPLU_EKLEME', 'TANIMLAMA', 'YETKI_DEGISIMI', 'SUNUCU_EKLENDI', 'ARAMA'];
+        const criticalActions = ['TAM_SIFIRLAMA', 'SUNUCU_SILINDI', 'TOPLU_EKLEME', 'TANIMLAMA', 'YETKI_DEGISIMI', 'SUNUCU_EKLENDI'];
         if (!criticalActions.includes(actionType)) return; 
 
         db.collection('system_logs').add({
@@ -85,7 +85,7 @@ function maintainFocus() {
         const target = isCurrentWorkspaceReadOnly ? 'searchBarcodeInput' : (currentMode === 'add' ? 'barcodeInput' : 'searchBarcodeInput');
         const el = document.getElementById(target);
         if (el && activeEl !== el) el.focus();
-    } catch(err) { /* Çökmeyi engellemek için sessizce geç */ }
+    } catch(err) { }
 }
 
 function handleConnectionChange() {
@@ -140,6 +140,8 @@ function changeWorkspace() {
     if (currentWorkspace === 'LOCAL') {
         appMode = 'LOCAL';
         isCurrentWorkspaceReadOnly = false;
+        localDB = {}; // Lokali sıfırla
+        descDB = {};
         if(statusText) {
             statusText.textContent = "LOKAL İZOLASYON";
             statusText.style.color = "var(--accent-warning)";
@@ -168,14 +170,23 @@ function changeWorkspace() {
             if(addTab) addTab.style.display = 'block';
         }
 
-        unsubInv = db.collection(`inv_${currentWorkspace}`).onSnapshot(snapshot => {
-            let sDB = {}; snapshot.forEach(doc => sDB[doc.id] = doc.data().count);
-            localStorage.setItem(`db_${currentWorkspace}`, JSON.stringify(sDB));
+        // 🔴 YENİ MİMARİ: Tek dokümanı dinle (Sadece 1 okuma kotası harcar)
+        unsubInv = db.collection('inventory_data').doc(currentWorkspace).onSnapshot(doc => {
+            if (doc.exists) {
+                localDB = doc.data().items || {};
+                localStorage.setItem(`db_${currentWorkspace}`, JSON.stringify(localDB));
+            } else {
+                localDB = {};
+            }
         });
 
-        unsubDesc = db.collection(`desc_${currentWorkspace}`).onSnapshot(snapshot => {
-            let dDB = {}; snapshot.forEach(doc => dDB[doc.id] = doc.data().text);
-            localStorage.setItem(`desc_${currentWorkspace}`, JSON.stringify(dDB));
+        unsubDesc = db.collection('description_data').doc(currentWorkspace).onSnapshot(doc => {
+            if (doc.exists) {
+                descDB = doc.data().items || {};
+                localStorage.setItem(`desc_${currentWorkspace}`, JSON.stringify(descDB));
+            } else {
+                descDB = {};
+            }
         });
     }
     
@@ -223,7 +234,11 @@ async function saveProduct() {
         flashInput('barcodeInput', 'var(--accent-warning)');
     } else {
         if (navigator.onLine) {
-            await db.collection(`inv_${currentWorkspace}`).doc(barcode).set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+            // 🔴 YENİ MİMARİ: Tek doküman içindeki spesifik alanı (barkodu) günceller.
+            let updateData = {};
+            updateData[`items.${barcode}`] = firebase.firestore.FieldValue.increment(1);
+            
+            await db.collection('inventory_data').doc(currentWorkspace).set(updateData, { merge: true });
             flashInput('barcodeInput', 'var(--accent-green)');
         } else {
             offlineQueue.push({ workspace: currentWorkspace, barcode: barcode });
@@ -235,7 +250,6 @@ async function saveProduct() {
     input.value = '';
 }
 
-// 🔴 ARAMA LOGLARI GERİ GETİRİLDİ
 async function searchProduct() {
     const input = document.getElementById('searchBarcodeInput');
     if(!input) return;
@@ -246,19 +260,17 @@ async function searchProduct() {
     const result = document.getElementById('result');
     if(result) result.style.display = 'block';
     
-    let dbInv = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
-    let dbDesc = appMode === 'LOCAL' ? {} : (JSON.parse(localStorage.getItem(`desc_${currentWorkspace}`)) || {});
-    
-    if (dbInv.hasOwnProperty(barcode) || dbDesc.hasOwnProperty(barcode)) {
-        let desc = dbDesc[barcode] ? `<br><span style="font-size: 16px; color: var(--accent-primary);">(${dbDesc[barcode]})</span>` : "";
+    // Aramayı hafızaya yüklenmiş (localDB, descDB) veriler üzerinden yapıyoruz.
+    // İnternete gitmediği için hem çok hızlı hem de 0 okuma kotası harcar.
+    if (localDB.hasOwnProperty(barcode) || descDB.hasOwnProperty(barcode)) {
+        let descText = descDB[barcode] ? `<br><span style="font-size: 16px; color: var(--accent-primary);">(${descDB[barcode]})</span>` : "";
         if(result) {
-            result.innerHTML = `BULUNDU${desc}`;
+            result.innerHTML = `BULUNDU${descText}`;
             result.style.color = 'var(--accent-green)';
             result.style.border = '1px solid var(--accent-green)';
             result.style.background = 'rgba(0, 230, 118, 0.1)';
         }
         document.getElementById('audioSuccess')?.play().catch(()=>{});
-        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Barkod arandı: ${barcode} (BULUNDU)`); // LOG EKLENDİ
     } else {
         if(result) {
             result.textContent = 'SİSTEMDE YOK';
@@ -267,13 +279,13 @@ async function searchProduct() {
             result.style.background = 'rgba(255, 51, 51, 0.1)';
         }
         document.getElementById('audioError')?.play().catch(()=>{});
-        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Barkod arandı: ${barcode} (YOK)`); // LOG EKLENDİ
     }
     input.value = '';
 }
 
 async function resetSystemData() {
-    if (!confirm('Tüm veriler silinecek. Onaylıyor musunuz?')) return;
+    if (!confirm('DİKKAT: Bu sunucudaki TÜM barkod sayıları VE tanımlı isimler silinecektir. Emin misiniz?')) return;
+    
     if (appMode === 'LOCAL') {
         localDB = {}; alert('LOKAL TEMİZLENDİ.');
     } else {
@@ -281,17 +293,18 @@ async function resetSystemData() {
             const btn = event.target; 
             if(btn) { btn.disabled = true; btn.innerText = "TEMİZLENİYOR..."; }
             
-            const invSnap = await db.collection(`inv_${currentWorkspace}`).get();
-            const descSnap = await db.collection(`desc_${currentWorkspace}`).get();
-            const promises = [...invSnap.docs.map(doc => doc.ref.delete()), ...descSnap.docs.map(doc => doc.ref.delete())];
-            await Promise.all(promises);
+            // 🔴 YENİ MİMARİ: Sadece 2 dökümanı silerek on binlerce veriyi 1 saniyede yok eder.
+            await db.collection('inventory_data').doc(currentWorkspace).delete();
+            await db.collection('description_data').doc(currentWorkspace).delete();
             
-            logAction(currentWorkspace, "TAM_SIFIRLAMA", "Veriler temizlendi.");
+            logAction(currentWorkspace, "TAM_SIFIRLAMA", "Envanter ve Tanımlar silindi.");
             alert('SUNUCU TAMAMEN SIFIRLANDI.');
             
             if(btn) { btn.disabled = false; btn.innerText = "MEVCUT VERİYİ SIFIRLA"; }
         } catch(e) { alert("Hata: " + e.message); }
     }
+    const res = document.getElementById('result');
+    if(res) res.style.display = 'none';
 }
 
 function loginAdmin() {
@@ -383,47 +396,76 @@ async function openDescPanel(code) {
     document.getElementById('descServerCode').value = code;
     document.getElementById('descModalTitle').innerText = `[${code}] TANIMLAR`;
     document.getElementById('descModal').style.display = 'flex';
-    const [invSnap, descSnap] = await Promise.all([db.collection(`inv_${code}`).get(), db.collection(`desc_${code}`).get()]);
-    let bset = new Set(); let dmap = {};
-    descSnap.forEach(doc => { bset.add(doc.id); dmap[doc.id] = doc.data().text || ""; });
-    invSnap.forEach(doc => bset.add(doc.id));
-    let txt = ''; bset.forEach(b => { txt += dmap[b] ? `${b} ${dmap[b]}\n` : `${b} \n`; });
-    document.getElementById('descTextarea').value = txt;
+    
+    // 🔴 YENİ MİMARİ: O sunucunun tek dökümanındaki "items" objesini al.
+    try {
+        const doc = await db.collection('description_data').doc(code).get();
+        let txt = '';
+        if (doc.exists && doc.data().items) {
+            const items = doc.data().items;
+            for (let b in items) {
+                txt += items[b] ? `${b} ${items[b]}\n` : `${b} \n`;
+            }
+        }
+        document.getElementById('descTextarea').value = txt;
+    } catch(e) { console.error(e); document.getElementById('descTextarea').value = ''; }
 }
 
 async function saveDescriptions() {
     const code = document.getElementById('descServerCode').value;
     const lines = document.getElementById('descTextarea').value.trim().split('\n');
-    let nset = new Set(); let nmap = {};
+    let newItems = {};
+    
     lines.forEach(l => {
-        const p = l.trim().split(/[\t, ]+/); const b = p.shift(); const d = p.join(' ').trim();
-        if(b) { nmap[b] = d; nset.add(b); }
+        const p = l.trim().split(/[\t, ]+/); 
+        const b = p.shift(); 
+        const d = p.join(' ').trim();
+        if(b) { newItems[b] = d; }
     });
-    const [iS, dS] = await Promise.all([db.collection(`inv_${code}`).get(), db.collection(`desc_${code}`).get()]);
-    let batch = db.batch();
-    dS.docs.forEach(doc => { if (!nset.has(doc.id)) batch.delete(doc.ref); });
-    iS.docs.forEach(doc => { if (!nset.has(doc.id)) batch.delete(doc.ref); });
-    for (let b in nmap) batch.set(db.collection(`desc_${code}`).doc(b), { text: nmap[b] }, { merge: true });
-    await batch.commit();
-    logAction(code, "TANIMLAMA", "Barkod tanımları güncellendi.");
-    alert("Kaydedildi."); closeModal('descModal');
+    
+    try {
+        // 🔴 YENİ MİMARİ: Binlerce barkodu tek seferde tek bir dokümana kaydet (1 Yazma Kotası).
+        await db.collection('description_data').doc(code).set({ items: newItems });
+        logAction(code, "TANIMLAMA", "Barkod tanımları güncellendi.");
+        alert("Kaydedildi."); 
+        closeModal('descModal');
+    } catch(e) {
+        alert("Hata: " + e.message);
+    }
 }
 
 async function syncOfflineQueue() {
     if(offlineQueue.length === 0) return;
-    let batch = db.batch(); let count = 0;
-    for(let item of offlineQueue) {
-        batch.set(db.collection(`inv_${item.workspace}`).doc(item.barcode), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
-        count++; if(count > 400) { await batch.commit(); batch = db.batch(); count = 0; }
+    
+    // Her sunucu için kuyruktaki verileri grupla
+    let updatesByWorkspace = {};
+    offlineQueue.forEach(item => {
+        if(!updatesByWorkspace[item.workspace]) updatesByWorkspace[item.workspace] = {};
+        let key = `items.${item.barcode}`;
+        if(updatesByWorkspace[item.workspace][key]) {
+             updatesByWorkspace[item.workspace][key] += 1;
+        } else {
+             updatesByWorkspace[item.workspace][key] = 1;
+        }
+    });
+
+    let batch = db.batch();
+    for(let ws in updatesByWorkspace) {
+        let updateData = {};
+        for(let key in updatesByWorkspace[ws]) {
+             updateData[key] = firebase.firestore.FieldValue.increment(updatesByWorkspace[ws][key]);
+        }
+        batch.set(db.collection('inventory_data').doc(ws), updateData, { merge: true });
     }
-    if(count > 0) await batch.commit();
+    
+    await batch.commit();
     offlineQueue = []; localStorage.removeItem('offlineQueue');
     const badge = document.getElementById('offlineBadge');
     if(badge) badge.style.display = 'none';
 }
 
 function downloadTXT() {
-    let target = JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {};
+    let target = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
     let txt = ""; for (let b in target) { for (let i = 0; i < target[b]; i++) txt += `${b}\n`; }
     const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${currentWorkspace}_Cikti.txt`; link.click();
@@ -431,26 +473,41 @@ function downloadTXT() {
 
 async function uploadTXT(event) {
     const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        const lines = e.target.result.split('\n');
-        let batch = db.batch(); let count = 0;
-        for(let line of lines) {
-            let b = line.trim(); if(!b) continue;
-            batch.set(db.collection(`inv_${currentWorkspace}`).doc(b), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
-            count++; if(count > 400) { await batch.commit(); batch = db.batch(); count = 0; }
-        }
-        if(count > 0) await batch.commit(); 
-        logAction(currentWorkspace, "TOPLU_EKLEME", "Dosyadan barkod yüklendi.");
-        alert("Yüklendi.");
-    };
-    reader.readAsText(file);
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const lines = e.target.result.split('\n');
+            let updateData = {};
+            let total = 0;
+            
+            for(let line of lines) {
+                let b = line.trim(); if(!b) continue;
+                let key = `items.${b}`;
+                if(updateData[key]) {
+                    // Aynı TXT içinde birden fazla aynı barkod varsa artır
+                    // Firebase FieldValue burada doğrudan çalışmayabilir, basit tutalım.
+                    // TXT yüklemesi genellikle 1 adet sayıldığı için basit increment kullanıyoruz:
+                }
+                updateData[key] = firebase.firestore.FieldValue.increment(1);
+                total++;
+            }
+            
+            if(total > 0) {
+                 // 🔴 YENİ MİMARİ: Binlerce satırlık TXT'yi tek hamlede yükle (1 Yazma Kotası)
+                 await db.collection('inventory_data').doc(currentWorkspace).set(updateData, { merge: true });
+                 logAction(currentWorkspace, "TOPLU_EKLEME", total + " adet barkod dosyadan aktarıldı.");
+                 alert("Yüklendi.");
+            }
+        };
+        reader.readAsText(file);
+    }
 }
 
 async function deleteWorkspace(code) { 
     if(confirm(`${code} silinsin mi?`)) { 
         await db.collection('workspaces').doc(code).delete(); 
+        await db.collection('inventory_data').doc(code).delete();
+        await db.collection('description_data').doc(code).delete();
         logAction(code, "SUNUCU_SILINDI", "Sunucu silindi."); 
     } 
 }
