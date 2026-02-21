@@ -1,4 +1,4 @@
-// app.js - v62 (Parçalı Doküman Mimarisi - 1 MB Sınırı Aşılmıştır)
+// app.js - v63 (Güvenli Admin Girişi - Şifre Veritabanına Taşındı, Parçalı Doküman Mimarisi)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -172,7 +172,6 @@ async function changeWorkspace() {
             if(addTab) addTab.style.display = 'block';
         }
 
-        // Envanter (Okutulanlar) Dinleyicisi
         unsubInv = db.collection('inventory_data').doc(currentWorkspace).onSnapshot(doc => {
             if (doc.exists) {
                 localDB = doc.data().items || {};
@@ -182,10 +181,8 @@ async function changeWorkspace() {
             localStorage.setItem(`db_${currentWorkspace}`, JSON.stringify(localDB));
         });
 
-        // 🔴 YENİ: Parçalı (Sharded) Tanımları Çekme
-        descDB = {}; // Önce sıfırla
+        descDB = {}; 
         try {
-            // "desc_4254" ile başlayan tüm dökümanları getir
             const snapshot = await db.collection('description_data')
                                      .where(firebase.firestore.FieldPath.documentId(), '>=', `${currentWorkspace}_shard_`)
                                      .where(firebase.firestore.FieldPath.documentId(), '<=', `${currentWorkspace}_shard_\uf8ff`)
@@ -193,7 +190,7 @@ async function changeWorkspace() {
             
             snapshot.forEach(doc => {
                 if (doc.data().items) {
-                    Object.assign(descDB, doc.data().items); // Tüm parçaları tek bir objede birleştir
+                    Object.assign(descDB, doc.data().items); 
                 }
             });
             localStorage.setItem(`desc_${currentWorkspace}`, JSON.stringify(descDB));
@@ -324,10 +321,8 @@ async function resetSystemData() {
             const btn = event.target; 
             if(btn) { btn.disabled = true; btn.innerText = "TEMİZLENİYOR..."; }
             
-            // 1. Envanteri Sil
             await db.collection('inventory_data').doc(currentWorkspace).delete();
             
-            // 2. 🔴 YENİ: Parçalı Tanımları Sil
             const snapshot = await db.collection('description_data')
                                      .where(firebase.firestore.FieldPath.documentId(), '>=', `${currentWorkspace}_shard_`)
                                      .where(firebase.firestore.FieldPath.documentId(), '<=', `${currentWorkspace}_shard_\uf8ff`)
@@ -352,19 +347,46 @@ async function resetSystemData() {
     if(res) res.style.display = 'none';
 }
 
-function loginAdmin() {
+// 🔴 GÜVENLİK GÜNCELLEMESİ: Admin girişi artık Firebase'den kontrol ediliyor.
+async function loginAdmin() {
     const user = document.getElementById('adminUser').value;
     const pass = document.getElementById('adminPass').value;
-    if(user === '87118' && pass === '3094') { 
-        currentUser.role = 'ROOT';
-        document.getElementById('adminLoginModal').style.display = 'none';
-        
-        const rootControls = document.getElementById('rootControls');
-        if(rootControls) rootControls.classList.remove('hidden');
-        
-        document.getElementById('adminPanelModal').style.display = 'flex';
-        refreshServerList();
-    } else alert("Hatalı!");
+    
+    if (!user || !pass) {
+        alert("Lütfen kullanıcı adı ve şifre girin.");
+        return;
+    }
+
+    try {
+        // Firebase'den admin_users koleksiyonunda bu kullanıcı adını (document ID) ara
+        const adminDoc = await db.collection('admin_users').doc(user).get();
+
+        if (adminDoc.exists) {
+            const data = adminDoc.data();
+            // Veritabanındaki şifre ile girilen şifreyi karşılaştır
+            if (data.password === pass) {
+                currentUser.role = 'ROOT';
+                document.getElementById('adminLoginModal').style.display = 'none';
+                
+                const rootControls = document.getElementById('rootControls');
+                if(rootControls) rootControls.classList.remove('hidden');
+                
+                document.getElementById('adminPanelModal').style.display = 'flex';
+                refreshServerList();
+                
+                // Güvenlik için inputları temizle
+                document.getElementById('adminUser').value = '';
+                document.getElementById('adminPass').value = '';
+            } else {
+                alert("Hatalı Şifre!");
+            }
+        } else {
+            alert("Kullanıcı Bulunamadı!");
+        }
+    } catch (error) {
+        console.error("Giriş hatası:", error);
+        alert("Bağlantı hatası oluştu, lütfen tekrar deneyin.");
+    }
 }
 
 function logoutAdmin() { 
@@ -448,8 +470,6 @@ async function openDescPanel(code) {
         let bset = new Set();
         let dmap = {};
 
-        // descDB zaten changeWorkspace fonksiyonunda tüm parçaları (shard) toplayarak dolduruldu
-        // O yüzden veritabanından tekrar çekmek yerine doğrudan descDB'yi kullanıyoruz.
         for (let b in descDB) {
             bset.add(b);
             dmap[b] = descDB[b] || "";
@@ -475,7 +495,6 @@ async function openDescPanel(code) {
     }
 }
 
-// 🔴 YENİ: Tanımları (Panelden) Parçalı Kaydetme
 async function saveDescriptions() {
     const code = document.getElementById('descServerCode').value;
     const lines = document.getElementById('descTextarea').value.trim().split('\n');
@@ -486,7 +505,6 @@ async function saveDescriptions() {
         let currentItemCount = 0;
         let currentItems = {};
 
-        // Önce eski parçaları silelim
         const snapshot = await db.collection('description_data')
                                  .where(firebase.firestore.FieldPath.documentId(), '>=', `${code}_shard_`)
                                  .where(firebase.firestore.FieldPath.documentId(), '<=', `${code}_shard_\uf8ff`)
@@ -496,8 +514,7 @@ async function saveDescriptions() {
         });
         await batch.commit();
 
-        // Şimdi yeni listeyi parçalayarak yazalım
-        batch = db.batch(); // Yeni bir batch başlat
+        batch = db.batch(); 
 
         for (let i = 0; i < lines.length; i++) {
             const l = lines[i];
@@ -510,7 +527,6 @@ async function saveDescriptions() {
                 currentItemCount++;
             }
 
-            // Eğer parça limiti (5000) dolduysa veya listenin sonuna geldiysek
             if (currentItemCount >= SHARD_LIMIT || i === lines.length - 1) {
                 if(currentItemCount > 0) {
                     const shardDocRef = db.collection('description_data').doc(`${code}_shard_${currentShardIndex}`);
@@ -527,7 +543,7 @@ async function saveDescriptions() {
         logAction(code, "TANIMLAMA", "Barkod tanımları güncellendi.");
         alert("Kaydedildi."); 
         closeModal('descModal');
-        changeWorkspace(); // Hafızayı (descDB) yenilemek için
+        changeWorkspace(); 
     } catch(e) {
         alert("Hata: " + e.message);
     }
@@ -564,7 +580,7 @@ async function syncOfflineQueue() {
 
 function downloadTXT() {
     let targetInv = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
-    let targetDesc = appMode === 'LOCAL' ? {} : descDB; // Parçalanıp birleştirilmiş olan descDB'yi kullan
+    let targetDesc = appMode === 'LOCAL' ? {} : descDB; 
     
     let txt = "--- OKUTULAN/SAYILAN ÜRÜNLER ---\n"; 
     for (let b in targetInv) { 
@@ -580,7 +596,6 @@ function downloadTXT() {
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${currentWorkspace}_Cikti.txt`; link.click();
 }
 
-// 🔴 YENİ: TXT Yüklemeyi Parçalı Yapma
 async function uploadTXT(event) {
     const file = event.target.files[0];
     if (file) {
@@ -590,7 +605,6 @@ async function uploadTXT(event) {
             let total = 0;
             
             try {
-                // Önce eski parçaları silelim (Yükleme yeni bir listedir)
                 const snapshot = await db.collection('description_data')
                                          .where(firebase.firestore.FieldPath.documentId(), '>=', `${currentWorkspace}_shard_`)
                                          .where(firebase.firestore.FieldPath.documentId(), '<=', `${currentWorkspace}_shard_\uf8ff`)
@@ -601,7 +615,6 @@ async function uploadTXT(event) {
                 });
                 await batch.commit();
 
-                // Şimdi yeni dosyayı parçalar halinde yükle
                 batch = db.batch();
                 let currentShardIndex = 0;
                 let currentItemCount = 0;
@@ -622,7 +635,7 @@ async function uploadTXT(event) {
                     if (currentItemCount >= SHARD_LIMIT || i === lines.length - 1) {
                         if(currentItemCount > 0) {
                             const shardDocRef = db.collection('description_data').doc(`${currentWorkspace}_shard_${currentShardIndex}`);
-                            batch.set(shardDocRef, { items: currentItems });
+                            batch.set(shardDocRef, { items: currentItems }, { merge: true });
                             
                             currentShardIndex++;
                             currentItemCount = 0;
@@ -635,7 +648,7 @@ async function uploadTXT(event) {
                      await batch.commit();
                      logAction(currentWorkspace, "TOPLU_EKLEME", total + " adet referans barkod TXT'den aktarıldı.");
                      alert(total + " adet referans barkod başarıyla İADE/TANIMLAR listesine eklendi.");
-                     changeWorkspace(); // Hafızayı yenile
+                     changeWorkspace(); 
                 } else {
                     alert("Dosyada geçerli barkod bulunamadı.");
                 }
@@ -653,7 +666,6 @@ async function deleteWorkspace(code) {
         await db.collection('workspaces').doc(code).delete(); 
         await db.collection('inventory_data').doc(code).delete();
         
-        // Parçalı Tanımları da Sil
         const snapshot = await db.collection('description_data')
                                  .where(firebase.firestore.FieldPath.documentId(), '>=', `${code}_shard_`)
                                  .where(firebase.firestore.FieldPath.documentId(), '<=', `${code}_shard_\uf8ff`)
