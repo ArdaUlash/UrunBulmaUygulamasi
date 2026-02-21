@@ -1,4 +1,4 @@
-// app.js - v60 (Tek Doküman Mimarisi - Tam Fonksiyonel ve Kota Dostu)
+// app.js - v61 (Tek Doküman Mimarisi - Tam Fonksiyonel, Kota Dostu ve Birleştirilmiş Tanımlar)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -243,15 +243,12 @@ async function saveProduct() {
             try {
                 const docRef = db.collection('inventory_data').doc(currentWorkspace);
                 
-                // Firestore'da iç içe harita güncellemelerinde 'dot notation' kullanılır.
-                // Eğer doküman yoksa hata fırlatacağı için önce update deniyoruz.
                 let updateData = {};
                 updateData[`items.${barcode}`] = firebase.firestore.FieldValue.increment(1);
                 
                 try {
                     await docRef.update(updateData);
                 } catch (updateError) {
-                    // Update hata verirse (doküman hiç yok demektir), set(merge) ile ilk defa oluştur.
                     await docRef.set({
                         items: {
                             [barcode]: 1
@@ -424,23 +421,47 @@ async function createWorkspace() {
 }
 window.addNewWorkspace = createWorkspace;
 
+// 🔴 YENİ: Hem Tanımları hem de Okutulanları birleştirerek listeler
 async function openDescPanel(code) {
     document.getElementById('descServerCode').value = code;
     document.getElementById('descModalTitle').innerText = `[${code}] TANIMLAR`;
     document.getElementById('descModal').style.display = 'flex';
     
-    // Tanımları Göster
     try {
-        const doc = await db.collection('description_data').doc(code).get();
-        let txt = '';
-        if (doc.exists && doc.data().items) {
-            const items = doc.data().items;
-            for (let b in items) {
-                txt += items[b] ? `${b} ${items[b]}\n` : `${b} \n`;
+        const [descDoc, invDoc] = await Promise.all([
+            db.collection('description_data').doc(code).get(),
+            db.collection('inventory_data').doc(code).get()
+        ]);
+
+        let bset = new Set();
+        let dmap = {};
+
+        if (descDoc.exists && descDoc.data().items) {
+            const descItems = descDoc.data().items;
+            for (let b in descItems) {
+                bset.add(b);
+                dmap[b] = descItems[b] || "";
             }
         }
+
+        if (invDoc.exists && invDoc.data().items) {
+            const invItems = invDoc.data().items;
+            for (let b in invItems) {
+                bset.add(b);
+            }
+        }
+
+        let txt = '';
+        bset.forEach(b => {
+            txt += dmap[b] ? `${b} ${dmap[b]}\n` : `${b} \n`;
+        });
+
         document.getElementById('descTextarea').value = txt;
-    } catch(e) { console.error(e); document.getElementById('descTextarea').value = ''; }
+
+    } catch(e) { 
+        console.error(e); 
+        document.getElementById('descTextarea').value = ''; 
+    }
 }
 
 async function saveDescriptions() {
