@@ -10,88 +10,106 @@
 
     <style>
         :root {
-            --bg-color: #121212;
-            --panel-bg: #1e1e1e;
-            --text-main: #ffffff;
-            --text-muted: #a0a0a0;
-            --accent-primary: #6200ea;
-            --accent-green: #00e676;
-            --accent-warning: #ffb300;
-            --accent-red: #ff3d00;
-            --border-color: #333333;
+            --bg-color: #1a1a1a;
+            --panel-bg: #2d2d2d;
+            --text-main: #e0e0e0;
+            --text-muted: #888888;
+            --accent-primary: #4a90e2;
+            --accent-green: #2ecc71;
+            --accent-warning: #f39c12;
+            --accent-red: #e74c3c;
+            --border-color: #444444;
         }
 
         body {
-            margin: 0;
-            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
+            justify-content: center;
         }
 
         .container {
             width: 100%;
-            max-width: 500px;
-            padding: 15px;
-            box-sizing: border-box;
+            max-width: 600px;
         }
 
+        /* Başlık ve Durum */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 20px;
             padding-bottom: 15px;
             border-bottom: 1px solid var(--border-color);
-            margin-bottom: 15px;
         }
 
         .status-badge {
+            background-color: var(--panel-bg);
+            padding: 5px 10px;
+            border-radius: 4px;
             font-size: 12px;
             font-weight: bold;
-            padding: 5px 10px;
-            border-radius: 12px;
-            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
         }
 
         #offlineBadge {
             background-color: var(--accent-red);
             color: white;
+            border-color: var(--accent-red);
             display: none;
             margin-left: 10px;
         }
 
+        .admin-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .admin-btn:hover {
+            color: var(--text-main);
+            border-color: var(--text-main);
+        }
+
+        /* Sunucu Seçimi */
         .server-selector {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            margin-bottom: 20px;
-            padding: 10px;
-            border-radius: 8px;
             background-color: var(--panel-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
             border: 1px solid var(--border-color);
         }
 
-        select, input, textarea, button {
+        .server-selector label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        select {
             width: 100%;
             padding: 12px;
-            box-sizing: border-box;
-            border-radius: 6px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
             border: 1px solid var(--border-color);
-            background-color: #2a2a2a;
-            color: white;
+            border-radius: 4px;
             font-size: 16px;
             outline: none;
-            margin-bottom: 10px;
+            appearance: none; /* Standart ok işaretini gizle */
         }
 
-        select:focus, input:focus, textarea:focus {
-            border-color: var(--accent-primary);
-        }
-
+        /* Sekmeler (Veri Ekle / Ürün Bul) */
         .tab-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -103,9 +121,12 @@
             background-color: var(--panel-bg);
             border: 1px solid var(--border-color);
             color: var(--text-muted);
+            padding: 15px;
+            border-radius: 8px;
             cursor: pointer;
+            font-size: 16px;
             font-weight: bold;
-            transition: 0.3s;
+            transition: all 0.2s;
         }
 
         .tab-btn.active {
@@ -114,74 +135,254 @@
             border-color: var(--accent-primary);
         }
 
+        /* Giriş Alanları */
         .input-section {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 15px;
         }
 
         .hidden { display: none !important; }
 
-        .result-box {
+        input[type="text"], input[type="password"] {
+            width: 100%;
             padding: 15px;
+            background-color: var(--panel-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 18px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus {
+            border-color: var(--accent-primary);
+        }
+
+        /* Sonuç Ekranı */
+        .result-box {
+            padding: 20px;
             text-align: center;
-            font-size: 20px;
+            font-size: 24px;
             font-weight: bold;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-top: 10px;
             display: none;
         }
 
+        /* Alt Veri Paneli */
         .data-panel {
             background-color: var(--panel-bg);
-            padding: 15px;
+            padding: 20px;
             border-radius: 8px;
             border: 1px solid var(--border-color);
-            margin-top: 20px;
+            margin-top: 30px;
         }
 
-        .btn-danger { background-color: rgba(255, 61, 0, 0.2); color: var(--accent-red); border-color: var(--accent-red); }
-        .btn-danger:hover { background-color: var(--accent-red); color: white; }
-        
-        .btn-action { background-color: rgba(0, 230, 118, 0.2); color: var(--accent-green); border-color: var(--accent-green); }
+        .data-panel h4 {
+            margin-top: 0;
+            color: var(--text-muted);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
 
-        /* Modals */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 12px;
+            background-color: var(--bg-color);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .btn-action:hover {
+            background-color: rgba(46, 204, 113, 0.1);
+        }
+
+        .btn-danger {
+            width: 100%;
+            padding: 15px;
+            background-color: rgba(231, 76, 60, 0.1);
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-danger:hover {
+            background-color: var(--accent-red);
+            color: white;
+        }
+
+        /* Modallar */
         .modal {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.85);
             justify-content: center;
             align-items: center;
             z-index: 1000;
         }
 
         .modal-content {
-            background-color: var(--bg-color);
-            padding: 20px;
-            border-radius: 10px;
+            background-color: var(--panel-bg);
+            padding: 25px;
+            border-radius: 12px;
             width: 90%;
-            max-width: 400px;
+            max-width: 500px;
             border: 1px solid var(--border-color);
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
+            padding-bottom: 15px;
         }
 
-        .close-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0; width: auto; }
+        .modal-header h3 { margin: 0; color: var(--text-main); }
 
-        /* Admin Ekleme Alanı */
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-btn:hover { color: var(--text-main); }
+
+        /* Admin Paneli İçerikleri */
+        .admin-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .admin-controls button {
+            flex: 1;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .server-list-item {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        .server-list-item-header {
+            font-family: monospace;
+            font-size: 16px;
+            color: var(--text-main);
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .server-list-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .server-list-actions button {
+            flex: 1;
+            padding: 8px;
+            font-size: 11px;
+            border-radius: 4px;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .server-list-actions button.del-btn {
+            background-color: rgba(231, 76, 60, 0.1);
+            color: var(--accent-red);
+            border-color: var(--accent-red);
+            flex: 0.5;
+        }
+
+        /* Sunucu Ekleme Alanı */
         .add-server-box {
-            display: flex; gap: 5px; margin-bottom: 15px;
+            background-color: var(--bg-color);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
         }
-        .add-server-box input { margin-bottom: 0; }
-        .add-server-box button { width: auto; padding: 0 15px; white-space: nowrap; background: var(--accent-green); color: #000; font-weight: bold;}
+
+        .add-server-box h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: var(--accent-green);
+            font-size: 14px;
+        }
+
+        .add-server-inputs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .add-server-inputs input {
+            padding: 10px;
+            font-size: 14px;
+            margin-bottom: 0;
+        }
+
+        .add-server-inputs button {
+            background-color: var(--accent-green);
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 15px;
+        }
+
+        /* Tanımlar Textarea */
+        textarea {
+            width: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 200px;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+
     </style>
 </head>
 <body>
@@ -192,13 +393,13 @@
             <span class="status-badge" id="connectionStatus">YÜKLENİYOR...</span>
             <span class="status-badge" id="offlineBadge">OFFLINE</span>
         </div>
-        <button style="width:auto; padding:5px 10px; margin:0; font-size:12px; background:none;" onclick="openAdminLogin()">⚙️ YÖNETİM</button>
+        <button class="admin-btn" onclick="openAdminLogin()">⚙️ YÖNETİM</button>
     </div>
 
-    <button id="rootControls" class="hidden" style="background-color:var(--accent-primary); font-weight:bold;" onclick="document.getElementById('adminPanelModal').style.display='flex'">👑 YÖNETİCİ PANELİNİ AÇ</button>
+    <button id="rootControls" class="btn-action hidden" style="width: 100%; margin-bottom: 20px; background-color: var(--accent-primary); color: white; border-color: var(--accent-primary);" onclick="document.getElementById('adminPanelModal').style.display='flex'">👑 YÖNETİCİ PANELİNİ AÇ</button>
 
     <div class="server-selector" id="serverSelectorDiv">
-        <label style="font-size: 12px; color: var(--text-muted);">ÇALIŞMA ALANI (SUNUCU)</label>
+        <label>ÇALIŞMA ALANI (SUNUCU)</label>
         <select id="workspaceSelect" onchange="changeWorkspace()">
             <option value="LOCAL">GENEL KULLANICI</option>
         </select>
@@ -219,14 +420,14 @@
     </div>
 
     <div class="data-panel" id="dataPanel">
-        <h4 style="margin-top:0; color:var(--text-muted); font-size:14px;">VERİ YÖNETİMİ</h4>
-        <div style="display:flex; gap:10px;">
+        <h4>VERİ YÖNETİMİ</h4>
+        <div class="btn-group">
             <button class="btn-action" onclick="downloadTXT()">📥 İNDİR</button>
-            <label class="btn-action" style="flex:1; text-align:center; padding:12px; border-radius:6px; cursor:pointer; display:block; box-sizing:border-box;">
+            <label class="btn-action" style="cursor:pointer; display:block; box-sizing:border-box;">
                 📤 YÜKLE <input type="file" style="display:none;" accept=".txt" onchange="uploadTXT(event)">
             </label>
         </div>
-        <button class="btn-danger" style="margin-top:10px;" onclick="resetSystemData()">🗑️ MEVCUT VERİYİ SIFIRLA</button>
+        <button class="btn-danger" onclick="resetSystemData()">🗑️ MEVCUT VERİYİ SIFIRLA</button>
     </div>
 </div>
 
@@ -236,35 +437,35 @@
             <h3>Sistem Yöneticisi</h3>
             <button class="close-btn" onclick="closeModal('adminLoginModal')">✖</button>
         </div>
-        <input type="password" id="adminUser" placeholder="Kullanıcı ID (87118)" inputmode="numeric">
-        <input type="password" id="adminPass" placeholder="Şifre" inputmode="numeric">
-        <button style="background:var(--accent-primary); font-weight:bold;" onclick="loginAdmin()">GİRİŞ YAP</button>
+        <input type="password" id="adminUser" placeholder="Kullanıcı ID (87118)" inputmode="numeric" style="margin-bottom: 15px;">
+        <input type="password" id="adminPass" placeholder="Şifre" inputmode="numeric" style="margin-bottom: 20px;">
+        <button class="btn-action" style="width: 100%; background-color: var(--accent-primary); color: white; border-color: var(--accent-primary);" onclick="loginAdmin()">GİRİŞ YAP</button>
     </div>
 </div>
 
 <div id="adminPanelModal" class="modal">
-    <div class="modal-content" style="max-width:450px;">
+    <div class="modal-content">
         <div class="modal-header">
-            <h3 style="margin:0;">👑 YÖNETİCİ KONTROL PANELİ</h3>
+            <h3>👑 YÖNETİCİ KONTROL PANELİ</h3>
             <button class="close-btn" onclick="closeModal('adminPanelModal')">✖</button>
         </div>
         
-        <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-            <button style="width:48%; margin:0;" class="btn-action" onclick="viewLogs('WRITE')">📜 SİSTEM KAYITLARI</button>
-            <button style="width:48%; margin:0;" class="btn-danger" onclick="logoutAdmin()">🚪 GÜVENLİ ÇIKIŞ</button>
+        <div class="admin-controls">
+            <button class="btn-action" style="color: var(--text-main); border-color: var(--border-color);" onclick="viewLogs('WRITE')">📜 SİSTEM KAYITLARI</button>
+            <button class="btn-danger" style="padding: 10px;" onclick="logoutAdmin()">🚪 GÜVENLİ ÇIKIŞ</button>
         </div>
 
-        <div style="background:#111; padding:10px; border-radius:6px; margin-bottom:15px; border:1px solid #333;">
-            <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--accent-green);">YENİ SUNUCU OLUŞTUR</h4>
-            <div class="add-server-box">
-                <input type="text" id="newServerCode" placeholder="Kod (Örn: 4254)" style="width:30%;">
-                <input type="text" id="newServerName" placeholder="Ad (Örn: PARK BORNOVA)" style="width:50%;">
-                <button onclick="addNewWorkspace()" style="width:20%;">+</button>
+        <div class="add-server-box">
+            <h4>YENİ SUNUCU OLUŞTUR</h4>
+            <div class="add-server-inputs">
+                <input type="text" id="newServerCode" placeholder="Kod (Örn: 4254)" style="width: 35%;">
+                <input type="text" id="newServerName" placeholder="Ad (Örn: PARK BORNOVA)" style="width: 50%;">
+                <button onclick="addNewWorkspace()" style="width: 15%;">+</button>
             </div>
         </div>
 
-        <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--text-muted);">MEVCUT SUNUCULAR</h4>
-        <div id="serverListArea" style="max-height:250px; overflow-y:auto; padding-right:5px;">
+        <h4 style="margin-top: 0; color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">MEVCUT SUNUCULAR</h4>
+        <div id="serverListArea">
             </div>
     </div>
 </div>
@@ -272,23 +473,23 @@
 <div id="descModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 id="descModalTitle" style="margin:0;">TANIMLAR</h3>
+            <h3 id="descModalTitle">TANIMLAR</h3>
             <button class="close-btn" onclick="closeModal('descModal')">✖</button>
         </div>
-        <p style="font-size:12px; color:var(--text-muted); margin-top:0;">Her satıra BARKOD ve AÇIKLAMA arasına boşluk koyarak yazın.</p>
+        <p style="font-size:12px; color:var(--text-muted); margin-top:0; margin-bottom: 15px;">Her satıra BARKOD ve AÇIKLAMA arasına boşluk koyarak yazın.</p>
         <input type="hidden" id="descServerCode">
-        <textarea id="descTextarea" rows="12" style="font-family:monospace; font-size:12px; white-space:pre;"></textarea>
-        <button style="background:var(--accent-green); color:#000; font-weight:bold;" onclick="saveDescriptions()">💾 KAYDET VE SENKRONİZE ET</button>
+        <textarea id="descTextarea"></textarea>
+        <button class="btn-action" style="width: 100%;" onclick="saveDescriptions()">💾 KAYDET VE SENKRONİZE ET</button>
     </div>
 </div>
 
 <div id="logsModal" class="modal">
-    <div class="modal-content" style="max-width:500px;">
+    <div class="modal-content">
         <div class="modal-header">
-            <h3 style="margin:0;">📜 SİSTEM KAYITLARI (LOGS)</h3>
+            <h3>📜 SİSTEM KAYITLARI</h3>
             <button class="close-btn" onclick="closeModal('logsModal')">✖</button>
         </div>
-        <div id="logsArea" style="font-family:monospace; background:#000; padding:10px; border-radius:6px;">
+        <div id="logsArea" style="background-color: var(--bg-color); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);">
             </div>
     </div>
 </div>
@@ -296,7 +497,7 @@
 <audio id="audioSuccess" src=""></audio>
 <audio id="audioError" src=""></audio>
 
-<script src="app.js?v=54"></script>
+<script src="app.js?v=55"></script>
 
 </body>
 </html>
