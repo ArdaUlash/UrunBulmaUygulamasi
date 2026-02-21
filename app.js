@@ -1,4 +1,4 @@
-// app.js - v58 (Tek Doküman Mimarisi - Sınırsız Hız ve Kota Dostu)
+// app.js - v59 (TXT Yükleme Artık "Tanımlar"a Kaydediyor - Sadece Bulma Modu)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -15,8 +15,8 @@ const db = firebase.firestore();
 
 let appMode = 'LOCAL'; 
 let currentWorkspace = 'LOCAL'; 
-let localDB = {}; // Lokal veya Sunucudan çekilen Envanter
-let descDB = {};  // Sunucudan çekilen Tanımlar
+let localDB = {}; // Lokal veya Sunucudan çekilen Envanter (Senin durumunda boş kalacak)
+let descDB = {};  // Sunucudan çekilen Tanımlar (İade/Referans Listen)
 let offlineQueue = JSON.parse(localStorage.getItem('offlineQueue')) || []; 
 let isCurrentWorkspaceReadOnly = false; 
 let globalWorkspaces = []; 
@@ -57,10 +57,9 @@ function toggleKeyboardMode() {
     } catch(e) { console.error(e); }
 }
 
-// Sadece kritik işlemleri loglar
 function logAction(workspace, actionType, details) {
     try {
-        const criticalActions = ['TAM_SIFIRLAMA', 'SUNUCU_SILINDI', 'TOPLU_EKLEME', 'TANIMLAMA', 'YETKI_DEGISIMI', 'SUNUCU_EKLENDI'];
+        const criticalActions = ['TAM_SIFIRLAMA', 'SUNUCU_SILINDI', 'TOPLU_EKLEME', 'TANIMLAMA', 'YETKI_DEGISIMI', 'SUNUCU_EKLENDI', 'ARAMA'];
         if (!criticalActions.includes(actionType)) return; 
 
         db.collection('system_logs').add({
@@ -140,7 +139,7 @@ function changeWorkspace() {
     if (currentWorkspace === 'LOCAL') {
         appMode = 'LOCAL';
         isCurrentWorkspaceReadOnly = false;
-        localDB = {}; // Lokali sıfırla
+        localDB = {}; 
         descDB = {};
         if(statusText) {
             statusText.textContent = "LOKAL İZOLASYON";
@@ -170,7 +169,6 @@ function changeWorkspace() {
             if(addTab) addTab.style.display = 'block';
         }
 
-        // 🔴 YENİ MİMARİ: Tek dokümanı dinle (Sadece 1 okuma kotası harcar)
         unsubInv = db.collection('inventory_data').doc(currentWorkspace).onSnapshot(doc => {
             if (doc.exists) {
                 localDB = doc.data().items || {};
@@ -234,7 +232,6 @@ async function saveProduct() {
         flashInput('barcodeInput', 'var(--accent-warning)');
     } else {
         if (navigator.onLine) {
-            // 🔴 YENİ MİMARİ: Tek doküman içindeki spesifik alanı (barkodu) günceller.
             let updateData = {};
             updateData[`items.${barcode}`] = firebase.firestore.FieldValue.increment(1);
             
@@ -260,8 +257,6 @@ async function searchProduct() {
     const result = document.getElementById('result');
     if(result) result.style.display = 'block';
     
-    // Aramayı hafızaya yüklenmiş (localDB, descDB) veriler üzerinden yapıyoruz.
-    // İnternete gitmediği için hem çok hızlı hem de 0 okuma kotası harcar.
     if (localDB.hasOwnProperty(barcode) || descDB.hasOwnProperty(barcode)) {
         let descText = descDB[barcode] ? `<br><span style="font-size: 16px; color: var(--accent-primary);">(${descDB[barcode]})</span>` : "";
         if(result) {
@@ -271,6 +266,7 @@ async function searchProduct() {
             result.style.background = 'rgba(0, 230, 118, 0.1)';
         }
         document.getElementById('audioSuccess')?.play().catch(()=>{});
+        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Barkod arandı: ${barcode} (BULUNDU)`);
     } else {
         if(result) {
             result.textContent = 'SİSTEMDE YOK';
@@ -279,6 +275,7 @@ async function searchProduct() {
             result.style.background = 'rgba(255, 51, 51, 0.1)';
         }
         document.getElementById('audioError')?.play().catch(()=>{});
+        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Barkod arandı: ${barcode} (YOK)`);
     }
     input.value = '';
 }
@@ -293,7 +290,6 @@ async function resetSystemData() {
             const btn = event.target; 
             if(btn) { btn.disabled = true; btn.innerText = "TEMİZLENİYOR..."; }
             
-            // 🔴 YENİ MİMARİ: Sadece 2 dökümanı silerek on binlerce veriyi 1 saniyede yok eder.
             await db.collection('inventory_data').doc(currentWorkspace).delete();
             await db.collection('description_data').doc(currentWorkspace).delete();
             
@@ -397,7 +393,6 @@ async function openDescPanel(code) {
     document.getElementById('descModalTitle').innerText = `[${code}] TANIMLAR`;
     document.getElementById('descModal').style.display = 'flex';
     
-    // 🔴 YENİ MİMARİ: O sunucunun tek dökümanındaki "items" objesini al.
     try {
         const doc = await db.collection('description_data').doc(code).get();
         let txt = '';
@@ -424,7 +419,6 @@ async function saveDescriptions() {
     });
     
     try {
-        // 🔴 YENİ MİMARİ: Binlerce barkodu tek seferde tek bir dokümana kaydet (1 Yazma Kotası).
         await db.collection('description_data').doc(code).set({ items: newItems });
         logAction(code, "TANIMLAMA", "Barkod tanımları güncellendi.");
         alert("Kaydedildi."); 
@@ -437,7 +431,6 @@ async function saveDescriptions() {
 async function syncOfflineQueue() {
     if(offlineQueue.length === 0) return;
     
-    // Her sunucu için kuyruktaki verileri grupla
     let updatesByWorkspace = {};
     offlineQueue.forEach(item => {
         if(!updatesByWorkspace[item.workspace]) updatesByWorkspace[item.workspace] = {};
@@ -471,32 +464,40 @@ function downloadTXT() {
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${currentWorkspace}_Cikti.txt`; link.click();
 }
 
+// 🔴 TXT YÜKLEME ARTIK TANIMLAR (DESC_) ALANINA KAYDEDİYOR
 async function uploadTXT(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
         reader.onload = async function(e) {
             const lines = e.target.result.split('\n');
-            let updateData = {};
+            let newItems = {}; // Toplu veri nesnesi
             let total = 0;
             
             for(let line of lines) {
-                let b = line.trim(); if(!b) continue;
-                let key = `items.${b}`;
-                if(updateData[key]) {
-                    // Aynı TXT içinde birden fazla aynı barkod varsa artır
-                    // Firebase FieldValue burada doğrudan çalışmayabilir, basit tutalım.
-                    // TXT yüklemesi genellikle 1 adet sayıldığı için basit increment kullanıyoruz:
+                // TXT dosyasında her satırda sadece barkod numarası (örneğin 1111) veya "1111 Açıklama" olabilir
+                const p = line.trim().split(/[\t, ]+/); 
+                const b = p.shift(); // İlk parça barkod
+                const d = p.join(' ').trim(); // Geri kalanı açıklama (yoksa boş kalır)
+                
+                if(b) { 
+                    newItems[b] = d || ""; // Eğer açıklama yoksa boş string olarak kaydet
+                    total++; 
                 }
-                updateData[key] = firebase.firestore.FieldValue.increment(1);
-                total++;
             }
             
             if(total > 0) {
-                 // 🔴 YENİ MİMARİ: Binlerce satırlık TXT'yi tek hamlede yükle (1 Yazma Kotası)
-                 await db.collection('inventory_data').doc(currentWorkspace).set(updateData, { merge: true });
-                 logAction(currentWorkspace, "TOPLU_EKLEME", total + " adet barkod dosyadan aktarıldı.");
-                 alert("Yüklendi.");
+                 try {
+                     // 🔴 YENİ MİMARİ: Tüm listeyi 'description_data' dokümanına tek seferde gönder (SADECE 1 YAZMA KOTASI!)
+                     // "merge: true" olduğu için, var olan tanımları silmez, sadece üzerine ekler/günceller.
+                     await db.collection('description_data').doc(currentWorkspace).set({ items: newItems }, { merge: true });
+                     logAction(currentWorkspace, "TOPLU_EKLEME", total + " adet referans barkod TXT'den aktarıldı.");
+                     alert(total + " adet referans barkod başarıyla yüklendi.");
+                 } catch (err) {
+                     alert("Yükleme sırasında hata oluştu: " + err.message);
+                 }
+            } else {
+                alert("Dosyada geçerli barkod bulunamadı.");
             }
         };
         reader.readAsText(file);
