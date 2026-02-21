@@ -1,4 +1,4 @@
-// app.js - v53 (Sunucu Ekleme Fonksiyonu Eksikliği Giderildi)
+// app.js - v54 (Buton Tıklama ve Sunucu Ekleme Hataları Giderildi)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -31,8 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('online', handleConnectionChange);
     window.addEventListener('offline', handleConnectionChange);
     
+    // 🔴 DÜZELTME: Butonlara tıklandığında odaklanma savaşını durdur
     document.body.addEventListener('mousedown', (e) => {
-        if (['SELECT', 'OPTION', 'INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
+        if (['SELECT', 'OPTION', 'INPUT', 'TEXTAREA', 'BUTTON'].includes(e.target.tagName) || e.target.closest('.modal')) {
             window.isUserInteracting = true;
         }
     });
@@ -273,16 +274,31 @@ function openAdminLogin() { document.getElementById('adminLoginModal').style.dis
 function closeModal(id) { document.getElementById(id).style.display = 'none'; maintainFocus(); }
 function flashInput(id, col) { let el = document.getElementById(id); if(el) { el.style.borderColor = col; setTimeout(()=>el.style.borderColor='', 300); } }
 
-// 🔴 SUNUCU EKLEME FONKSİYONU (Eksik olan kısım eklendi)
+// 🔴 SUNUCU EKLEME: HTML KUTUCUKLARIYLA UYUMLU HALE GETİRİLDİ
 async function addNewWorkspace() {
-    let code = prompt("Yeni Sunucu Kodu (Örn: 4254):");
-    if (!code) return;
+    // Önce ekrandaki input kutularını arıyoruz
+    let codeInput = document.getElementById('newServerCode');
+    let nameInput = document.getElementById('newServerName');
     
-    let name = prompt("Sunucu Adı (Örn: PARK BORNOVA):");
-    if (!name) return;
+    let code = "";
+    let name = "";
 
-    code = code.trim().toUpperCase();
-    name = name.trim();
+    // HTML'de bu inputlar varsa onların içindeki metni alalım
+    if (codeInput && nameInput) {
+        code = codeInput.value.trim().toUpperCase();
+        name = nameInput.value.trim();
+    } else {
+        // HTML'de input bulamazsa tarayıcı penceresi açsın
+        code = prompt("Yeni Sunucu Kodu (Örn: 4254):");
+        if(code) code = code.trim().toUpperCase();
+        name = prompt("Sunucu Adı (Örn: PARK BORNOVA):");
+        if(name) name = name.trim();
+    }
+
+    if (!code || !name) {
+        alert("Lütfen sunucu kodu ve adını eksiksiz girin.");
+        return;
+    }
 
     try {
         await db.collection('workspaces').doc(code).set({
@@ -291,8 +307,14 @@ async function addNewWorkspace() {
             active: true,
             allowDataEntry: true
         });
+        
         logAction(code, "SUNUCU_EKLENDI", `Yeni sunucu eklendi: ${name}`);
         alert("Sunucu başarıyla eklendi!");
+        
+        // İşlem bitince HTML kutularını temizle
+        if (codeInput) codeInput.value = '';
+        if (nameInput) nameInput.value = '';
+
     } catch(e) { 
         alert("Bağlantı Hatası: " + e.message); 
     }
