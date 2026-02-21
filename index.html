@@ -1,428 +1,196 @@
-// app.js - v55 (Sadece Sunucu Ekle ve Çıkış Hataları Giderildi - Orijinal Tasarım Korundu)
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ürün Bulucu</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
 
-const firebaseConfig = {
-    apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
-    authDomain: "urun-bulucu.firebaseapp.com",
-    projectId: "urun-bulucu",
-    storageBucket: "urun-bulucu.firebasestorage.app",
-    messagingSenderId: "425563783414",
-    appId: "1:425563783414:web:ec64a106ad6b1abac7ecd7",
-    measurementId: "G-8M7RYZYSX3"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-let appMode = 'LOCAL'; 
-let currentWorkspace = 'LOCAL'; 
-let localDB = {}; 
-let offlineQueue = JSON.parse(localStorage.getItem('offlineQueue')) || []; 
-let isCurrentWorkspaceReadOnly = false; 
-let globalWorkspaces = []; 
-let currentMode = 'add'; 
-let currentUser = { role: null, token: null }; 
-window.isUserInteracting = false; 
-
-let unsubInv = null;
-let unsubDesc = null;
-
-document.addEventListener('DOMContentLoaded', () => {
-    listenWorkspaces();
-    window.addEventListener('online', handleConnectionChange);
-    window.addEventListener('offline', handleConnectionChange);
-    
-    document.body.addEventListener('mousedown', (e) => {
-        if (['SELECT', 'OPTION', 'INPUT', 'TEXTAREA', 'BUTTON'].includes(e.target.tagName)) {
-            window.isUserInteracting = true;
-        }
-    });
-    document.body.addEventListener('mouseup', () => {
-        setTimeout(() => { window.isUserInteracting = false; }, 1000);
-    });
-    setInterval(maintainFocus, 3000);
-});
-
-// Orijinal Loglama Mantığı Korundu
-function logAction(workspace, actionType, details) {
-    if (appMode === 'LOCAL' && actionType !== 'SUNUCU_SILINDI') return; 
-    db.collection('system_logs').add({
-        workspace: workspace,
-        action: actionType,
-        details: details,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    }).catch(err => console.error("Log hatası:", err));
-}
-
-function maintainFocus() {
-    const modals = document.querySelectorAll('.modal');
-    let isAnyModalOpen = Array.from(modals).some(m => m.style.display === 'flex' || m.style.display === 'block');
-    if (isAnyModalOpen || window.isUserInteracting || document.activeElement.tagName === 'SELECT') return;
-
-    const target = isCurrentWorkspaceReadOnly ? 'searchBarcodeInput' : (currentMode === 'add' ? 'barcodeInput' : 'searchBarcodeInput');
-    const el = document.getElementById(target);
-    if (el && document.activeElement !== el) {
-        el.focus();
-    }
-}
-
-function handleConnectionChange() {
-    const badge = document.getElementById('offlineBadge');
-    if (navigator.onLine) {
-        badge.style.display = 'none';
-        if (appMode === 'SERVER' && offlineQueue.length > 0) syncOfflineQueue();
-    } else {
-        badge.style.display = 'inline-block';
-    }
-}
-
-function listenWorkspaces() {
-    db.collection('workspaces').onSnapshot(snapshot => {
-        globalWorkspaces = [];
-        snapshot.forEach(doc => globalWorkspaces.push(doc.data()));
-        localStorage.setItem('api_workspaces', JSON.stringify(globalWorkspaces));
-        renderWorkspaceDropdown();
-        if(document.getElementById('adminPanelModal').style.display === 'flex') refreshServerList();
-    });
-}
-
-function renderWorkspaceDropdown() {
-    const select = document.getElementById('workspaceSelect');
-    if (window.isUserInteracting) return; 
-    const currentValue = select.value; 
-    select.innerHTML = '<option value="LOCAL">GENEL KULLANICI</option>';
-    globalWorkspaces.forEach(ws => {
-        if(ws.active) {
-            const option = document.createElement('option');
-            option.value = ws.code;
-            option.textContent = `SUNUCU: ${ws.code} (${ws.name})`;
-            select.appendChild(option);
-        }
-    });
-    if (currentValue && select.querySelector(`option[value="${currentValue}"]`)) select.value = currentValue;
-    else select.value = 'LOCAL';
-    changeWorkspace();
-}
-
-function changeWorkspace() {
-    currentWorkspace = document.getElementById('workspaceSelect').value;
-    const statusText = document.getElementById('connectionStatus');
-    const selectorDiv = document.getElementById('serverSelectorDiv');
-    const addTab = document.getElementById('addLocationButton');
-
-    if(unsubInv) unsubInv();
-    if(unsubDesc) unsubDesc();
-
-    if (currentWorkspace === 'LOCAL') {
-        appMode = 'LOCAL';
-        isCurrentWorkspaceReadOnly = false;
-        statusText.textContent = "LOKAL İZOLASYON";
-        statusText.style.color = "var(--accent-warning)";
-        selectorDiv.className = "server-selector local-mode";
-        addTab.style.display = 'block';
-    } else {
-        appMode = 'SERVER';
-        let wsData = globalWorkspaces.find(w => w.code === currentWorkspace);
-        isCurrentWorkspaceReadOnly = wsData ? (wsData.allowDataEntry === false) : false;
-
-        if(isCurrentWorkspaceReadOnly) {
-            statusText.textContent = `API: ${currentWorkspace} [SALT OKUNUR]`;
-            statusText.style.color = "var(--accent-red)";
-            selectorDiv.className = "server-selector readonly-mode";
-            addTab.style.display = 'none';
-            if(currentMode === 'add') switchMode('find'); 
-        } else {
-            statusText.textContent = `CANLI VERİ AKTİF (${currentWorkspace})`;
-            statusText.style.color = "var(--accent-green)";
-            selectorDiv.className = "server-selector online-mode";
-            addTab.style.display = 'block';
+        :root {
+            --bg-dark: #0a0c10;
+            --panel-bg: rgba(20, 24, 32, 0.85);
+            --accent-primary: #ffffff;
+            --accent-red: #ff3333;
+            --accent-green: #00e676;
+            --accent-warning: #ffb300;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-glow: 0 0 10px rgba(255, 255, 255, 0.15), inset 0 0 10px rgba(255, 255, 255, 0.05);
         }
 
-        unsubInv = db.collection(`inv_${currentWorkspace}`).onSnapshot(snapshot => {
-            let serverDB = {};
-            snapshot.forEach(doc => serverDB[doc.id] = doc.data().count);
-            localStorage.setItem(`db_${currentWorkspace}`, JSON.stringify(serverDB));
-        });
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
-        unsubDesc = db.collection(`desc_${currentWorkspace}`).onSnapshot(snapshot => {
-            let descDB = {};
-            snapshot.forEach(doc => descDB[doc.id] = doc.data().text);
-            localStorage.setItem(`desc_${currentWorkspace}`, JSON.stringify(descDB));
-        });
-    }
-    document.getElementById('result').style.display = 'none';
-    updateDataPanelVisibility();
-}
-
-function updateDataPanelVisibility() {
-    const dataPanel = document.getElementById('dataPanel');
-    if (!dataPanel) return;
-    dataPanel.style.display = (currentMode === 'find' || isCurrentWorkspaceReadOnly) ? 'none' : 'block';
-}
-
-function switchMode(mode) {
-    currentMode = mode;
-    document.getElementById('addLocationSection').classList.toggle('hidden', mode !== 'add');
-    document.getElementById('findProductSection').classList.toggle('hidden', mode !== 'find');
-    document.getElementById('addLocationButton').classList.toggle('active', mode === 'add');
-    document.getElementById('findProductButton').classList.toggle('active', mode === 'find');
-    updateDataPanelVisibility();
-    maintainFocus();
-}
-
-document.getElementById('barcodeInput').addEventListener('keydown', e => { if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); saveProduct(); } });
-document.getElementById('searchBarcodeInput').addEventListener('keydown', e => { if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); searchProduct(); } });
-
-async function saveProduct() {
-    if (isCurrentWorkspaceReadOnly) return;
-    const input = document.getElementById('barcodeInput');
-    const barcode = input.value.trim();
-    if (!barcode) return;
-    if (appMode === 'LOCAL') {
-        localDB[barcode] = (localDB[barcode] || 0) + 1;
-        flashInput('barcodeInput', 'var(--accent-warning)');
-    } else {
-        if (navigator.onLine) {
-            await db.collection(`inv_${currentWorkspace}`).doc(barcode).set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
-            logAction(currentWorkspace, "EKLEME", `Barkod eklendi: ${barcode}`); // Orijinal Loglama
-            flashInput('barcodeInput', 'var(--accent-green)');
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Rajdhani', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+            padding: 20px 10px;
         }
-    }
-    input.value = '';
-}
 
-async function searchProduct() {
-    const input = document.getElementById('searchBarcodeInput');
-    const barcode = input.value.trim();
-    if (!barcode) return;
-    const result = document.getElementById('result');
-    result.style.display = 'block';
-    
-    let dbInv = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
-    let dbDesc = appMode === 'LOCAL' ? {} : (JSON.parse(localStorage.getItem(`desc_${currentWorkspace}`)) || {});
-    
-    if (dbInv.hasOwnProperty(barcode) || dbDesc.hasOwnProperty(barcode)) {
-        let descText = dbDesc[barcode] ? `<br><span style="font-size: 16px; color: var(--accent-primary);">(${dbDesc[barcode]})</span>` : "";
-        result.innerHTML = `BULUNDU${descText}`;
-        result.style.color = 'var(--accent-green)';
-        result.style.border = '1px solid var(--accent-green)';
-        result.style.background = 'rgba(0, 230, 118, 0.1)';
-        document.getElementById('audioSuccess').play().catch(()=>{});
-        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Barkod arandı: ${barcode} (BULUNDU)`); // Orijinal Loglama
-    } else {
-        result.textContent = 'SİSTEMDE YOK';
-        result.style.color = 'var(--accent-red)';
-        result.style.border = '1px solid var(--accent-red)';
-        result.style.background = 'rgba(255, 51, 51, 0.1)';
-        document.getElementById('audioError').play().catch(()=>{});
-        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Barkod arandı: ${barcode} (YOK)`); // Orijinal Loglama
-    }
-    input.value = '';
-}
+        .terminal-container { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 15px; }
 
-async function resetSystemData() {
-    if (!confirm('DİKKAT: Bu sunucudaki TÜM barkod sayıları VE tanımlı isimler silinecektir. Emin misiniz?')) return;
-    
-    if (appMode === 'LOCAL') {
-        localDB = {}; alert('LOKAL TEMİZLENDİ.');
-    } else {
-        try {
-            const btn = event.target; btn.disabled = true; btn.innerText = "TEMİZLENİYOR...";
-            
-            // 1. Envanteri Sil
-            const invSnap = await db.collection(`inv_${currentWorkspace}`).get();
-            const invPromises = invSnap.docs.map(doc => doc.ref.delete());
-            
-            // 2. Tanımları Sil
-            const descSnap = await db.collection(`desc_${currentWorkspace}`).get();
-            const descPromises = descSnap.docs.map(doc => doc.ref.delete());
-
-            await Promise.all([...invPromises, ...descPromises]);
-            
-            logAction(currentWorkspace, "TAM_SIFIRLAMA", "Envanter ve Tanımlar silindi.");
-            alert('SUNUCU TAMAMEN SIFIRLANDI.');
-            btn.disabled = false; btn.innerText = "MEVCUT VERİYİ SIFIRLA";
-        } catch(e) { alert("Hata: " + e.message); }
-    }
-    document.getElementById('result').style.display = 'none';
-}
-
-function loginAdmin() {
-    const user = document.getElementById('adminUser').value;
-    const pass = document.getElementById('adminPass').value;
-    if(user === '87118' && pass === '3094') { 
-        currentUser.role = 'ROOT';
-        document.getElementById('adminLoginModal').style.display = 'none';
+        .header { text-align: center; border-bottom: 2px solid var(--accent-primary); padding-bottom: 15px; position: relative; }
+        .header h1 { font-family: 'Share Tech Mono', monospace; color: var(--accent-primary); font-size: 32px; letter-spacing: 3px; }
         
-        // HTML'de gizli olan rootControls alanını görünür yap
-        const rootControls = document.getElementById('rootControls');
-        if (rootControls) {
-            rootControls.classList.remove('hidden');
-        }
+        .server-selector { margin-top: 15px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); transition: 0.3s; }
+        .server-selector.online-mode { border-color: var(--accent-green); box-shadow: 0 0 10px rgba(0, 230, 118, 0.2); }
+        .server-selector.readonly-mode { border-color: var(--accent-red); box-shadow: 0 0 10px rgba(255, 51, 51, 0.2); }
+        .server-selector.local-mode { border-color: var(--accent-warning); }
         
-        document.getElementById('adminPanelModal').style.display = 'flex';
-        refreshServerList();
-    } else alert("Hatalı!");
-}
+        .server-selector select { width: 100%; background: transparent; color: var(--accent-primary); font-family: 'Share Tech Mono', monospace; font-size: 16px; border: none; outline: none; text-align: center; cursor: pointer; }
+        .server-selector select option { background: var(--bg-dark); color: var(--accent-primary); }
 
-// 🔴 GÜVENLİ ÇIKIŞ (Eksik olan gizleme eklendi)
-function logoutAdmin() { 
-    currentUser.role = null; 
-    closeModal('adminPanelModal'); 
-    
-    // HTML'de rootControls alanını tekrar gizle
-    const rootControls = document.getElementById('rootControls');
-    if (rootControls) {
-        rootControls.classList.add('hidden');
-    }
-    
-    alert("Güvenli çıkış yapıldı.");
-}
+        .panel { background: var(--panel-bg); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 20px; box-shadow: var(--border-glow); position: relative; }
+        .panel-title { font-size: 18px; color: var(--text-main); margin-bottom: 15px; display: flex; justify-content: space-between; text-transform: uppercase; }
+        
+        input[type="text"], input[type="password"] { width: 100%; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 255, 255, 0.3); color: var(--accent-primary); font-family: 'Share Tech Mono', monospace; font-size: 20px; padding: 15px; text-align: center; border-radius: 4px; transition: 0.3s; }
+        input[type="text"]:focus, input[type="password"]:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 15px rgba(255, 255, 255, 0.2); }
 
-function refreshServerList() {
-    const area = document.getElementById('serverListArea');
-    if(!area) return; area.innerHTML = '';
-    globalWorkspaces.forEach(ws => {
-        const lockCol = ws.allowDataEntry === false ? 'var(--accent-red)' : 'var(--accent-green)';
-        area.innerHTML += `<div style="margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">
-            <span style="font-family:monospace; font-size:14px;">[${ws.code}] ${ws.name}</span>
-            <div style="display:flex; gap:5px; margin-top:5px;">
-                <button style="flex:1; padding:6px; font-size:11px; border-color:${lockCol}; color:${lockCol};" onclick="toggleDataEntry('${ws.code}')">YAZMA: ${ws.allowDataEntry?'AÇIK':'KİLİTLİ'}</button>
-                <button style="flex:1; padding:6px; font-size:11px;" onclick="openDescPanel('${ws.code}')">TANIMLAR</button>
-                <button style="width:auto; padding:6px 12px; font-size:11px;" class="btn-danger" onclick="deleteWorkspace('${ws.code}')">SİL</button>
+        button { width: 100%; background: transparent; color: var(--text-main); border: 1px solid var(--accent-primary); padding: 15px; font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 600; letter-spacing: 2px; cursor: pointer; transition: 0.3s; border-radius: 4px; margin-top: 10px; text-transform: uppercase; }
+        button:hover { background: rgba(255, 255, 255, 0.1); }
+        .btn-danger { border-color: var(--accent-red); color: var(--accent-red); }
+        .btn-warning { border-color: var(--accent-warning); color: var(--accent-warning); }
+        .btn-warning:hover { background: rgba(255, 179, 0, 0.1); }
+
+        #result { margin-top: 15px; padding: 15px; text-align: center; font-family: 'Share Tech Mono', monospace; font-size: 24px; font-weight: bold; display: none; border-radius: 4px; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; text-shadow: 0 0 10px currentColor; } 100% { opacity: 0.8; } }
+
+        .cyber-toggle { display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.4); padding: 12px 16px; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; cursor: pointer; }
+        .cyber-toggle span { font-size: 15px; color: var(--accent-primary); font-weight: 600; }
+        .cyber-toggle input[type="checkbox"] { accent-color: var(--accent-primary); width: 18px; height: 18px; }
+
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: var(--panel-bg); border: 1px solid var(--accent-primary); padding: 25px; width: 95%; max-width: 450px; box-shadow: var(--border-glow); border-radius: 8px; max-height: 90vh; overflow-y: auto; }
+        .modal h3 { color: var(--accent-primary); text-align: center; font-family: 'Share Tech Mono', monospace; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; }
+
+        .tab-btn { opacity: 0.4; border-color: rgba(255, 255, 255, 0.3); }
+        .tab-btn.active { opacity: 1; background: rgba(255, 255, 255, 0.05); border-color: var(--accent-primary); }
+        .hidden { display: none !important; }
+        
+        #tabGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; transition: 0.3s; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        
+        .footer-link { color: var(--text-muted); font-size: 12px; cursor: pointer; margin-top: 20px; text-decoration: none; border: none; background: none; letter-spacing: 2px;}
+        #offlineBadge { display: none; background: var(--accent-warning); color: #000; font-size: 12px; padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-left: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="terminal-container">
+        
+        <div class="header">
+            <h1>ÜRÜN BULUCU</h1>
+            <div class="server-selector local-mode" id="serverSelectorDiv">
+                <select id="workspaceSelect" onchange="changeWorkspace()">
+                    <option value="LOCAL">GENEL KULLANICI</option>
+                </select>
             </div>
-        </div>`;
-    });
-}
+            <div style="margin-top: 10px; font-size: 12px; color: var(--text-muted);">
+                BAĞLANTI: <span id="connectionStatus" style="color: var(--accent-warning);">LOKAL İZOLASYON</span>
+                <span id="offlineBadge">OFFLINE - KUYRUKTA</span>
+            </div>
+        </div>
 
-function openAdminLogin() { document.getElementById('adminLoginModal').style.display = 'flex'; }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; maintainFocus(); }
-function flashInput(id, col) { let el = document.getElementById(id); if(el) { el.style.borderColor = col; setTimeout(()=>el.style.borderColor='', 300); } }
+        <div id="tabGrid">
+            <button id="addLocationButton" class="tab-btn active" onclick="switchMode('add')">Ürün Ekle</button>
+            <button id="findProductButton" class="tab-btn" onclick="switchMode('find')">Ürün Bul</button>
+        </div>
 
-// 🔴 SUNUCU EKLEME (HTML'deki createWorkspace butonuna bağlandı)
-async function createWorkspace() {
-    const codeInput = document.getElementById('newServerCode');
-    const nameInput = document.getElementById('newServerName');
+        <label class="cyber-toggle" id="keyboardToggleContainer">
+            <span id="modeLabel">KLAVYE MODU</span>
+            <input type="checkbox" id="keyboardToggle" onchange="toggleKeyboardMode()">
+        </label>
 
-    if (!codeInput || !nameInput) {
-        alert("Girdi alanları bulunamadı.");
-        return;
-    }
+        <div id="addLocationSection" class="panel">
+            <div class="panel-title"><span>VERİ GİRİŞİ</span></div>
+            <input type="text" id="barcodeInput" placeholder="BARKOD TARAYIN..." autofocus>
+        </div>
 
-    const code = codeInput.value.trim().toUpperCase();
-    const name = nameInput.value.trim();
+        <div id="findProductSection" class="panel hidden">
+            <div class="panel-title"><span>SİSTEM SORGUSU</span></div>
+            <input type="text" id="searchBarcodeInput" placeholder="EAN BARKODU GİRİN...">
+            <div id="result"></div>
+        </div>
 
-    if (!code || !name) {
-        alert("Lütfen sunucu kodu ve adını eksiksiz girin.");
-        return;
-    }
+        <div class="panel" id="dataPanel" style="margin-top: 5px;">
+            <div class="panel-title">VERİ YÖNETİMİ (TXT)</div>
+            <div class="grid-2" style="margin-bottom: 0;">
+                <button onclick="downloadTXT()" style="margin-top: 0;">İNDİR</button>
+                <button onclick="document.getElementById('fileInput').click()" style="margin-top: 0;">YÜKLE</button>
+            </div>
+            <input type="file" id="fileInput" accept=".txt" style="display: none;" onchange="uploadTXT(event)">
+            <button class="btn-danger" onclick="resetSystemData()" style="margin-top: 15px;">MEVCUT VERİYİ SIFIRLA</button>
+        </div>
 
-    try {
-        await db.collection('workspaces').doc(code).set({
-            code: code,
-            name: name,
-            active: true,
-            allowDataEntry: true
-        });
-        
-        logAction(code, "SUNUCU_EKLENDI", `Yeni sunucu eklendi: ${name}`);
-        alert("Sunucu başarıyla eklendi!");
-        
-        codeInput.value = '';
-        nameInput.value = '';
+        <div style="text-align: center;">
+            <button class="footer-link" onclick="openAdminLogin()">[ YÖNETİCİ GİRİŞİ ]</button>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 5px; font-family: monospace;">info mail arda@ardaulas.online | version 43</div>
+        </div>
+    </div>
 
-    } catch(e) { 
-        alert("Bağlantı Hatası: " + e.message); 
-    }
-}
+    <div id="adminLoginModal" class="modal">
+        <div class="modal-content">
+            <h3>YETKİLİ GİRİŞİ</h3>
+            <input type="text" id="adminUser" placeholder="Kullanıcı Adı" style="margin-bottom: 10px;">
+            <input type="password" id="adminPass" placeholder="Şifre" style="margin-bottom: 15px;">
+            <button onclick="loginAdmin()">SİSTEME GİR</button>
+            <button class="btn-danger" onclick="closeModal('adminLoginModal')">İPTAL</button>
+        </div>
+    </div>
 
-async function openDescPanel(code) {
-    document.getElementById('descServerCode').value = code;
-    document.getElementById('descModalTitle').innerText = `[${code}] TANIMLAR`;
-    document.getElementById('descModal').style.display = 'flex';
-    const [invSnap, descSnap] = await Promise.all([db.collection(`inv_${code}`).get(), db.collection(`desc_${code}`).get()]);
-    let bset = new Set(); let dmap = {};
-    descSnap.forEach(doc => { bset.add(doc.id); dmap[doc.id] = doc.data().text || ""; });
-    invSnap.forEach(doc => bset.add(doc.id));
-    let txt = ''; bset.forEach(b => { txt += dmap[b] ? `${b} ${dmap[b]}\n` : `${b} \n`; });
-    document.getElementById('descTextarea').value = txt;
-}
+    <div id="adminPanelModal" class="modal">
+        <div class="modal-content">
+            <h3>MERKEZ YÖNETİM (ROOT)</h3>
+            <div id="rootControls" class="hidden" style="margin-bottom: 20px; padding: 15px; border: 1px solid var(--accent-primary); background: rgba(0,0,0,0.3);">
+                <input type="text" id="newServerCode" placeholder="Yeni Sunucu Kodu (Örn: 4255)" style="margin-bottom: 10px; font-size: 14px; padding: 10px;">
+                <input type="text" id="newServerName" placeholder="Sunucu Adı (Örn: Depo 2)" style="margin-bottom: 10px; font-size: 14px; padding: 10px;">
+                <button onclick="createWorkspace()" style="padding: 10px; font-size: 14px;">SUNUCUYU BAŞLAT</button>
+                
+                <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+                <button class="btn-warning" onclick="viewLogs()" style="padding: 10px; font-size: 12px; margin-bottom: 15px;">TÜM SUNUCU LOGLARINI GÖR</button>
+                
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">AKTİF SUNUCULAR & YETKİLER:</p>
+                <div id="serverListArea" style="max-height: 250px; overflow-y: auto; font-size: 12px;"></div>
+            </div>
+            
+            <button class="btn-danger" onclick="logoutAdmin()">GÜVENLİ ÇIKIŞ</button>
+        </div>
+    </div>
 
-async function saveDescriptions() {
-    const code = document.getElementById('descServerCode').value;
-    const lines = document.getElementById('descTextarea').value.trim().split('\n');
-    let nset = new Set(); let nmap = {};
-    lines.forEach(l => {
-        const p = l.trim().split(/[\t, ]+/); const b = p.shift(); const d = p.join(' ').trim();
-        if(b) { nmap[b] = d; nset.add(b); }
-    });
-    const [iS, dS] = await Promise.all([db.collection(`inv_${code}`).get(), db.collection(`desc_${code}`).get()]);
-    let batch = db.batch();
-    dS.docs.forEach(doc => { if (!nset.has(doc.id)) batch.delete(doc.ref); });
-    iS.docs.forEach(doc => { if (!nset.has(doc.id)) batch.delete(doc.ref); });
-    for (let b in nmap) batch.set(db.collection(`desc_${code}`).doc(b), { text: nmap[b] }, { merge: true });
-    await batch.commit();
-    logAction(code, "TANIMLAMA", "Barkod tanımları güncellendi.");
-    alert("Kaydedildi."); closeModal('descModal');
-}
+    <div id="descModal" class="modal" style="z-index: 1001;">
+        <div class="modal-content">
+            <h3 id="descModalTitle">BARKOD TANIMLARI</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px; text-align:center;">Sahada okutulan tüm barkodlar aşağıdadır. Yanlarına açıklama ekleyebilirsiniz.</p>
+            <textarea id="descTextarea" placeholder="Örnek:&#10;1111 39&#10;2222 Mavi" style="width:100%; height:180px; background:rgba(0,0,0,0.8); border:1px solid var(--accent-primary); color:white; padding:10px; font-family:monospace; margin-bottom:15px; resize:none;"></textarea>
+            <button onclick="saveDescriptions()">KAYDET</button>
+            <button class="btn-danger" onclick="closeModal('descModal')">KAPAT</button>
+            <input type="hidden" id="descServerCode">
+        </div>
+    </div>
 
-async function syncOfflineQueue() {
-    if(offlineQueue.length === 0) return;
-    let batch = db.batch();
-    offlineQueue.forEach(item => { batch.set(db.collection(`inv_${item.workspace}`).doc(item.barcode), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true }); });
-    await batch.commit(); offlineQueue = []; localStorage.removeItem('offlineQueue');
-}
+    <div id="logsModal" class="modal" style="z-index: 1002;">
+        <div class="modal-content">
+            <h3 style="color: var(--accent-warning);">SİSTEM İŞLEM KAYITLARI</h3>
+            <div id="logsArea" style="max-height: 300px; overflow-y: auto; font-size: 12px; font-family: monospace; text-align: left; margin-bottom: 15px; background: rgba(0,0,0,0.6); padding: 10px; border: 1px solid var(--text-muted);">
+                Yükleniyor...
+            </div>
+            <button class="btn-danger" onclick="closeModal('logsModal')">KAPAT</button>
+        </div>
+    </div>
 
-function downloadTXT() {
-    let target = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
-    let txt = ""; for (let b in target) { for (let i = 0; i < target[b]; i++) txt += `${b}\n`; }
-    const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
-    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${currentWorkspace}_Cikti.txt`; link.click();
-}
+    <audio id="audioSuccess" src="find.mp3" preload="auto"></audio>
+    <audio id="audioError" src="unmatched.mp3" preload="auto"></audio>
 
-async function uploadTXT(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            const lines = e.target.result.split('\n');
-            let batch = db.batch(); let count = 0; let total = 0;
-            for(let line of lines) {
-                let b = line.trim(); if(!b) continue;
-                batch.set(db.collection(`inv_${currentWorkspace}`).doc(b), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
-                count++; total++;
-                if(count > 400) { await batch.commit(); batch = db.batch(); count = 0; }
-            }
-            if(count > 0) await batch.commit();
-            logAction(currentWorkspace, "TOPLU_EKLEME", total + " adet barkod dosyadan aktarıldı.");
-            alert("Yüklendi.");
-        };
-        reader.readAsText(file);
-    }
-}
-
-async function deleteWorkspace(code) { if(confirm(`${code} silinsin mi?`)) await db.collection('workspaces').doc(code).delete(); }
-function toggleDataEntry(code) { 
-    let ws = globalWorkspaces.find(w => w.code === code);
-    if(ws) {
-        db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
-        logAction(code, "YETKI_DEGISIMI", ws.allowDataEntry ? "Kilitlendi" : "Açıldı");
-    }
-}
-
-function toggleKeyboardMode() {
-    const isChecked = document.getElementById('keyboardToggle').checked;
-    document.getElementById('barcodeInput').setAttribute('inputmode', isChecked ? 'none' : 'text');
-    document.getElementById('searchBarcodeInput').setAttribute('inputmode', isChecked ? 'none' : 'text');
-}
-
-// Orijinal Log Görünümü Korundu
-async function viewLogs() {
-    document.getElementById('logsModal').style.display = 'flex';
-    const area = document.getElementById('logsArea'); area.innerHTML = '...';
-    const snap = await db.collection('system_logs').orderBy('timestamp', 'desc').limit(200).get();
-    area.innerHTML = '';
-    snap.forEach(doc => {
-        const d = doc.data(); const time = d.timestamp ? new Date(d.timestamp.toDate()).toLocaleString() : '...';
-        area.innerHTML += `<div style="border-bottom:1px solid #333; padding:5px;">[${time}] ${d.workspace}: ${d.details}</div>`;
-    });
-}
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    
+    <script src="app.js?v=55"></script>
+</body>
+</html>
