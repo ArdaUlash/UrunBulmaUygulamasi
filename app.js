@@ -1,4 +1,4 @@
-// app.js - v49 (Gelişmiş Detaylı Loglama ve Eksiksiz Hata Kontrolü)
+// app.js - v52 (Sunucu Ekleme, Güvenli Çıkış ve Kota Optimizasyonu Tamamlandı)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -20,6 +20,7 @@ let offlineQueue = JSON.parse(localStorage.getItem('offlineQueue')) || [];
 let isCurrentWorkspaceReadOnly = false; 
 let globalWorkspaces = []; 
 let currentMode = 'add'; 
+let currentUser = { role: null, token: null }; 
 window.isUserInteracting = false; 
 
 let unsubInv = null;
@@ -41,9 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(maintainFocus, 3000);
 });
 
-// 🔴 DETAYLANDIRILMIŞ LOG SİSTEMİ
+// KOTA DOSTU LOG SİSTEMİ (Rutin okutmaları atlar)
 function logAction(workspace, actionType, details) {
-    if (appMode === 'LOCAL' && actionType !== 'SUNUCU_SILINDI') return; 
+    const criticalActions = ['TAM_SIFIRLAMA', 'SUNUCU_SILINDI', 'TOPLU_EKLEME', 'TANIMLAMA', 'YETKI_DEGISIMI', 'SUNUCU_EKLENDI'];
+    if (!criticalActions.includes(actionType)) return; 
+
     db.collection('system_logs').add({
         workspace: workspace,
         action: actionType,
@@ -59,9 +62,7 @@ function maintainFocus() {
 
     const target = isCurrentWorkspaceReadOnly ? 'searchBarcodeInput' : (currentMode === 'add' ? 'barcodeInput' : 'searchBarcodeInput');
     const el = document.getElementById(target);
-    if (el && document.activeElement !== el) {
-        el.focus();
-    }
+    if (el && document.activeElement !== el) el.focus();
 }
 
 function handleConnectionChange() {
@@ -145,12 +146,10 @@ function changeWorkspace() {
             localStorage.setItem(`desc_${currentWorkspace}`, JSON.stringify(dDB));
         });
     }
-    updateDataPanelVisibility();
-}
-
-function updateDataPanelVisibility() {
-    const dataPanel = document.getElementById('dataPanel');
-    if (dataPanel) dataPanel.style.display = (currentMode === 'find' || isCurrentWorkspaceReadOnly) ? 'none' : 'block';
+    document.getElementById('result').style.display = 'none';
+    if(document.getElementById('dataPanel')) {
+        document.getElementById('dataPanel').style.display = (currentMode === 'find' || isCurrentWorkspaceReadOnly) ? 'none' : 'block';
+    }
 }
 
 function switchMode(mode) {
@@ -159,14 +158,15 @@ function switchMode(mode) {
     document.getElementById('findProductSection').classList.toggle('hidden', mode !== 'find');
     document.getElementById('addLocationButton').classList.toggle('active', mode === 'add');
     document.getElementById('findProductButton').classList.toggle('active', mode === 'find');
-    updateDataPanelVisibility();
+    if (document.getElementById('dataPanel')) {
+        document.getElementById('dataPanel').style.display = (mode === 'find' || isCurrentWorkspaceReadOnly) ? 'none' : 'block';
+    }
     maintainFocus();
 }
 
 document.getElementById('barcodeInput').addEventListener('keydown', e => { if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); saveProduct(); } });
 document.getElementById('searchBarcodeInput').addEventListener('keydown', e => { if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); searchProduct(); } });
 
-// 🔴 EKLEME LOGU GERİ GELDİ
 async function saveProduct() {
     if (isCurrentWorkspaceReadOnly) return;
     const input = document.getElementById('barcodeInput');
@@ -178,7 +178,6 @@ async function saveProduct() {
     } else {
         if (navigator.onLine) {
             await db.collection(`inv_${currentWorkspace}`).doc(barcode).set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
-            logAction(currentWorkspace, "EKLEME", `Barkod eklendi: ${barcode}`);
             flashInput('barcodeInput', 'var(--accent-green)');
         } else {
             offlineQueue.push({ workspace: currentWorkspace, barcode: barcode });
@@ -189,7 +188,6 @@ async function saveProduct() {
     input.value = '';
 }
 
-// 🔴 ARAMA LOGU EKLENDİ
 async function searchProduct() {
     const input = document.getElementById('searchBarcodeInput');
     const barcode = input.value.trim();
@@ -199,68 +197,62 @@ async function searchProduct() {
     
     let dbInv = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
     let dbDesc = appMode === 'LOCAL' ? {} : (JSON.parse(localStorage.getItem(`desc_${currentWorkspace}`)) || {});
-    let isFound = dbInv.hasOwnProperty(barcode) || dbDesc.hasOwnProperty(barcode);
     
-    if (isFound) {
+    if (dbInv.hasOwnProperty(barcode) || dbDesc.hasOwnProperty(barcode)) {
         let desc = dbDesc[barcode] ? `<br><span style="font-size: 16px; color: var(--accent-primary);">(${dbDesc[barcode]})</span>` : "";
         result.innerHTML = `BULUNDU${desc}`;
         result.style.color = 'var(--accent-green)';
         result.style.border = '1px solid var(--accent-green)';
         result.style.background = 'rgba(0, 230, 118, 0.1)';
         document.getElementById('audioSuccess').play().catch(()=>{});
-        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Barkod arandı: ${barcode} (BULUNDU)`);
     } else {
         result.textContent = 'SİSTEMDE YOK';
         result.style.color = 'var(--accent-red)';
         result.style.border = '1px solid var(--accent-red)';
         result.style.background = 'rgba(255, 51, 51, 0.1)';
         document.getElementById('audioError').play().catch(()=>{});
-        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Barkod arandı: ${barcode} (YOK)`);
     }
     input.value = '';
 }
 
-// 🔴 GARANTİLİ VE LİMİTSİZ SIFIRLAMA
 async function resetSystemData() {
-    if (!confirm('DİKKAT: Envanter VE Tanımlar silinecektir. Onaylıyor musunuz?')) return;
+    if (!confirm('Tüm veriler silinecek. Onaylıyor musunuz?')) return;
     if (appMode === 'LOCAL') {
         localDB = {}; alert('LOKAL TEMİZLENDİ.');
     } else {
         try {
-            document.body.style.cursor = 'wait'; // Görsel geribildirim eklendi
-            
+            const btn = event.target; btn.disabled = true; btn.innerText = "TEMİZLENİYOR...";
             const invSnap = await db.collection(`inv_${currentWorkspace}`).get();
             const descSnap = await db.collection(`desc_${currentWorkspace}`).get();
-            
-            let batch = db.batch();
-            let count = 0;
-            const docsToDel = [...invSnap.docs, ...descSnap.docs];
-            
-            for(let doc of docsToDel) {
-                batch.delete(doc.ref);
-                count++;
-                if(count === 400) { await batch.commit(); batch = db.batch(); count = 0; }
-            }
-            if(count > 0) await batch.commit();
-            
-            logAction(currentWorkspace, "TAM_SIFIRLAMA", "Kullanıcı envanteri ve tanımlar temizlendi.");
+            const promises = [...invSnap.docs.map(doc => doc.ref.delete()), ...descSnap.docs.map(doc => doc.ref.delete())];
+            await Promise.all(promises);
+            logAction(currentWorkspace, "TAM_SIFIRLAMA", "Veriler temizlendi.");
             alert('SUNUCU TAMAMEN SIFIRLANDI.');
-            document.body.style.cursor = 'default';
-        } catch(e) { alert("Hata: " + e.message); document.body.style.cursor = 'default'; }
+            btn.disabled = false; btn.innerText = "MEVCUT VERİYİ SIFIRLA";
+        } catch(e) { alert("Hata: " + e.message); }
     }
-    document.getElementById('result').style.display = 'none';
 }
 
 function loginAdmin() {
     const user = document.getElementById('adminUser').value;
     const pass = document.getElementById('adminPass').value;
     if(user === '87118' && pass === '3094') { 
+        currentUser.role = 'ROOT';
         document.getElementById('adminLoginModal').style.display = 'none';
-        const rp = document.getElementById('rootControls');
-        if(rp) rp.classList.remove('hidden');
         document.getElementById('adminPanelModal').style.display = 'flex';
+        const rootControls = document.getElementById('rootControls');
+        if(rootControls) rootControls.classList.remove('hidden');
         refreshServerList();
-    } else alert("Hatalı Giriş!");
+    } else alert("Hatalı!");
+}
+
+// 🔴 GÜVENLİ ÇIKIŞ DÜZELTİLDİ
+function logoutAdmin() { 
+    currentUser.role = null; 
+    closeModal('adminPanelModal'); 
+    const rootControls = document.getElementById('rootControls');
+    if(rootControls) rootControls.classList.add('hidden'); // Butonu gizle
+    alert("Güvenli çıkış yapıldı.");
 }
 
 function refreshServerList() {
@@ -282,6 +274,57 @@ function refreshServerList() {
 function openAdminLogin() { document.getElementById('adminLoginModal').style.display = 'flex'; }
 function closeModal(id) { document.getElementById(id).style.display = 'none'; maintainFocus(); }
 function flashInput(id, col) { let el = document.getElementById(id); if(el) { el.style.borderColor = col; setTimeout(()=>el.style.borderColor='', 300); } }
+
+// 🔴 YENİ SUNUCU EKLEME FONKSİYONU EKLENDİ
+async function addNewWorkspace() {
+    let code, name;
+    
+    // HTML'de input varsa onları kullan, yoksa prompt (açılır kutu) ile sor.
+    const codeInput = document.getElementById('newServerCode');
+    const nameInput = document.getElementById('newServerName');
+
+    if (codeInput && nameInput && codeInput.offsetParent !== null) {
+        code = codeInput.value.trim();
+        name = nameInput.value.trim();
+        codeInput.value = ''; 
+        nameInput.value = '';
+    } else {
+        code = prompt("Yeni Sunucu Kodu (Örn: 4254):");
+        if (!code) return;
+        name = prompt("Sunucu Adı (Örn: PARK BORNOVA):");
+        if (!name) return;
+    }
+
+    if (!code || !name) return alert("Eksik bilgi girdiniz!");
+
+    try {
+        await db.collection('workspaces').doc(code).set({
+            code: code,
+            name: name,
+            active: true,
+            allowDataEntry: true
+        });
+        logAction(code, "SUNUCU_EKLENDI", `Yeni sunucu eklendi: ${name}`);
+        alert("Sunucu başarıyla eklendi!");
+    } catch(e) { 
+        alert("Bağlantı Hatası: " + e.message); 
+    }
+}
+
+async function deleteWorkspace(code) { 
+    if(confirm(`${code} sunucusunu silmek istediğinize emin misiniz?`)) { 
+        await db.collection('workspaces').doc(code).delete(); 
+        logAction(code, "SUNUCU_SILINDI", "Sunucu sistemden silindi."); 
+    } 
+}
+
+function toggleDataEntry(code) { 
+    let ws = globalWorkspaces.find(w => w.code === code);
+    if(ws) {
+        db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
+        logAction(code, "YETKI_DEGISIMI", ws.allowDataEntry ? "Kilitlendi" : "Açıldı");
+    }
+}
 
 async function openDescPanel(code) {
     document.getElementById('descServerCode').value = code;
@@ -309,7 +352,7 @@ async function saveDescriptions() {
     iS.docs.forEach(doc => { if (!nset.has(doc.id)) batch.delete(doc.ref); });
     for (let b in nmap) batch.set(db.collection(`desc_${code}`).doc(b), { text: nmap[b] }, { merge: true });
     await batch.commit();
-    logAction(code, "TANIMLAMA", "Admin tarafından tanımlar güncellendi.");
+    logAction(code, "TANIMLAMA", "Barkod tanımları güncellendi.");
     alert("Kaydedildi."); closeModal('descModal');
 }
 
@@ -318,12 +361,11 @@ async function syncOfflineQueue() {
     let batch = db.batch(); let count = 0;
     for(let item of offlineQueue) {
         batch.set(db.collection(`inv_${item.workspace}`).doc(item.barcode), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
-        count++;
-        if(count > 400) { await batch.commit(); batch = db.batch(); count = 0; }
+        count++; if(count > 400) { await batch.commit(); batch = db.batch(); count = 0; }
     }
     if(count > 0) await batch.commit();
-    logAction("SİSTEM", "OFFLINE_SYNC", offlineQueue.length + " adet çevrimdışı okutma buluta aktarıldı.");
     offlineQueue = []; localStorage.removeItem('offlineQueue');
+    document.getElementById('offlineBadge').style.display = 'none';
 }
 
 function downloadTXT() {
@@ -339,50 +381,40 @@ async function uploadTXT(event) {
     const reader = new FileReader();
     reader.onload = async function(e) {
         const lines = e.target.result.split('\n');
-        let batch = db.batch(); let count = 0; let total = 0;
+        let batch = db.batch(); let count = 0;
         for(let line of lines) {
             let b = line.trim(); if(!b) continue;
             batch.set(db.collection(`inv_${currentWorkspace}`).doc(b), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
-            count++; total++;
-            if(count > 400) { await batch.commit(); batch = db.batch(); count = 0; }
+            count++; if(count > 400) { await batch.commit(); batch = db.batch(); count = 0; }
         }
         if(count > 0) await batch.commit(); 
-        logAction(currentWorkspace, "TOPLU_EKLEME", total + " adet barkod dosyadan aktarıldı.");
+        logAction(currentWorkspace, "TOPLU_EKLEME", "Dosyadan barkod yüklendi.");
         alert("Yüklendi.");
     };
     reader.readAsText(file);
 }
 
-async function deleteWorkspace(code) { if(confirm(`${code} silinsin mi?`)) await db.collection('workspaces').doc(code).delete(); }
-function toggleDataEntry(code) { 
-    let ws = globalWorkspaces.find(w => w.code === code);
-    if(ws) db.collection('workspaces').doc(code).update({ allowDataEntry: !ws.allowDataEntry });
-}
-
-// 🔴 EKRAN İÇİ SEKMELİ YENİ LOG YÖNETİMİ
+// Sekmeli Log Arayüzü
 async function viewLogs(tab = 'FETCH') {
     document.getElementById('logsModal').style.display = 'flex';
     const area = document.getElementById('logsArea'); 
     
-    // Verileri ilk açılışta veya yenilemede çek
     if (tab === 'FETCH' || !window.cachedLogs) {
         area.innerHTML = 'Kayıtlar buluttan çekiliyor...';
         try {
-            const snap = await db.collection('system_logs').orderBy('timestamp', 'desc').limit(500).get();
+            const snap = await db.collection('system_logs').orderBy('timestamp', 'desc').limit(200).get();
             window.cachedLogs = snap.docs.map(doc => doc.data());
-            tab = 'WRITE'; // Başlangıçta işlem loglarını göster
+            tab = 'WRITE'; 
         } catch(e) {
             area.innerHTML = 'Hata: ' + e.message; return;
         }
     }
 
-    // Seçilen sekmeye göre verileri filtrele
     let filteredLogs = window.cachedLogs.filter(d => {
         if (tab === 'READ') return d.action === 'ARAMA';
-        return d.action !== 'ARAMA'; // EKLEME, SİLME, vb..
+        return d.action !== 'ARAMA'; 
     });
 
-    // Sekme Butonları Arayüzü (HTML modifiye etmeden dinamik eklendi)
     let html = `
     <div style="display:flex; gap:10px; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid #333;">
         <button style="flex:1; padding:8px; font-size:11px; ${tab==='WRITE' ? 'border-color:var(--accent-green); color:var(--accent-green);' : ''}" onclick="viewLogs('WRITE')">KAYIT / İŞLEM</button>
@@ -394,12 +426,10 @@ async function viewLogs(tab = 'FETCH') {
 
     filteredLogs.forEach(d => {
         const time = d.timestamp ? new Date(d.timestamp.toDate()).toLocaleString('tr-TR') : 'Az Önce';
-        
-        // Renk Kodlaması
         let actionColor = "var(--text-muted)";
-        if(d.action === 'EKLEME') actionColor = "var(--accent-green)";
-        else if(d.action === 'ARAMA') actionColor = "#00bfff"; // Sorgulama için Mavi
-        else if(d.action.includes('SIFIRLAMA') || d.action === 'SILME') actionColor = "var(--accent-red)";
+        if(d.action === 'EKLEME' || d.action === 'SUNUCU_EKLENDI') actionColor = "var(--accent-green)";
+        else if(d.action === 'ARAMA') actionColor = "#00bfff";
+        else if(d.action.includes('SIFIRLAMA') || d.action.includes('SILIN')) actionColor = "var(--accent-red)";
         else if(d.action === 'TANIMLAMA') actionColor = "var(--accent-warning)";
         
         html += `<div style="border-bottom:1px solid #222; padding:8px 5px; font-size:11px; line-height:1.4;">
