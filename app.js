@@ -1,4 +1,4 @@
-// app.js - v52 (Sunucu Ekleme, Güvenli Çıkış ve Kota Optimizasyonu Tamamlandı)
+// app.js - v53 (Sunucu Ekleme Fonksiyonu Eksikliği Giderildi)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -42,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(maintainFocus, 3000);
 });
 
-// KOTA DOSTU LOG SİSTEMİ (Rutin okutmaları atlar)
 function logAction(workspace, actionType, details) {
     const criticalActions = ['TAM_SIFIRLAMA', 'SUNUCU_SILINDI', 'TOPLU_EKLEME', 'TANIMLAMA', 'YETKI_DEGISIMI', 'SUNUCU_EKLENDI'];
     if (!criticalActions.includes(actionType)) return; 
@@ -246,12 +245,11 @@ function loginAdmin() {
     } else alert("Hatalı!");
 }
 
-// 🔴 GÜVENLİ ÇIKIŞ DÜZELTİLDİ
 function logoutAdmin() { 
     currentUser.role = null; 
     closeModal('adminPanelModal'); 
     const rootControls = document.getElementById('rootControls');
-    if(rootControls) rootControls.classList.add('hidden'); // Butonu gizle
+    if(rootControls) rootControls.classList.add('hidden');
     alert("Güvenli çıkış yapıldı.");
 }
 
@@ -275,27 +273,16 @@ function openAdminLogin() { document.getElementById('adminLoginModal').style.dis
 function closeModal(id) { document.getElementById(id).style.display = 'none'; maintainFocus(); }
 function flashInput(id, col) { let el = document.getElementById(id); if(el) { el.style.borderColor = col; setTimeout(()=>el.style.borderColor='', 300); } }
 
-// 🔴 YENİ SUNUCU EKLEME FONKSİYONU EKLENDİ
+// 🔴 SUNUCU EKLEME FONKSİYONU (Eksik olan kısım eklendi)
 async function addNewWorkspace() {
-    let code, name;
+    let code = prompt("Yeni Sunucu Kodu (Örn: 4254):");
+    if (!code) return;
     
-    // HTML'de input varsa onları kullan, yoksa prompt (açılır kutu) ile sor.
-    const codeInput = document.getElementById('newServerCode');
-    const nameInput = document.getElementById('newServerName');
+    let name = prompt("Sunucu Adı (Örn: PARK BORNOVA):");
+    if (!name) return;
 
-    if (codeInput && nameInput && codeInput.offsetParent !== null) {
-        code = codeInput.value.trim();
-        name = nameInput.value.trim();
-        codeInput.value = ''; 
-        nameInput.value = '';
-    } else {
-        code = prompt("Yeni Sunucu Kodu (Örn: 4254):");
-        if (!code) return;
-        name = prompt("Sunucu Adı (Örn: PARK BORNOVA):");
-        if (!name) return;
-    }
-
-    if (!code || !name) return alert("Eksik bilgi girdiniz!");
+    code = code.trim().toUpperCase();
+    name = name.trim();
 
     try {
         await db.collection('workspaces').doc(code).set({
@@ -312,9 +299,9 @@ async function addNewWorkspace() {
 }
 
 async function deleteWorkspace(code) { 
-    if(confirm(`${code} sunucusunu silmek istediğinize emin misiniz?`)) { 
+    if(confirm(`${code} silinsin mi?`)) { 
         await db.collection('workspaces').doc(code).delete(); 
-        logAction(code, "SUNUCU_SILINDI", "Sunucu sistemden silindi."); 
+        logAction(code, "SUNUCU_SILINDI", "Sunucu silindi."); 
     } 
 }
 
@@ -394,7 +381,6 @@ async function uploadTXT(event) {
     reader.readAsText(file);
 }
 
-// Sekmeli Log Arayüzü
 async function viewLogs(tab = 'FETCH') {
     document.getElementById('logsModal').style.display = 'flex';
     const area = document.getElementById('logsArea'); 
