@@ -3,194 +3,300 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ürün Bulucu</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+    <title>Stok & Barkod Yönetimi</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
+    <style>
         :root {
-            --bg-dark: #0a0c10;
-            --panel-bg: rgba(20, 24, 32, 0.85);
-            --accent-primary: #ffffff;
-            --accent-red: #ff3333;
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+            --accent-primary: #6200ea;
             --accent-green: #00e676;
             --accent-warning: #ffb300;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border-glow: 0 0 10px rgba(255, 255, 255, 0.15), inset 0 0 10px rgba(255, 255, 255, 0.05);
+            --accent-red: #ff3d00;
+            --border-color: #333333;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
         body {
-            background-color: var(--bg-dark);
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: 'Rajdhani', sans-serif;
-            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 20px 20px;
-            padding: 20px 10px;
+            min-height: 100vh;
         }
 
-        .terminal-container { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 15px; }
+        .container {
+            width: 100%;
+            max-width: 500px;
+            padding: 15px;
+            box-sizing: border-box;
+        }
 
-        .header { text-align: center; border-bottom: 2px solid var(--accent-primary); padding-bottom: 15px; position: relative; }
-        .header h1 { font-family: 'Share Tech Mono', monospace; color: var(--accent-primary); font-size: 32px; letter-spacing: 3px; }
-        
-        .server-selector { margin-top: 15px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); transition: 0.3s; }
-        .server-selector.online-mode { border-color: var(--accent-green); box-shadow: 0 0 10px rgba(0, 230, 118, 0.2); }
-        .server-selector.readonly-mode { border-color: var(--accent-red); box-shadow: 0 0 10px rgba(255, 51, 51, 0.2); }
-        .server-selector.local-mode { border-color: var(--accent-warning); }
-        
-        .server-selector select { width: 100%; background: transparent; color: var(--accent-primary); font-family: 'Share Tech Mono', monospace; font-size: 16px; border: none; outline: none; text-align: center; cursor: pointer; }
-        .server-selector select option { background: var(--bg-dark); color: var(--accent-primary); }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 15px;
+        }
 
-        .panel { background: var(--panel-bg); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 20px; box-shadow: var(--border-glow); position: relative; }
-        .panel-title { font-size: 18px; color: var(--text-main); margin-bottom: 15px; display: flex; justify-content: space-between; text-transform: uppercase; }
-        
-        input[type="text"], input[type="password"] { width: 100%; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 255, 255, 0.3); color: var(--accent-primary); font-family: 'Share Tech Mono', monospace; font-size: 20px; padding: 15px; text-align: center; border-radius: 4px; transition: 0.3s; }
-        input[type="text"]:focus, input[type="password"]:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 15px rgba(255, 255, 255, 0.2); }
+        .status-badge {
+            font-size: 12px;
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 12px;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
 
-        button { width: 100%; background: transparent; color: var(--text-main); border: 1px solid var(--accent-primary); padding: 15px; font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 600; letter-spacing: 2px; cursor: pointer; transition: 0.3s; border-radius: 4px; margin-top: 10px; text-transform: uppercase; }
-        button:hover { background: rgba(255, 255, 255, 0.1); }
-        .btn-danger { border-color: var(--accent-red); color: var(--accent-red); }
-        .btn-warning { border-color: var(--accent-warning); color: var(--accent-warning); }
-        .btn-warning:hover { background: rgba(255, 179, 0, 0.1); }
+        #offlineBadge {
+            background-color: var(--accent-red);
+            color: white;
+            display: none;
+            margin-left: 10px;
+        }
 
-        #result { margin-top: 15px; padding: 15px; text-align: center; font-family: 'Share Tech Mono', monospace; font-size: 24px; font-weight: bold; display: none; border-radius: 4px; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; text-shadow: 0 0 10px currentColor; } 100% { opacity: 0.8; } }
+        .server-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+        }
 
-        .cyber-toggle { display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.4); padding: 12px 16px; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; cursor: pointer; }
-        .cyber-toggle span { font-size: 15px; color: var(--accent-primary); font-weight: 600; }
-        .cyber-toggle input[type="checkbox"] { accent-color: var(--accent-primary); width: 18px; height: 18px; }
+        select, input, textarea, button {
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background-color: #2a2a2a;
+            color: white;
+            font-size: 16px;
+            outline: none;
+            margin-bottom: 10px;
+        }
 
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: var(--panel-bg); border: 1px solid var(--accent-primary); padding: 25px; width: 95%; max-width: 450px; box-shadow: var(--border-glow); border-radius: 8px; max-height: 90vh; overflow-y: auto; }
-        .modal h3 { color: var(--accent-primary); text-align: center; font-family: 'Share Tech Mono', monospace; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; }
+        select:focus, input:focus, textarea:focus {
+            border-color: var(--accent-primary);
+        }
 
-        .tab-btn { opacity: 0.4; border-color: rgba(255, 255, 255, 0.3); }
-        .tab-btn.active { opacity: 1; background: rgba(255, 255, 255, 0.05); border-color: var(--accent-primary); }
+        .tab-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .tab-btn.active {
+            background-color: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
         .hidden { display: none !important; }
+
+        .result-box {
+            padding: 15px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .data-panel {
+            background-color: var(--panel-bg);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-top: 20px;
+        }
+
+        .btn-danger { background-color: rgba(255, 61, 0, 0.2); color: var(--accent-red); border-color: var(--accent-red); }
+        .btn-danger:hover { background-color: var(--accent-red); color: white; }
         
-        #tabGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; transition: 0.3s; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        
-        .footer-link { color: var(--text-muted); font-size: 12px; cursor: pointer; margin-top: 20px; text-decoration: none; border: none; background: none; letter-spacing: 2px;}
-        #offlineBadge { display: none; background: var(--accent-warning); color: #000; font-size: 12px; padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-left: 10px; }
+        .btn-action { background-color: rgba(0, 230, 118, 0.2); color: var(--accent-green); border-color: var(--accent-green); }
+
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: var(--bg-color);
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .close-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0; width: auto; }
+
+        /* Admin Ekleme Alanı */
+        .add-server-box {
+            display: flex; gap: 5px; margin-bottom: 15px;
+        }
+        .add-server-box input { margin-bottom: 0; }
+        .add-server-box button { width: auto; padding: 0 15px; white-space: nowrap; background: var(--accent-green); color: #000; font-weight: bold;}
     </style>
 </head>
 <body>
 
-    <div class="terminal-container">
+<div class="container">
+    <div class="header">
+        <div style="display:flex; align-items:center;">
+            <span class="status-badge" id="connectionStatus">YÜKLENİYOR...</span>
+            <span class="status-badge" id="offlineBadge">OFFLINE</span>
+        </div>
+        <button style="width:auto; padding:5px 10px; margin:0; font-size:12px; background:none;" onclick="openAdminLogin()">⚙️ YÖNETİM</button>
+    </div>
+
+    <button id="rootControls" class="hidden" style="background-color:var(--accent-primary); font-weight:bold;" onclick="document.getElementById('adminPanelModal').style.display='flex'">👑 YÖNETİCİ PANELİNİ AÇ</button>
+
+    <div class="server-selector" id="serverSelectorDiv">
+        <label style="font-size: 12px; color: var(--text-muted);">ÇALIŞMA ALANI (SUNUCU)</label>
+        <select id="workspaceSelect" onchange="changeWorkspace()">
+            <option value="LOCAL">GENEL KULLANICI</option>
+        </select>
+    </div>
+
+    <div class="tab-grid" id="tabGrid">
+        <button class="tab-btn active" id="addLocationButton" onclick="switchMode('add')">VERİ EKLE</button>
+        <button class="tab-btn" id="findProductButton" onclick="switchMode('find')">ÜRÜN BUL</button>
+    </div>
+
+    <div id="addLocationSection" class="input-section">
+        <input type="text" id="barcodeInput" placeholder="Barkod Okutun..." inputmode="none" autocomplete="off">
+    </div>
+
+    <div id="findProductSection" class="input-section hidden">
+        <input type="text" id="searchBarcodeInput" placeholder="Aranacak Barkod..." inputmode="none" autocomplete="off">
+        <div id="result" class="result-box"></div>
+    </div>
+
+    <div class="data-panel" id="dataPanel">
+        <h4 style="margin-top:0; color:var(--text-muted); font-size:14px;">VERİ YÖNETİMİ</h4>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-action" onclick="downloadTXT()">📥 İNDİR</button>
+            <label class="btn-action" style="flex:1; text-align:center; padding:12px; border-radius:6px; cursor:pointer; display:block; box-sizing:border-box;">
+                📤 YÜKLE <input type="file" style="display:none;" accept=".txt" onchange="uploadTXT(event)">
+            </label>
+        </div>
+        <button class="btn-danger" style="margin-top:10px;" onclick="resetSystemData()">🗑️ MEVCUT VERİYİ SIFIRLA</button>
+    </div>
+</div>
+
+<div id="adminLoginModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Sistem Yöneticisi</h3>
+            <button class="close-btn" onclick="closeModal('adminLoginModal')">✖</button>
+        </div>
+        <input type="password" id="adminUser" placeholder="Kullanıcı ID (87118)" inputmode="numeric">
+        <input type="password" id="adminPass" placeholder="Şifre" inputmode="numeric">
+        <button style="background:var(--accent-primary); font-weight:bold;" onclick="loginAdmin()">GİRİŞ YAP</button>
+    </div>
+</div>
+
+<div id="adminPanelModal" class="modal">
+    <div class="modal-content" style="max-width:450px;">
+        <div class="modal-header">
+            <h3 style="margin:0;">👑 YÖNETİCİ KONTROL PANELİ</h3>
+            <button class="close-btn" onclick="closeModal('adminPanelModal')">✖</button>
+        </div>
         
-        <div class="header">
-            <h1>ÜRÜN BULUCU</h1>
-            <div class="server-selector local-mode" id="serverSelectorDiv">
-                <select id="workspaceSelect" onchange="changeWorkspace()">
-                    <option value="LOCAL">GENEL KULLANICI</option>
-                </select>
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+            <button style="width:48%; margin:0;" class="btn-action" onclick="viewLogs('WRITE')">📜 SİSTEM KAYITLARI</button>
+            <button style="width:48%; margin:0;" class="btn-danger" onclick="logoutAdmin()">🚪 GÜVENLİ ÇIKIŞ</button>
+        </div>
+
+        <div style="background:#111; padding:10px; border-radius:6px; margin-bottom:15px; border:1px solid #333;">
+            <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--accent-green);">YENİ SUNUCU OLUŞTUR</h4>
+            <div class="add-server-box">
+                <input type="text" id="newServerCode" placeholder="Kod (Örn: 4254)" style="width:30%;">
+                <input type="text" id="newServerName" placeholder="Ad (Örn: PARK BORNOVA)" style="width:50%;">
+                <button onclick="addNewWorkspace()" style="width:20%;">+</button>
             </div>
-            <div style="margin-top: 10px; font-size: 12px; color: var(--text-muted);">
-                BAĞLANTI: <span id="connectionStatus" style="color: var(--accent-warning);">LOKAL İZOLASYON</span>
-                <span id="offlineBadge">OFFLINE - KUYRUKTA</span>
+        </div>
+
+        <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--text-muted);">MEVCUT SUNUCULAR</h4>
+        <div id="serverListArea" style="max-height:250px; overflow-y:auto; padding-right:5px;">
             </div>
+    </div>
+</div>
+
+<div id="descModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="descModalTitle" style="margin:0;">TANIMLAR</h3>
+            <button class="close-btn" onclick="closeModal('descModal')">✖</button>
         </div>
+        <p style="font-size:12px; color:var(--text-muted); margin-top:0;">Her satıra BARKOD ve AÇIKLAMA arasına boşluk koyarak yazın.</p>
+        <input type="hidden" id="descServerCode">
+        <textarea id="descTextarea" rows="12" style="font-family:monospace; font-size:12px; white-space:pre;"></textarea>
+        <button style="background:var(--accent-green); color:#000; font-weight:bold;" onclick="saveDescriptions()">💾 KAYDET VE SENKRONİZE ET</button>
+    </div>
+</div>
 
-        <div id="tabGrid">
-            <button id="addLocationButton" class="tab-btn active" onclick="switchMode('add')">Ürün Ekle</button>
-            <button id="findProductButton" class="tab-btn" onclick="switchMode('find')">Ürün Bul</button>
+<div id="logsModal" class="modal">
+    <div class="modal-content" style="max-width:500px;">
+        <div class="modal-header">
+            <h3 style="margin:0;">📜 SİSTEM KAYITLARI (LOGS)</h3>
+            <button class="close-btn" onclick="closeModal('logsModal')">✖</button>
         </div>
-
-        <label class="cyber-toggle" id="keyboardToggleContainer">
-            <span id="modeLabel">KLAVYE MODU</span>
-            <input type="checkbox" id="keyboardToggle" onchange="toggleKeyboardMode()">
-        </label>
-
-        <div id="addLocationSection" class="panel">
-            <div class="panel-title"><span>VERİ GİRİŞİ</span></div>
-            <input type="text" id="barcodeInput" placeholder="BARKOD TARAYIN..." autofocus>
-        </div>
-
-        <div id="findProductSection" class="panel hidden">
-            <div class="panel-title"><span>SİSTEM SORGUSU</span></div>
-            <input type="text" id="searchBarcodeInput" placeholder="EAN BARKODU GİRİN...">
-            <div id="result"></div>
-        </div>
-
-        <div class="panel" id="dataPanel" style="margin-top: 5px;">
-            <div class="panel-title">VERİ YÖNETİMİ (TXT)</div>
-            <div class="grid-2" style="margin-bottom: 0;">
-                <button onclick="downloadTXT()" style="margin-top: 0;">İNDİR</button>
-                <button onclick="document.getElementById('fileInput').click()" style="margin-top: 0;">YÜKLE</button>
+        <div id="logsArea" style="font-family:monospace; background:#000; padding:10px; border-radius:6px;">
             </div>
-            <input type="file" id="fileInput" accept=".txt" style="display: none;" onchange="uploadTXT(event)">
-            <button class="btn-danger" onclick="resetSystemData()" style="margin-top: 15px;">MEVCUT VERİYİ SIFIRLA</button>
-        </div>
-
-        <div style="text-align: center;">
-            <button class="footer-link" onclick="openAdminLogin()">[ YÖNETİCİ GİRİŞİ ]</button>
-            <div style="font-size: 10px; color: var(--text-muted); margin-top: 5px; font-family: monospace;">info mail arda@ardaulas.online | version 43</div>
-        </div>
     </div>
+</div>
 
-    <div id="adminLoginModal" class="modal">
-        <div class="modal-content">
-            <h3>YETKİLİ GİRİŞİ</h3>
-            <input type="text" id="adminUser" placeholder="Kullanıcı Adı" style="margin-bottom: 10px;">
-            <input type="password" id="adminPass" placeholder="Şifre" style="margin-bottom: 15px;">
-            <button onclick="loginAdmin()">SİSTEME GİR</button>
-            <button class="btn-danger" onclick="closeModal('adminLoginModal')">İPTAL</button>
-        </div>
-    </div>
+<audio id="audioSuccess" src=""></audio>
+<audio id="audioError" src=""></audio>
 
-    <div id="adminPanelModal" class="modal">
-        <div class="modal-content">
-            <h3>MERKEZ YÖNETİM (ROOT)</h3>
-            <div id="rootControls" class="hidden" style="margin-bottom: 20px; padding: 15px; border: 1px solid var(--accent-primary); background: rgba(0,0,0,0.3);">
-                <input type="text" id="newServerCode" placeholder="Yeni Sunucu Kodu (Örn: 4255)" style="margin-bottom: 10px; font-size: 14px; padding: 10px;">
-                <input type="text" id="newServerName" placeholder="Sunucu Adı (Örn: Depo 2)" style="margin-bottom: 10px; font-size: 14px; padding: 10px;">
-                <button onclick="createWorkspace()" style="padding: 10px; font-size: 14px;">SUNUCUYU BAŞLAT</button>
-                
-                <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
-                <button class="btn-warning" onclick="viewLogs()" style="padding: 10px; font-size: 12px; margin-bottom: 15px;">TÜM SUNUCU LOGLARINI GÖR</button>
-                
-                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">AKTİF SUNUCULAR & YETKİLER:</p>
-                <div id="serverListArea" style="max-height: 250px; overflow-y: auto; font-size: 12px;"></div>
-            </div>
-            
-            <button class="btn-danger" onclick="logoutAdmin()">GÜVENLİ ÇIKIŞ</button>
-        </div>
-    </div>
+<script src="app.js?v=54"></script>
 
-    <div id="descModal" class="modal" style="z-index: 1001;">
-        <div class="modal-content">
-            <h3 id="descModalTitle">BARKOD TANIMLARI</h3>
-            <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px; text-align:center;">Sahada okutulan tüm barkodlar aşağıdadır. Yanlarına açıklama ekleyebilirsiniz.</p>
-            <textarea id="descTextarea" placeholder="Örnek:&#10;1111 39&#10;2222 Mavi" style="width:100%; height:180px; background:rgba(0,0,0,0.8); border:1px solid var(--accent-primary); color:white; padding:10px; font-family:monospace; margin-bottom:15px; resize:none;"></textarea>
-            <button onclick="saveDescriptions()">KAYDET</button>
-            <button class="btn-danger" onclick="closeModal('descModal')">KAPAT</button>
-            <input type="hidden" id="descServerCode">
-        </div>
-    </div>
-
-    <div id="logsModal" class="modal" style="z-index: 1002;">
-        <div class="modal-content">
-            <h3 style="color: var(--accent-warning);">SİSTEM İŞLEM KAYITLARI</h3>
-            <div id="logsArea" style="max-height: 300px; overflow-y: auto; font-size: 12px; font-family: monospace; text-align: left; margin-bottom: 15px; background: rgba(0,0,0,0.6); padding: 10px; border: 1px solid var(--text-muted);">
-                Yükleniyor...
-            </div>
-            <button class="btn-danger" onclick="closeModal('logsModal')">KAPAT</button>
-        </div>
-    </div>
-
-    <audio id="audioSuccess" src="find.mp3" preload="auto"></audio>
-    <audio id="audioError" src="unmatched.mp3" preload="auto"></audio>
-
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    
-    <script src="app.js?v=46"></script>
 </body>
 </html>
