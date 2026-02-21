@@ -1,4 +1,4 @@
-// app.js - v56 (Çökme Korumalı, Sunucu Ekleme & Çıkış Garantili Sürüm)
+// app.js - v57 (Arama/Okuma Logları Aktif Edildi)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -43,7 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(maintainFocus, 3000);
 });
 
-// 🔴 EKSİK OLAN VE ÇÖKMEYE NEDEN OLAN FONKSİYON EKLENDİ
 function toggleKeyboardMode() {
     try {
         const toggle = document.getElementById('keyboardToggle');
@@ -57,10 +56,11 @@ function toggleKeyboardMode() {
     } catch(e) { console.error(e); }
 }
 
-// KOTA DOSTU LOGLAMA (Sadece önemli işlemleri kaydeder)
+// 🔴 LOGLAMA KONTROLÜ (Arama logları listeye eklendi)
 function logAction(workspace, actionType, details) {
     try {
-        const criticalActions = ['TAM_SIFIRLAMA', 'SUNUCU_SILINDI', 'TOPLU_EKLEME', 'TANIMLAMA', 'YETKI_DEGISIMI', 'SUNUCU_EKLENDI'];
+        // 'ARAMA' işlemi artık kritik işlemler listesinde, böylece loglanacak.
+        const criticalActions = ['TAM_SIFIRLAMA', 'SUNUCU_SILINDI', 'TOPLU_EKLEME', 'TANIMLAMA', 'YETKI_DEGISIMI', 'SUNUCU_EKLENDI', 'ARAMA'];
         if (!criticalActions.includes(actionType)) return; 
 
         db.collection('system_logs').add({
@@ -235,6 +235,7 @@ async function saveProduct() {
     input.value = '';
 }
 
+// 🔴 ARAMA LOGLARI GERİ GETİRİLDİ
 async function searchProduct() {
     const input = document.getElementById('searchBarcodeInput');
     if(!input) return;
@@ -257,6 +258,7 @@ async function searchProduct() {
             result.style.background = 'rgba(0, 230, 118, 0.1)';
         }
         document.getElementById('audioSuccess')?.play().catch(()=>{});
+        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Barkod arandı: ${barcode} (BULUNDU)`); // LOG EKLENDİ
     } else {
         if(result) {
             result.textContent = 'SİSTEMDE YOK';
@@ -265,6 +267,7 @@ async function searchProduct() {
             result.style.background = 'rgba(255, 51, 51, 0.1)';
         }
         document.getElementById('audioError')?.play().catch(()=>{});
+        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Barkod arandı: ${barcode} (YOK)`); // LOG EKLENDİ
     }
     input.value = '';
 }
@@ -306,15 +309,12 @@ function loginAdmin() {
     } else alert("Hatalı!");
 }
 
-// 🔴 ÇIKIŞ YAPMA DÜZELTİLDİ
 function logoutAdmin() { 
     currentUser.role = null; 
     
-    // Modalı kapat
     const adminPanel = document.getElementById('adminPanelModal');
     if(adminPanel) adminPanel.style.display = 'none';
     
-    // Yetki butonunu gizle
     const rootControls = document.getElementById('rootControls');
     if(rootControls) rootControls.classList.add('hidden');
     
@@ -342,7 +342,6 @@ function openAdminLogin() { document.getElementById('adminLoginModal').style.dis
 function closeModal(id) { document.getElementById(id).style.display = 'none'; maintainFocus(); }
 function flashInput(id, col) { let el = document.getElementById(id); if(el) { el.style.borderColor = col; setTimeout(()=>el.style.borderColor='', 300); } }
 
-// 🔴 SUNUCU EKLEME DÜZELTİLDİ VE GARANTİYE ALINDI
 async function createWorkspace() {
     try {
         const codeInput = document.getElementById('newServerCode');
@@ -378,9 +377,7 @@ async function createWorkspace() {
         alert("Kritik Hata: " + error.message); 
     }
 }
-// HTML'deki onclick eventleri için köprü (Her ihtimale karşı)
 window.addNewWorkspace = createWorkspace;
-
 
 async function openDescPanel(code) {
     document.getElementById('descServerCode').value = code;
