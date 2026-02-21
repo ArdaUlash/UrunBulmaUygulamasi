@@ -1,4 +1,4 @@
-// app.js - v59 (TXT Yükleme Artık "Tanımlar"a Kaydediyor - Sadece Bulma Modu)
+// app.js - v60 (Tek Doküman Mimarisi - Tam Fonksiyonel ve Kota Dostu)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -15,8 +15,8 @@ const db = firebase.firestore();
 
 let appMode = 'LOCAL'; 
 let currentWorkspace = 'LOCAL'; 
-let localDB = {}; // Lokal veya Sunucudan çekilen Envanter (Senin durumunda boş kalacak)
-let descDB = {};  // Sunucudan çekilen Tanımlar (İade/Referans Listen)
+let localDB = {}; // Envanter (Okutulanlar)
+let descDB = {};  // Tanımlar (Arananlar/İade Listesi)
 let offlineQueue = JSON.parse(localStorage.getItem('offlineQueue')) || []; 
 let isCurrentWorkspaceReadOnly = false; 
 let globalWorkspaces = []; 
@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('online', handleConnectionChange);
     window.addEventListener('offline', handleConnectionChange);
     
+    // Odaklanma çakışmalarını önlemek için 'BUTTON' da eklendi
     document.body.addEventListener('mousedown', (e) => {
         if (e.target && ['SELECT', 'OPTION', 'INPUT', 'TEXTAREA', 'BUTTON'].includes(e.target.tagName)) {
             window.isUserInteracting = true;
@@ -57,6 +58,7 @@ function toggleKeyboardMode() {
     } catch(e) { console.error(e); }
 }
 
+// 🔴 LOGLAMA: Sadece Kritik İşlemler ve Arama İşlemi Loglanır
 function logAction(workspace, actionType, details) {
     try {
         const criticalActions = ['TAM_SIFIRLAMA', 'SUNUCU_SILINDI', 'TOPLU_EKLEME', 'TANIMLAMA', 'YETKI_DEGISIMI', 'SUNUCU_EKLENDI', 'ARAMA'];
@@ -169,22 +171,24 @@ function changeWorkspace() {
             if(addTab) addTab.style.display = 'block';
         }
 
+        // 🔴 YENİ MİMARİ: Envanter (Okutulanlar) tek dökümandan dinlenir
         unsubInv = db.collection('inventory_data').doc(currentWorkspace).onSnapshot(doc => {
             if (doc.exists) {
                 localDB = doc.data().items || {};
-                localStorage.setItem(`db_${currentWorkspace}`, JSON.stringify(localDB));
             } else {
                 localDB = {};
             }
+            localStorage.setItem(`db_${currentWorkspace}`, JSON.stringify(localDB));
         });
 
+        // 🔴 YENİ MİMARİ: Tanımlar (Referans/İade listesi) tek dökümandan dinlenir
         unsubDesc = db.collection('description_data').doc(currentWorkspace).onSnapshot(doc => {
             if (doc.exists) {
                 descDB = doc.data().items || {};
-                localStorage.setItem(`desc_${currentWorkspace}`, JSON.stringify(descDB));
             } else {
                 descDB = {};
             }
+            localStorage.setItem(`desc_${currentWorkspace}`, JSON.stringify(descDB));
         });
     }
     
@@ -219,8 +223,12 @@ function switchMode(mode) {
 document.getElementById('barcodeInput')?.addEventListener('keydown', e => { if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); saveProduct(); } });
 document.getElementById('searchBarcodeInput')?.addEventListener('keydown', e => { if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); searchProduct(); } });
 
+// 🔴 DÜZELTİLDİ: Tek tek ürün okutma hatası giderildi (Yeni Mimari Uyumlu)
 async function saveProduct() {
-    if (isCurrentWorkspaceReadOnly) return;
+    if (isCurrentWorkspaceReadOnly) {
+        alert("Bu sunucu kilitli, veri eklenemez.");
+        return;
+    }
     const input = document.getElementById('barcodeInput');
     if(!input) return;
     
@@ -232,11 +240,29 @@ async function saveProduct() {
         flashInput('barcodeInput', 'var(--accent-warning)');
     } else {
         if (navigator.onLine) {
-            let updateData = {};
-            updateData[`items.${barcode}`] = firebase.firestore.FieldValue.increment(1);
-            
-            await db.collection('inventory_data').doc(currentWorkspace).set(updateData, { merge: true });
-            flashInput('barcodeInput', 'var(--accent-green)');
+            try {
+                const docRef = db.collection('inventory_data').doc(currentWorkspace);
+                
+                // Firestore'da iç içe harita güncellemelerinde 'dot notation' kullanılır.
+                // Eğer doküman yoksa hata fırlatacağı için önce update deniyoruz.
+                let updateData = {};
+                updateData[`items.${barcode}`] = firebase.firestore.FieldValue.increment(1);
+                
+                try {
+                    await docRef.update(updateData);
+                } catch (updateError) {
+                    // Update hata verirse (doküman hiç yok demektir), set(merge) ile ilk defa oluştur.
+                    await docRef.set({
+                        items: {
+                            [barcode]: 1
+                        }
+                    }, { merge: true });
+                }
+                
+                flashInput('barcodeInput', 'var(--accent-green)');
+            } catch (error) {
+                console.error("Kayıt hatası:", error);
+            }
         } else {
             offlineQueue.push({ workspace: currentWorkspace, barcode: barcode });
             localStorage.setItem('offlineQueue', JSON.stringify(offlineQueue));
@@ -247,6 +273,7 @@ async function saveProduct() {
     input.value = '';
 }
 
+// 🔴 ARAMA (Ürün Bul) İşlemi: Cihaz hafızasındaki (localDB ve descDB) listeden bakar. 0 Okuma Kotası!
 async function searchProduct() {
     const input = document.getElementById('searchBarcodeInput');
     if(!input) return;
@@ -257,6 +284,7 @@ async function searchProduct() {
     const result = document.getElementById('result');
     if(result) result.style.display = 'block';
     
+    // Aramayı anlık olarak güncel tutulan 'localDB' (Envanter) veya 'descDB' (Tanımlar/İade) içinde yapıyoruz.
     if (localDB.hasOwnProperty(barcode) || descDB.hasOwnProperty(barcode)) {
         let descText = descDB[barcode] ? `<br><span style="font-size: 16px; color: var(--accent-primary);">(${descDB[barcode]})</span>` : "";
         if(result) {
@@ -266,7 +294,9 @@ async function searchProduct() {
             result.style.background = 'rgba(0, 230, 118, 0.1)';
         }
         document.getElementById('audioSuccess')?.play().catch(()=>{});
-        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Barkod arandı: ${barcode} (BULUNDU)`);
+        
+        // Arama logu (İsteğe bağlı, her arama 1 yazma kotası harcar)
+        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Arandı: ${barcode} (BULUNDU)`);
     } else {
         if(result) {
             result.textContent = 'SİSTEMDE YOK';
@@ -275,25 +305,31 @@ async function searchProduct() {
             result.style.background = 'rgba(255, 51, 51, 0.1)';
         }
         document.getElementById('audioError')?.play().catch(()=>{});
-        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Barkod arandı: ${barcode} (YOK)`);
+        
+        // Arama logu (İsteğe bağlı)
+        if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Arandı: ${barcode} (YOK)`);
     }
     input.value = '';
 }
 
 async function resetSystemData() {
-    if (!confirm('DİKKAT: Bu sunucudaki TÜM barkod sayıları VE tanımlı isimler silinecektir. Emin misiniz?')) return;
+    if (!confirm('DİKKAT: Bu sunucudaki TÜM okutulan barkodlar VE tanımlı iade listeleri SİLİNECEK. Emin misiniz?')) return;
     
     if (appMode === 'LOCAL') {
-        localDB = {}; alert('LOKAL TEMİZLENDİ.');
+        localDB = {}; descDB = {}; alert('LOKAL TEMİZLENDİ.');
     } else {
         try {
             const btn = event.target; 
             if(btn) { btn.disabled = true; btn.innerText = "TEMİZLENİYOR..."; }
             
+            // 🔴 YENİ MİMARİ SIFIRLAMA: Sadece 2 ana dökümanı siliyoruz (Çok hızlı ve sadece 2 kota harcar)
             await db.collection('inventory_data').doc(currentWorkspace).delete();
             await db.collection('description_data').doc(currentWorkspace).delete();
             
-            logAction(currentWorkspace, "TAM_SIFIRLAMA", "Envanter ve Tanımlar silindi.");
+            localDB = {};
+            descDB = {};
+            
+            logAction(currentWorkspace, "TAM_SIFIRLAMA", "Tüm Envanter ve Tanımlar silindi.");
             alert('SUNUCU TAMAMEN SIFIRLANDI.');
             
             if(btn) { btn.disabled = false; btn.innerText = "MEVCUT VERİYİ SIFIRLA"; }
@@ -393,6 +429,7 @@ async function openDescPanel(code) {
     document.getElementById('descModalTitle').innerText = `[${code}] TANIMLAR`;
     document.getElementById('descModal').style.display = 'flex';
     
+    // Tanımları Göster
     try {
         const doc = await db.collection('description_data').doc(code).get();
         let txt = '';
@@ -419,6 +456,7 @@ async function saveDescriptions() {
     });
     
     try {
+        // Yeni mimari: Tek dökümana "set" yaparak mevcut tüm listeyi yeniler (1 kota)
         await db.collection('description_data').doc(code).set({ items: newItems });
         logAction(code, "TANIMLAMA", "Barkod tanımları güncellendi.");
         alert("Kaydedildi."); 
@@ -448,6 +486,7 @@ async function syncOfflineQueue() {
         for(let key in updatesByWorkspace[ws]) {
              updateData[key] = firebase.firestore.FieldValue.increment(updatesByWorkspace[ws][key]);
         }
+        // Eğer döküman yoksa hata almamak için merge kullanarak set ile gönderiyoruz
         batch.set(db.collection('inventory_data').doc(ws), updateData, { merge: true });
     }
     
@@ -458,58 +497,71 @@ async function syncOfflineQueue() {
 }
 
 function downloadTXT() {
-    let target = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
-    let txt = ""; for (let b in target) { for (let i = 0; i < target[b]; i++) txt += `${b}\n`; }
+    // Hem okutulanları (localDB) hem de tanımlananları/iade (descDB) indiriyoruz
+    let targetInv = appMode === 'LOCAL' ? localDB : (JSON.parse(localStorage.getItem(`db_${currentWorkspace}`)) || {});
+    let targetDesc = appMode === 'LOCAL' ? {} : (JSON.parse(localStorage.getItem(`desc_${currentWorkspace}`)) || {});
+    
+    let txt = "--- OKUTULAN/SAYILAN ÜRÜNLER ---\n"; 
+    for (let b in targetInv) { 
+        for (let i = 0; i < targetInv[b]; i++) txt += `${b}\n`; 
+    }
+    
+    txt += "\n--- İADE/REFERANS LİSTESİ (TANIMLAR) ---\n";
+    for (let b in targetDesc) {
+        txt += targetDesc[b] ? `${b} ${targetDesc[b]}\n` : `${b}\n`;
+    }
+
     const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${currentWorkspace}_Cikti.txt`; link.click();
 }
 
-// 🔴 TXT YÜKLEME ARTIK TANIMLAR (DESC_) ALANINA KAYDEDİYOR
+// 🔴 TXT YÜKLEME: (TANIMLAR/İADE LİSTESİ İÇİN KULLANILACAK)
 async function uploadTXT(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
         reader.onload = async function(e) {
             const lines = e.target.result.split('\n');
-            let newItems = {}; // Toplu veri nesnesi
+            let newItems = {}; 
             let total = 0;
             
             for(let line of lines) {
-                // TXT dosyasında her satırda sadece barkod numarası (örneğin 1111) veya "1111 Açıklama" olabilir
                 const p = line.trim().split(/[\t, ]+/); 
-                const b = p.shift(); // İlk parça barkod
-                const d = p.join(' ').trim(); // Geri kalanı açıklama (yoksa boş kalır)
+                const b = p.shift(); 
+                const d = p.join(' ').trim(); 
                 
                 if(b) { 
-                    newItems[b] = d || ""; // Eğer açıklama yoksa boş string olarak kaydet
+                    newItems[b] = d || ""; 
                     total++; 
                 }
             }
             
             if(total > 0) {
                  try {
-                     // 🔴 YENİ MİMARİ: Tüm listeyi 'description_data' dokümanına tek seferde gönder (SADECE 1 YAZMA KOTASI!)
-                     // "merge: true" olduğu için, var olan tanımları silmez, sadece üzerine ekler/günceller.
+                     // txt'yi Tanımlar (desc_) alanına kaydediyor. (1 Kota)
+                     // {merge:true} olduğu için mevcut listeyi silmez, sadece üzerine ekler.
                      await db.collection('description_data').doc(currentWorkspace).set({ items: newItems }, { merge: true });
                      logAction(currentWorkspace, "TOPLU_EKLEME", total + " adet referans barkod TXT'den aktarıldı.");
-                     alert(total + " adet referans barkod başarıyla yüklendi.");
+                     alert(total + " adet referans barkod başarıyla İADE/TANIMLAR listesine eklendi.");
                  } catch (err) {
                      alert("Yükleme sırasında hata oluştu: " + err.message);
                  }
             } else {
                 alert("Dosyada geçerli barkod bulunamadı.");
             }
+            // Aynı dosyayı tekrar seçebilmek için input'u sıfırla
+            event.target.value = '';
         };
         reader.readAsText(file);
     }
 }
 
 async function deleteWorkspace(code) { 
-    if(confirm(`${code} silinsin mi?`)) { 
+    if(confirm(`${code} silinsin mi? Tüm veriler yok olacak!`)) { 
         await db.collection('workspaces').doc(code).delete(); 
         await db.collection('inventory_data').doc(code).delete();
         await db.collection('description_data').doc(code).delete();
-        logAction(code, "SUNUCU_SILINDI", "Sunucu silindi."); 
+        logAction(code, "SUNUCU_SILINDI", "Sunucu tamamen silindi."); 
     } 
 }
 
