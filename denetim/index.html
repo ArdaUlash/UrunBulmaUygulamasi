@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLO Denetim Sistemi | ardaulas.online</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<style>
+  :root {
+    --primary: #FF3B30; --primary-dark: #C0271E; --bg: #0D0D0F; --surface: #17171A;
+    --surface2: #1E1E23; --border: rgba(255,255,255,0.07); --text: #F0F0F0; --muted: #888;
+    --green: #30D158; --red: #FF3B30; --amber: #FF9F0A; --blue: #0A84FF; --gray: #3A3A3F;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+
+  /* HEADER & TOP BAR */
+  .top-bar { position: sticky; top:0; z-index:100; background: rgba(13,13,15,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 0 32px; display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .brand-logo { width:36px; height:36px; background:var(--primary); border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:16px; color:#fff; }
+  .brand-name { font-family:'Syne',sans-serif; font-weight:700; font-size:18px; letter-spacing:-0.3px; }
+  .brand-sub { font-size:12px; color:var(--muted); margin-top:-2px; }
+
+  .audit-code-badge { background: linear-gradient(135deg, var(--primary), #FF6B6B); padding: 6px 16px; border-radius:20px; font-family:'Syne',sans-serif; font-weight:700; font-size:13px; letter-spacing:1px; box-shadow: 0 4px 20px rgba(255,59,48,0.35); }
+  
+  .header-actions { display:flex; gap:16px; align-items:center; }
+  .admin-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:6px 12px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s; }
+  .admin-btn:hover { background:var(--blue); border-color:var(--blue); color:#fff; }
+
+  .score-display { display:flex; align-items:center; gap:24px; }
+  .score-pill { background: var(--surface2); border:1px solid var(--border); border-radius:12px; padding:8px 20px; text-align:center; }
+  .score-pill .val { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; background: linear-gradient(135deg, #fff, var(--amber)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; }
+  .score-pill .lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-top:2px; }
+
+  /* PROGRESS BAR */
+  .progress-container { padding: 12px 32px; background:var(--surface); border-bottom: 1px solid var(--border); display:flex; align-items:center; gap:16px; }
+  .progress-bar-wrap { flex:1; height:4px; background:var(--surface2); border-radius:2px; overflow:hidden; }
+  .progress-bar-fill { height:100%; border-radius:2px; transition:width 0.5s ease; background: linear-gradient(90deg, var(--primary), var(--amber)); }
+  .progress-stats { display:flex; gap:20px; font-size:12px; color:var(--muted); }
+  .progress-stats span { display:flex; align-items:center; gap:6px; }
+  .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+
+  /* MAIN CONTENT */
+  .container { max-width:960px; margin:0 auto; padding:32px 24px; flex:1; width:100%; }
+
+  /* CARD & CRITERIA UI */
+  .audit-card { background: var(--surface); border: 1px solid var(--border); border-radius:16px; margin-bottom:12px; overflow:hidden; animation: fadeIn 0.3s ease; position: relative; }
+  .card-header { padding:20px; display:grid; grid-template-columns: auto 1fr auto; gap:16px; align-items:start; background: rgba(255,255,255,0.02); border-bottom:1px solid var(--border); }
+  .card-num { width:44px; height:44px; border-radius:12px; background:var(--surface2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:15px; color:var(--muted); }
+  .card-meta { display:flex; flex-direction:column; justify-content:center; min-height:44px; }
+  .card-code { font-size:12px; color:var(--primary); font-weight:700; letter-spacing:1px; margin-bottom:4px; }
+  .card-title { font-size:16px; font-weight:600; line-height:1.4; color:var(--text); }
+  
+  .info-btn { width:40px; height:40px; border-radius:10px; background:var(--surface2); border:1px solid var(--border); color:var(--blue); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:bold; transition:all 0.2s; }
+  .info-btn:hover { background:var(--blue); color:#fff; }
+
+  .criterion-row { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column; gap:12px; transition: all 0.3s; }
+  .criterion-row:last-child { border-bottom: none; }
+  .criterion-row.na-active .criterion-text { opacity: 0.4; }
+  .criterion-row.na-active .criterion-pts { opacity: 0.4; text-decoration: line-through; }
+  .criterion-text-box { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+  .criterion-text { font-size:14px; line-height:1.6; color:var(--text); flex:1; display:flex; gap:10px; }
+  .criterion-text::before { content:'◆'; color:var(--amber); font-size:10px; margin-top:4px; }
+  .criterion-pts { background:var(--surface2); color:var(--muted); font-size:11px; font-weight:700; padding:4px 8px; border-radius:6px; border:1px solid var(--border); white-space:nowrap; }
+
+  .card-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-left:24px; }
+  .btn-action { padding:10px 18px; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:600; cursor:pointer; border:none; transition:all 0.18s; display:flex; align-items:center; gap:6px; }
+  .btn-tespit { background:rgba(255,59,48,0.12); color:var(--red); border:1px solid rgba(255,59,48,0.25); }
+  .btn-tespit:hover, .btn-tespit.active { background:var(--red); color:#fff; border-color:var(--red); box-shadow: 0 4px 16px rgba(255,59,48,0.4); }
+  .btn-yok { background:rgba(48,209,88,0.1); color:var(--green); border:1px solid rgba(48,209,88,0.2); }
+  .btn-yok:hover, .btn-yok.active { background:var(--green); color:#000; border-color:var(--green); box-shadow: 0 4px 16px rgba(48,209,88,0.35); }
+  .btn-na { background:rgba(58,58,63,0.3); color:var(--muted); border:1px solid rgba(255,255,255,0.08); }
+  .btn-na:hover, .btn-na.active { background:var(--gray); color:#ccc; border-color:var(--muted); }
+
+  .extras-area { padding: 0 20px 20px 44px; display:flex; flex-direction:column; gap:12px; }
+  .image-upload-area { padding:14px; border-radius:12px; display:none; border:1.5px dashed rgba(255,59,48,0.3); background:rgba(255,59,48,0.04); }
+  .image-upload-area.visible { display:block; animation: fadeIn 0.2s ease; }
+  .upload-label { display:flex; align-items:center; gap:10px; cursor:pointer; font-size:13px; color:rgba(255,59,48,0.7); }
+  .upload-label input { display:none; }
+  .uploaded-images { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .uploaded-img-thumb { width:64px; height:64px; border-radius:8px; object-fit:cover; border:1px solid var(--border); cursor:pointer; }
+  .note-input { width:100%; background:var(--surface2); border:1px solid var(--border); display:none; color:var(--text); border-radius:10px; padding:10px 14px; font-family:'DM Sans',sans-serif; font-size:13px; resize:vertical; min-height:60px; outline:none; }
+  .note-input.visible { display:block; animation: fadeIn 0.2s ease; }
+
+  /* GROUPS & PAGINATION */
+  .section-group { margin-bottom:20px; }
+  .section-group-title { font-family:'Syne',sans-serif; font-weight:800; font-size:20px; margin-bottom:20px; display:flex; align-items:center; gap:12px; }
+  .section-group-title::after { content:''; flex:1; height:1px; background:var(--border); }
+  .section-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; background:var(--surface2); border:1px solid var(--border); }
+  .pagination-controls { display:flex; justify-content:space-between; align-items:center; margin-top:32px; padding-top:24px; border-top:1px solid var(--border); }
+  .page-indicator { font-family:'Syne',sans-serif; font-weight:700; color:var(--text); font-size:15px; }
+  .btn-nav { background:var(--surface2); color:var(--text); border:1px solid var(--border); padding: 12px 24px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+  .btn-nav:hover:not(:disabled) { background:var(--gray); }
+  .btn-finish { background: linear-gradient(135deg, var(--green), #28a745); color:#fff; border:none; box-shadow: 0 4px 15px rgba(48,209,88,0.3); }
+
+  /* FOOTER */
+  .site-footer { text-align:center; padding:20px; border-top:1px solid var(--border); font-size:12px; color:var(--muted); background:var(--surface); }
+  .site-footer a { color:var(--blue); text-decoration:none; font-weight:600; }
+
+  /* MODALS & Z-INDEX HIERARCHY */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); align-items:center; justify-content:center; backdrop-filter:blur(10px); animation: fadeIn 0.2s ease; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:20px; max-width:600px; width:90%; max-height:85vh; overflow:auto; padding:32px; position:relative; }
+  .modal-close { position:absolute; top:16px; right:16px; width:32px; height:32px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--muted); cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; z-index:10; }
+  .modal h2 { font-family:'Syne',sans-serif; font-size:22px; margin-bottom:16px; text-align:center; }
+  
+  .standards-list { list-style:none; padding:0; margin-top:10px; }
+  .standards-list li { padding:10px 0; border-bottom:1px solid var(--border); font-size:13.5px; color:#ccc; line-height:1.6; display:flex; align-items:flex-start; gap:10px; }
+  .standards-list li span.blue-arrow { color:var(--blue); font-weight:bold; font-size:14px; margin-top:-1px; }
+
+  /* FORMS */
+  .form-group { margin-bottom:16px; }
+  .form-group label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:600; text-transform:uppercase; }
+  .form-input { width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:12px; border-radius:10px; outline:none; font-family:'DM Sans'; font-size:14px; }
+  .form-input option { background: var(--surface); color: var(--text); }
+  .btn-start { width:100%; padding:14px; border-radius:10px; background:var(--primary); color:#fff; font-weight:700; font-family:'Syne'; border:none; cursor:pointer; margin-top:10px; font-size:16px; }
+  .btn-start:hover { background:var(--primary-dark); }
+
+  /* REPORT & ADMIN TABLE */
+  .report-table { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:24px; }
+  .report-table th { background:var(--surface2); padding:10px 14px; text-align:left; font-family:'Syne',sans-serif; font-size:11px; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); }
+  .report-table td { padding:10px 14px; border-bottom:1px solid var(--border); color:var(--text); vertical-align:middle; line-height:1.5; }
+  
+  .badge-s { padding:4px 8px; border-radius:6px; font-size:10px; font-weight:700; white-space:nowrap; }
+  .badge-s.t { background:rgba(255,59,48,0.2); color:var(--red); border:1px solid rgba(255,59,48,0.3); }
+  .badge-s.y { background:rgba(48,209,88,0.2); color:var(--green); border:1px solid rgba(48,209,88,0.3); }
+  .badge-s.n { background:rgba(58,58,63,0.3); color:var(--muted); border:1px solid var(--border); }
+  
+  .modal-score-box { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:12px 16px; text-align:center; }
+  .modal-score-box .v { font-family:'Syne',sans-serif; font-size:24px; font-weight:800; color:var(--amber); }
+  .modal-score-box .l { font-size:11px; color:var(--muted); text-transform:uppercase; margin-top:2px; }
+
+  .print-btn-large {
+    background: linear-gradient(135deg, var(--blue), #0056b3); color: #fff; border: none; padding: 12px 24px; border-radius: 12px;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: 0 4px 15px rgba(10,132,255,0.4); transition: all 0.2s; margin-bottom: 20px;
+  }
+  .print-btn-large:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(10,132,255,0.6); }
+
+  @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+  
+  /* ================== MOBİL UYUM (RESPONSIVE) KODLARI ================== */
+  @media (max-width: 768px) {
+    .top-bar { height: auto; flex-direction: column; padding: 16px; gap: 16px; }
+    .brand { width: 100%; justify-content: center; }
+    .score-display { width: 100%; justify-content: center; }
+    .header-actions { width: 100%; justify-content: space-between; }
+    .audit-code-badge { font-size: 11px; padding: 8px 12px; }
+    
+    .progress-container { flex-direction: column; padding: 16px; gap: 12px; align-items: stretch; }
+    .progress-stats { flex-wrap: wrap; justify-content: center; gap: 12px; }
+    
+    .container { padding: 16px 12px; }
+    .card-header { grid-template-columns: 1fr auto; }
+    .card-num { margin-bottom: 10px; }
+    .criterion-text-box { flex-direction: column; gap: 8px; }
+    .criterion-pts { align-self: flex-start; }
+    .card-actions { margin-left: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .btn-action { justify-content: center; padding: 10px 4px; font-size: 11px; }
+    .extras-area { padding: 0 16px 20px 16px; }
+    
+    .pagination-controls { flex-direction: column; gap: 16px; padding-top: 16px; }
+    .page-indicator { order: -1; margin-bottom: 4px; }
+    .btn-nav { width: 100%; text-align: center; justify-content: center; }
+    
+    .modal { padding: 24px 16px; }
+    .admin-table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+    .report-table { min-width: 550px; }
+  }
+
+  /* ================== KESİN ÇÖZÜM - PRINT (YAZDIRMA) MOTORU ================== */
+  @media print {
+    @page { margin: 10mm; }
+    html, body { display: block !important; position: static !important; background: #fff !important; color: #000 !important; height: auto !important; min-height: 100% !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; }
+    body > div:not(#reportModal) { display: none !important; }
+    header, footer, nav, aside, .progress-container { display: none !important; }
+    
+    #reportModal { display: block !important; position: static !important; background: #fff !important; padding: 0 !important; margin: 0 !important; overflow: visible !important; height: auto !important; min-height: auto !important; }
+    #reportModalContent { display: block !important; position: static !important; width: 100% !important; max-width: 100% !important; border: none !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; height: auto !important; max-height: none !important; overflow: visible !important; transform: none !important; }
+    
+    .print-hide, .modal-close { display: none !important; }
+    .report-table { page-break-inside: auto !important; width: 100% !important; border-collapse: collapse !important; margin-bottom: 20px !important; }
+    .report-table tr { page-break-inside: avoid !important; page-break-after: auto !important; }
+    .report-table th { background: #f0f0f0 !important; color: #000 !important; border-bottom: 2px solid #ccc !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .report-table td { border-bottom: 1px solid #e0e0e0 !important; color: #000 !important; page-break-inside: avoid !important; }
+    .print-chapter-title { color: #000 !important; border-bottom: 2px solid #000 !important; margin-top: 30px !important; margin-bottom: 15px !important; page-break-after: avoid !important; font-size: 18px !important; font-weight: bold !important; }
+    
+    .badge-s { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; border-radius: 6px !important; border: 1px solid transparent !important; }
+    .badge-s.t { background: rgba(255,59,48,0.15) !important; color: #FF3B30 !important; border-color: rgba(255,59,48,0.3) !important; }
+    .badge-s.y { background: rgba(48,209,88,0.15) !important; color: #1E8E3E !important; border-color: rgba(48,209,88,0.3) !important; }
+    .badge-s.n { background: rgba(58,58,63,0.15) !important; color: #555 !important; border-color: #ccc !important; }
+    
+    .modal-score-box { background: #fafafa !important; border: 1px solid #ddd !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; page-break-inside: avoid !important; }
+    .modal-score-box .v { color: inherit !important; }
+    .report-img-wrapper { page-break-inside: avoid !important; margin-top:8px !important; display:flex !important; gap:8px !important; flex-wrap:wrap !important; }
+    .report-img { height:100px !important; width:100px !important; object-fit:cover !important; border-radius:4px !important; border:1px solid #aaa !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="modal-overlay open" id="startupModal" style="z-index: 2000;">
+  <div class="modal" style="max-width: 400px;">
+    <h2>Yeni Denetim Başlat</h2>
+    
+    <div class="form-group">
+      <label>Denetim Türü</label>
+      <select id="inpAuditType" class="form-input" style="cursor: pointer; appearance: auto;">
+        <option value="" disabled selected>Denetim türünü seçiniz...</option>
+        <option value="Operasyonel Denetim">Operasyonel Denetim (32 Soru)</option>
+        <option value="Dijital Denetim">Dijital Denetim (28 Soru)</option>
+      </select>
+    </div>
+
+    <div class="form-group"><label>Mağaza Kodu</label><input type="text" id="inpStoreCode" class="form-input" placeholder="Örn: 9070" autocomplete="off"></div>
+    <div class="form-group"><label>Mağaza İsmi</label><input type="text" id="inpStoreName" class="form-input" placeholder="Mağaza Adı..." autocomplete="off"></div>
+    <div class="form-group"><label>Denetmen</label><input type="text" id="inpAuditor" class="form-input" placeholder="Ad Soyad..." autocomplete="off"></div>
+    <button class="btn-start" onclick="startAudit()">Sistemi Başlat</button>
+  </div>
+</div>
+
+<div class="modal-overlay print-hide" id="adminAuthModal" style="z-index: 2001;">
+  <div class="modal" style="max-width: 400px;">
+    <button class="modal-close" onclick="closeModal('adminAuthModal')">✕</button>
+    <h2>Yetkili Girişi</h2>
+    <div class="form-group"><label>Kullanıcı Adı</label><input type="text" id="inpAdminUser" class="form-input" placeholder="Kullanıcı adınızı girin" autocomplete="off"></div>
+    <div class="form-group"><label>Şifre</label><input type="password" id="inpAdminPass" class="form-input" placeholder="••••••" autocomplete="off"></div>
+    <button id="adminLoginBtn" class="btn-start" onclick="checkAdminAuth()">Giriş Yap</button>
+  </div>
+</div>
+
+<header class="top-bar print-hide">
+  <div class="brand">
+    <div class="brand-logo">F</div>
+    <div>
+      <div class="brand-name" id="uiBrandName">FLO Denetim</div>
+      <div class="brand-sub">2026 Kurumsal Altyapı</div>
+    </div>
+  </div>
+  <div class="score-display">
+    <div class="score-pill">
+      <div class="val" id="totalScore">0 <span style="font-size:14px; color:var(--muted)">/ 100</span></div>
+      <div class="lbl">Mevcut Puan</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="audit-code-badge" id="auditCodeBadge">Denetim Bekleniyor...</div>
+    <button class="admin-btn" onclick="document.getElementById('adminAuthModal').classList.add('open')">Yönetim Paneli</button>
+  </div>
+</header>
+
+<div class="progress-container print-hide">
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="progress-stats">
+    <span><span class="dot" style="background:var(--red)"></span><span id="cntTespit">0</span> Tespit</span>
+    <span><span class="dot" style="background:var(--green)"></span><span id="cntYok">0</span> Tespit Yok</span>
+    <span><span class="dot" style="background:var(--gray)"></span><span id="cntNA">0</span> N/A Seçilen</span>
+    <span><span class="dot" style="background:var(--muted)"></span><span id="cntPending">0</span> Bekliyor</span>
+  </div>
+</div>
+
+<main class="container print-hide" id="mainContainer"></main>
+
+<footer class="site-footer print-hide">
+  &copy; 2026 <span id="uiFooterName">FLO Denetim Sistemi</span> | Altyapı: <a href="https://ardaulas.online" target="_blank">ardaulas.online</a>
+</footer>
+
+<div class="modal-overlay print-hide" id="adminDataModal" style="z-index: 2002;">
+  <div class="modal" style="max-width:960px">
+    <button class="modal-close" onclick="closeModal('adminDataModal')">✕</button>
+    <h2>Yönetim Paneli - Geçmiş Denetimler</h2>
+    <div id="adminDataArea" style="margin-top:20px; text-align:center; color:var(--muted);">
+      Veriler Yükleniyor...
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay print-hide" id="detailModal" style="z-index: 2003;">
+  <div class="modal" id="detailModalContent" style="max-width:500px">
+    <button class="modal-close print-hide" onclick="closeModal('detailModal')">✕</button>
+    <div id="detailModalBody"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reportModal" style="z-index: 3000;">
+  <div class="modal" style="max-width:940px" id="reportModalContent">
+    <button class="modal-close print-hide" onclick="closeModal('reportModal')">✕</button>
+    <div id="reportModalBody"></div>
+  </div>
+</div>
+
+<script>
+// ==================== FIREBASE CONFIG ====================
+const firebaseConfig = {
+  apiKey: "AIzaSyDIR-nU-xSABs7Jy4292yRIMWdydQ5qboI",
+  authDomain: "flo-digital.firebaseapp.com",
+  projectId: "flo-digital",
+  storageBucket: "flo-digital.firebasestorage.app",
+  messagingSenderId: "914863913629",
+  appId: "1:914863913629:web:aa8c020cf0ffb8aec9b274",
+  measurementId: "G-YV5QKD7K2Q"
+};
+
+if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+const db = firebase.firestore();
+
+// ==================== GLOBAL DEGİŞKENLER ====================
+let currentStoreCode = "";
+let currentStoreName = "";
+let currentAuditor = "";
+let currentQuestionIndex = 0;
+let adminDataCache = {}; 
+let currentAuditType = "";
+let AUDIT_DATA = []; // Seçime göre doldurulacak
+let state_obj = {};
+let totalCriteriaCount = 0; 
+
+// ==================== 1. VERİ SETİ: DİJİTAL DENETİM (ORİJİNAL 28 SORU) ====================
+const DIGITAL_AUDIT_DATA = [
+  { id:1, code:"FLOD01", topic:"Operasyonel Süreçler", title:"Koli kabul işlemleri mağaza tarafından belirlenen talimatlara ve prosedürlere göre yapılmakta mıdır?", puan:6, criteria:[{text:"Tüm gelen sevkiyatlar için mutabakat alındı mı?", puan:3},{text:"Mutabakat formunun tüm sayfalarında tarih, ad soyad, araç plaka bilgileri yazılı mı? Form kargo firması ile karşılıklı imzalandı mı?", puan:3}], standards:`• FLO Sevkiyat Kabul Süreci ve Depodan Reyona Ürün Çıkarma Prosedürü'ne göre işlemler uygulanmalıdır.\n• Mutabakat formların tüm sayfalarında kargo ve mağaza personelinin isim ad-soyad, tarih, imza ve araç plaka bilgileri olmalıdır.\n• Elden teslim alınan ürünler mutabakat formuna "elden teslim" olarak belirtilmelidir.\n• Bilgiler tam yazılmalıdır. Kısaltma kullanılmamalıdır.\n• Koli kabul evraklarının kabul tarihleri ile yazdırma tarihlerinin aynı gün içerisinde olması gerekmektedir.\n• 2 denetim arası yapılan tüm kabul işlemlerine ait kargo mutabakat formları kontrol edilir.\n• Koli kabul işlemleri PTC ile yapılmalıdır.\n• Belgelerin Forbis Ortak Alan Kullanım Talimatı'na göre yüklenmesi gerekmektedir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+  { id:2, code:"FLOD02", topic:"Operasyonel Süreçler", title:"Koli çıkış işlemleri mağaza tarafından belirlenen talimatlara ve prosedürlere göre yapılmakta mıdır?", puan:6, criteria:[{text:"Tüm Giden sevkiyatlar için mutabakat alındı mı?", puan:3},{text:"Koli çıkış formunun tüm sayfalarında tarih, ad soyad araç plaka bilgileri yazılı mı? Form kargo firması ile karşılıklı imzalandı mı?", puan:3}], standards:`• FLO Mağazadan Ürün Çıkış İşlemleri Talimatı'na göre işlemler uygulanmalıdır.\n• Koli Çıkış Formlarının tüm sayfalarında kargo ve mağaza personelinin ad-soyad, tarih, imza ve araç plaka bilgileri olmalıdır.\n• Elden teslim edilen ürünler mutabakat formuna "elden teslim" olarak belirtilmelidir.\n• Bilgiler tam yazılmalıdır. Kısaltma kullanılmamalıdır.\n• Kargo teslim evraklarının kabul tarihleri ve yazdırma tarihlerinin aynı gün içerisinde olması gerekmektedir.\n• 2 denetim arası yapılan tüm çıkış işlemlerine ait kargo teslim formları kontrol edilir.\n• Belgelerin Forbis Ortak Alan Kullanım Talimatı'na göre yüklenmesi gerekmektedir.` },
+  { id:3, code:"FLOD03", topic:"Operasyonel Süreçler", title:"Kullanılmayıp satış ekranında olan kasa var mi? Kasa şifresi süreçleri talimatlara uygun yürütüldü mü?", puan:3, criteria:[{text:"Boşta olup satışa açık kasa veya boşta olup anahtarı üzerinde olan kasa var mi?", puan:2},{text:"Kasa personeli taahhütnameleri imzalatıldı mı?", puan:1}], standards:`• Personel kasadan ayrıldığı anda kasiyer kodunu kapatmalıdır. Mağazada kullanılmayıp satışa açık konumda kasa olmamalıdır.\n• Boşta ve içinde nakit para olan kasa çekmecesinin üzerinde anahtar bulundurulmamalıdır.\n• Mağazada kasada işlem alan her personel kendi kasiyer kodu ile işlem almalıdır.\n• Kullanıcı bilgileri herhangi bir nedenle 2. kişilerle paylaşılmamalıdır.\n• Mağaza yöneticisi gelen şifre e-postası üzerine personele kasiyer şifresini tebliğ eder ve taahhütnamesini imzalatır.\n• Rotasyon ile başka mağazaya giden çalışanın ayrıldığı mağazadaki taahhütnamesi iptal edilir.\n• Belgelerin Forbis Ortak Alan Kullanım Talimatı'na göre yüklenmesi gerekmektedir.` },
+  { id:4, code:"FLOD04", topic:"Operasyonel Süreçler", title:"Tekleme ürünlerinin sisteme girişi yapıldı mı?", puan:4, criteria:[{text:"Başka mağaza ile eşleşen tekleme ürünler gönderilmiş mi?", puan:4}], standards:`• Başka mağazayla eşlenen ürünlerin gönderilmesi gerekir.\n• 7 iş gününde çıkışı yapılmayan teklemeler tespit sayılır.` },
+  { id:5, code:"FLOD05", topic:"Operasyonel Süreçler", title:"Zimmet Formları bulunmakta mıdır?", puan:2, criteria:[{text:"Çelik kasa ve mağaza anahtarı için zimmet formları düzenlenmiş mi?", puan:2}], standards:`• Yöneticilerin çelik kasa ve mağaza anahtarı zimmet formları düzenlenmeli ve ortak alana yüklenmelidir.` },
+  { id:6, code:"FLOD06", topic:"Operasyonel Süreçler", title:"Personel kıyafeti ve yaka kartı", puan:2, criteria:[{text:"Kıyafetler yönetmeliğe uygun mu? Yaka kartı var mı?", puan:2}], standards:`• Tüm çalışanların yaka kartları eksiksiz, görünür ve yönetmeliğe uygun giyinilmiş olmalıdır.` },
+  { id:7, code:"FLOD07", topic:"Operasyonel Süreçler", title:"AÜİM iade çıkışları", puan:3, criteria:[{text:"AÜİM olarak iade alınan ürünlerin çıkışları zamanında yapılıyor mu?", puan:3}], standards:`• Minimum 6 adet olunca veya 7 iş günü içinde çıkışı yapılmalıdır.` },
+  { id:8, code:"FLOD08", topic:"Operasyonel Süreçler", title:"Reengen süreçleri", puan:3, criteria:[{text:"Gece yüksek kullanım yapan / Erken açılış yapan mağaza var mı?", puan:3}], standards:`• Gece çalışmaları için Bölge Müdürü'nden onay alınmalıdır. Yüzde 8 ve üzeri tespit sayılır.` },
+  { id:9, code:"FLOD09", topic:"Operasyonel Süreçler", title:"Kasa bekleme sırası", puan:4, criteria:[{text:"Kasa bekleme sırası belirlenen kriterlere göre uygulandı mı?", puan:4}], standards:`• Kasada 4 kişiden fazla müşteri veya 4 dk fazla bekleme varsa ilave kasa açılmalıdır.` },
+  { id:10, code:"FLOD10", topic:"Operasyonel Süreçler", title:"Mesai saatleri dışı çalışmalar", puan:2, criteria:[{text:"Mesai dışı yapılan çalışmalar portala girildi mi?", puan:2}], standards:`• Mesai saati dışında yapılan çalışmaların portal shift sisteme girilmesi gerekir.` },
+  { id:11, code:"FLOD11", topic:"Operasyonel Süreçler", title:"Kamera durumu", puan:2, criteria:[{text:"Çalışmayan veya görüş açısı kapatılmış kamera var mı?", puan:2}], standards:`• Kameralar kasa ve depo noktasını net görmelidir.` },
+  { id:12, code:"FLOD12", topic:"Operasyonel Süreçler", title:"Boş ünite durumu", puan:5, criteria:[{text:"Boş gondol, duvar ve ünite bulunmakta mıdır?", puan:5}], standards:`• 13:00'den sonra 15 dk içinde doldurulmayan reyon boşlukları tespit sayılır.` },
+  { id:13, code:"FLOD13", topic:"Operasyonel Süreçler", title:"Atıl malzeme durumu", puan:5, criteria:[{text:"Yoğun saatlerde kasa ve mağaza içinde koli, atıl malzeme var mı?", puan:5}], standards:`• 15 dakikadan fazla kaldırılmayan koli ve atıl malzemeler tespittir.` },
+  { id:14, code:"FLOD14", topic:"Operasyonel Süreçler", title:"Reyon düzeni", puan:5, criteria:[{text:"Reyonda müşteri alışverişini etkileyecek dağınıklık var mı?", puan:5}], standards:`• Müşteri geçişini veya aynaları kapatan 3 adet ve üzeri ürün tespittir.` },
+  { id:15, code:"FLOD15", topic:"Operasyonel Süreçler", title:"Kasa ürün kontrolü", puan:2, criteria:[{text:"Kasiyer tarafından numara ve tek kontrolü sağlanıyor mu?", puan:2}], standards:`• Müşteriden alınan ürünün model, numara ve teklerinin eşleştiği kontrol edilmelidir.` },
+  { id:16, code:"FLOD16", topic:"Operasyonel Süreçler", title:"Personel görevleri", puan:1, criteria:[{text:"Çalışanlar görevleri dışında farklı işlerle uğraşıyor mu?", puan:1}], standards:`• Çalışanların mesai esnasında görev dışı işlerle uğraşması tespittir.` },
+  { id:17, code:"FLOD17", topic:"Operasyonel Süreçler", title:"Manuel iade işlemleri", puan:5, criteria:[{text:"Manuel iade işlemleri kriterlere göre yapıldı mı?", puan:5}], standards:`• Telefonla onaylanan manuel iadeye ait e-posta onayları Bölge Müdürü'nden ertesi güne kadar alınmalıdır.` },
+  { id:18, code:"FLOD18", topic:"Operasyonel Süreçler", title:"OMS Siparişleri", puan:10, criteria:[{text:"OMS siparişleri kurallara uygun yapılmakta mıdır? Otomatik iptal var mı?", puan:5},{text:"24 saat içerisinde kargoya teslim edilmeyen sipariş bulunmakta mıdır?", puan:5}], standards:`• Çıkışı yapılamayan ürünlerde doğru sebep seçilmeli, paketleme kurallarına uyulmalıdır.` },
+  { id:19, code:"FLOD19", topic:"Mali Süreçler", title:"E-irsaliye işlemleri", puan:2, criteria:[{text:"Çıkışı yapılan sevkiyatlara ait eksik e-irsaliyelerin aktarımı yapıldı mı?", puan:2}], standards:`• 48 saat içinde ZCSED ekranından aktarılmayanlar tespit sayılır.` },
+  { id:20, code:"FLOD20", topic:"Mali Süreçler", title:"Gider Pusulaları", puan:5, criteria:[{text:"Gider Pusulası için alınması gereken bilgiler sisteme girildi mi?", puan:5}], standards:`• Gider pusulası üzerinde ürün, tutar, müşteri ad-soyad ve telefon eksiksiz olmalıdır.` },
+  { id:21, code:"FLOD21", topic:"Mali Süreçler", title:"Kasa Föyleri", puan:4, criteria:[{text:"Tüm günlere ait kasa föyleri mevcut ve imzaları tam mı?", puan:4}], standards:`• Kasa sorumlusu ve yönetici imzaları olmalı, Ortak Alana yüklenmelidir.` },
+  { id:22, code:"FLOD22", topic:"Mali Süreçler", title:"Z Raporu", puan:2, criteria:[{text:"Mağazada bulunan tüm kasalardan günlük Z raporu alındı mı?", puan:2}], standards:`• Eksik veya aynı gün alınmayan Z raporları tespit olarak değerlendirilir.` },
+  { id:23, code:"FLOD23", topic:"Mali Süreçler", title:"Kasa Nakitleri", puan:4, criteria:[{text:"Nakitler eksiksiz ve saatinde yatırıldı mı? Dekontta mağaza kodu var mı?", puan:4}], standards:`• Her gün en geç 11:30'a kadar 4 haneli kod ile yatırılmalıdır.` },
+  { id:24, code:"FLOD24", topic:"Mali Süreçler", title:"ÖKC Süreçleri", puan:2, criteria:[{text:"Yazarkasa levha, ruhsat ve zimmet süreçleri uygun mu?", puan:2}], standards:`• Devir teslimlerde yönetici zimmet almalıdır. Levhalar kasada bulundurulmalıdır.` },
+  { id:25, code:"FLOD25", topic:"İnsan Kaynakları Süreçleri", title:"Çalışma saatleri", puan:7, criteria:[{text:"Giriş/Çıkış/Mola saat ve imzaları tam mı?", puan:3},{text:"İmza çizelgesi ile portal sistemi tutarlı mı?", puan:2},{text:"Geçici görevlendirme belgesi imzalanıp sisteme yüklendi mi?", puan:2}], standards:`• Mağaza personeli giriş çıkış ve mola saatlerini doğru yazmalı ve imzalamalıdır.` },
+  { id:26, code:"FLOD26", topic:"İş Sağlığı ve Güvenliği Süreçleri", title:"Risk Analizi ve Acil Durum", puan:2, criteria:[{text:"Mağaza Risk Analiz Raporu ve Acil Durum Eylem Planı doğru oluşturuldu mu?", puan:2}], standards:`• 10 personelden az çalışanlarda asgari ekipler oluşturulmalı, ayrılmalarda 7 günde güncellenmelidir.` },
+  { id:27, code:"FLOD27", topic:"İş Sağlığı ve Güvenliği Süreçleri", title:"Sıfır Atık Sistemi", puan:2, criteria:[{text:"Cadde mağazalarda atıklar anlaşmalı firmaya teslim ediliyor mu?", puan:2}], standards:`• Atıklar teslim edilmeli ve teslim makbuzları aylık olarak alınmalıdır.` },
+  { id:28, code:"FLOD28", topic:"Genel", title:"Kapsam dışı durumlar", puan:0, criteria:[{text:"Kapsam dışı tespit var mı?", puan:0}], standards:`• Dijital denetim kriterleri dışında kalan her türlü uygunsuz durum değerlendirilir.` }
+];
+
+// ==================== 2. VERİ SETİ: OPERASYONEL DENETİM (PDF TABANLI 32 SORU) ====================
+const OPERATIONAL_AUDIT_DATA = [
+  { id:1, code:"FOD01", topic:"Mali Süreçler", title:"Mağaza toplam nakiti doğru mu?", puan:5, criteria:[ {text:"Mağaza kasa nakiti ile Genius Report'ta belirtilen nakit miktarı arasında fark var mi?", puan:5} ], standards:`• Kasa nakitinden mağaza avansı çıkarılarak sayılır.\n• Kasa çekmecesinde ve çelik kasa içerisinde mağazaya ait nakitten başka nakit olmamalıdır.\n• Yatırılmayan nakit ve banka çıkışları kontrol edilir, nakit eksiklikleri tespit olarak değerlendirilir.\n• Bildirimi yapılmamış kampanya çekleri alışveriş çekleri ve kıymetli madenler tespit olarak değerlendirilir.\n• +/-200 TL ve üzeri farklar tespit olarak değerlendirilir.` },
+  { id:2, code:"FOD02", topic:"Operasyonel Süreçler", title:"İade işlemlerine konu olan ürünlerin sistem ve fiili adetleri tutarlı mı?", puan:3, criteria:[ {text:"İade işlemlerine konu olan ürünlerin sistem ve fiili adetleri tutarlı mı?", puan:3} ], standards:`• Tüm iade işlemlerine konu olan ürünlerin stok adetleri kontrol edilir.\n• Ürünlerin denetim sırasında ibraz edilmesi gerekmektedir. Denetim değerlendirme sürecinde iletilen ürün fotoğrafları dikkate alınmaz.\n• Örnekleme 5 ürün barkodu ürün kontrolü yapılır.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+  { id:3, code:"FOD03", topic:"Operasyonel Süreçler", title:"İptal işlemlerine konu olan ürünlerin sistem ve fiili adetleri tutarlı mı?", puan:3, criteria:[ {text:"Fiş/Fatura İptal işlemlerine konu olan ürünlerin sistem ve filli adetleri tutarlı mi?", puan:3} ], standards:`• Tüm iptal işlemlerine konu olan ürünlerin stok adetleri kontrol edilir.\n• Ürünlerin denetim sırasında ibraz edilmesi gerekmektedir. Denetim değerlendirme sürecinde iletilen ürün fotoğrafları dikkate alınmaz.\n• Örnekleme 5 ürün barkodu kontrolü yapılır.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+  { id:4, code:"FOD04", topic:"IT Süreçleri", title:"Kasa süreçleri talimatlara uygun yürütülüyor mu?", puan:2, criteria:[ {text:"Fiyat göstergeleri, barkod okuyucuları çalışıyor mu ve Yazarkasa versiyonları güncel mi?", puan:2} ], standards:`• Tüm kasalara ait fiyat göstergelerinin çalışıp çalışmadığı kontrol edilir.\n• Tüm kasalara ait barkod okuyucusu var mı kontrol edilir.\n• Çalışmayan fiyat göstergeleri için kasa numarası belirtilerek FloDesk üzerinden kayıt açılmalıdır.\n• Yazarkasa versiyonlarının ve saatlerinin güncel olması gerekmektedir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+  { id:5, code:"FOD05", topic:"Mali Süreçler", title:"Kasa föyleri kriterlere uygun hazırlanmış mı?", puan:3,
