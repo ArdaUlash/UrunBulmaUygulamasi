@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLO Operasyonel Denetim Sistemi | ardaulas.online</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<style>
+  :root {
+    --primary: #FF3B30; --primary-dark: #C0271E; --bg: #0D0D0F; --surface: #17171A;
+    --surface2: #1E1E23; --border: rgba(255,255,255,0.07); --text: #F0F0F0; --muted: #888;
+    --green: #30D158; --red: #FF3B30; --amber: #FF9F0A; --blue: #0A84FF; --gray: #3A3A3F;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+
+  /* HEADER & TOP BAR */
+  .top-bar { position: sticky; top:0; z-index:100; background: rgba(13,13,15,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 0 32px; display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .brand-logo { width:36px; height:36px; background:var(--primary); border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:16px; color:#fff; }
+  .brand-name { font-family:'Syne',sans-serif; font-weight:700; font-size:18px; letter-spacing:-0.3px; }
+  .brand-sub { font-size:12px; color:var(--muted); margin-top:-2px; }
+
+  .audit-code-badge { background: linear-gradient(135deg, var(--primary), #FF6B6B); padding: 6px 16px; border-radius:20px; font-family:'Syne',sans-serif; font-weight:700; font-size:13px; letter-spacing:1px; box-shadow: 0 4px 20px rgba(255,59,48,0.35); }
+  
+  .header-actions { display:flex; gap:16px; align-items:center; }
+  .admin-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:6px 12px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s; }
+  .admin-btn:hover { background:var(--blue); border-color:var(--blue); color:#fff; }
+
+  .score-display { display:flex; align-items:center; gap:24px; }
+  .score-pill { background: var(--surface2); border:1px solid var(--border); border-radius:12px; padding:8px 20px; text-align:center; }
+  .score-pill .val { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; background: linear-gradient(135deg, #fff, var(--amber)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; }
+  .score-pill .lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-top:2px; }
+
+  /* PROGRESS BAR */
+  .progress-container { padding: 12px 32px; background:var(--surface); border-bottom: 1px solid var(--border); display:flex; align-items:center; gap:16px; }
+  .progress-bar-wrap { flex:1; height:4px; background:var(--surface2); border-radius:2px; overflow:hidden; }
+  .progress-bar-fill { height:100%; border-radius:2px; transition:width 0.5s ease; background: linear-gradient(90deg, var(--primary), var(--amber)); }
+  .progress-stats { display:flex; gap:20px; font-size:12px; color:var(--muted); }
+  .progress-stats span { display:flex; align-items:center; gap:6px; }
+  .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+
+  /* MAIN CONTENT */
+  .container { max-width:960px; margin:0 auto; padding:32px 24px; flex:1; width:100%; }
+
+  /* CARD & CRITERIA UI */
+  .audit-card { background: var(--surface); border: 1px solid var(--border); border-radius:16px; margin-bottom:12px; overflow:hidden; animation: fadeIn 0.3s ease; }
+  .card-header { padding:20px; display:grid; grid-template-columns: auto 1fr auto; gap:16px; align-items:start; background: rgba(255,255,255,0.02); border-bottom:1px solid var(--border); }
+  .card-num { width:44px; height:44px; border-radius:12px; background:var(--surface2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:15px; color:var(--muted); }
+  .card-meta { display:flex; flex-direction:column; justify-content:center; min-height:44px; }
+  .card-code { font-size:12px; color:var(--primary); font-weight:700; letter-spacing:1px; margin-bottom:4px; }
+  .card-title { font-size:16px; font-weight:600; line-height:1.4; color:var(--text); }
+  
+  .info-btn { width:40px; height:40px; border-radius:10px; background:var(--surface2); border:1px solid var(--border); color:var(--blue); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:bold; transition:all 0.2s; }
+  .info-btn:hover { background:var(--blue); color:#fff; }
+
+  .criterion-row { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column; gap:12px; transition: all 0.3s; }
+  .criterion-row:last-child { border-bottom: none; }
+  .criterion-row.na-active .criterion-text { opacity: 0.4; }
+  .criterion-row.na-active .criterion-pts { opacity: 0.4; text-decoration: line-through; }
+  .criterion-text-box { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+  .criterion-text { font-size:14px; line-height:1.6; color:var(--text); flex:1; display:flex; gap:10px; }
+  .criterion-text::before { content:'◆'; color:var(--amber); font-size:10px; margin-top:4px; }
+  .criterion-pts { background:var(--surface2); color:var(--muted); font-size:11px; font-weight:700; padding:4px 8px; border-radius:6px; border:1px solid var(--border); white-space:nowrap; }
+
+  .card-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-left:24px; }
+  .btn-action { padding:10px 18px; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:600; cursor:pointer; border:none; transition:all 0.18s; display:flex; align-items:center; gap:6px; }
+  .btn-tespit { background:rgba(255,59,48,0.12); color:var(--red); border:1px solid rgba(255,59,48,0.25); }
+  .btn-tespit:hover, .btn-tespit.active { background:var(--red); color:#fff; border-color:var(--red); box-shadow: 0 4px 16px rgba(255,59,48,0.4); }
+  .btn-yok { background:rgba(48,209,88,0.1); color:var(--green); border:1px solid rgba(48,209,88,0.2); }
+  .btn-yok:hover, .btn-yok.active { background:var(--green); color:#000; border-color:var(--green); box-shadow: 0 4px 16px rgba(48,209,88,0.35); }
+  .btn-na { background:rgba(58,58,63,0.3); color:var(--muted); border:1px solid rgba(255,255,255,0.08); }
+  .btn-na:hover, .btn-na.active { background:var(--gray); color:#ccc; border-color:var(--muted); }
+
+  .extras-area { padding: 0 20px 20px 44px; display:flex; flex-direction:column; gap:12px; }
+  .image-upload-area { padding:14px; border-radius:12px; display:none; border:1.5px dashed rgba(255,59,48,0.3); background:rgba(255,59,48,0.04); }
+  .image-upload-area.visible { display:block; animation: fadeIn 0.2s ease; }
+  .upload-label { display:flex; align-items:center; gap:10px; cursor:pointer; font-size:13px; color:rgba(255,59,48,0.7); }
+  .upload-label input { display:none; }
+  .uploaded-images { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .uploaded-img-thumb { width:64px; height:64px; border-radius:8px; object-fit:cover; border:1px solid var(--border); cursor:pointer; }
+  .note-input { width:100%; background:var(--surface2); border:1px solid var(--border); display:none; color:var(--text); border-radius:10px; padding:10px 14px; font-family:'DM Sans',sans-serif; font-size:13px; resize:vertical; min-height:60px; outline:none; }
+  .note-input.visible { display:block; animation: fadeIn 0.2s ease; }
+
+  /* GROUPS & PAGINATION */
+  .section-group { margin-bottom:20px; }
+  .section-group-title { font-family:'Syne',sans-serif; font-weight:800; font-size:20px; margin-bottom:20px; display:flex; align-items:center; gap:12px; }
+  .section-group-title::after { content:''; flex:1; height:1px; background:var(--border); }
+  .section-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; background:var(--surface2); border:1px solid var(--border); }
+  .pagination-controls { display:flex; justify-content:space-between; align-items:center; margin-top:32px; padding-top:24px; border-top:1px solid var(--border); }
+  .page-indicator { font-family:'Syne',sans-serif; font-weight:700; color:var(--text); font-size:15px; }
+  .btn-nav { background:var(--surface2); color:var(--text); border:1px solid var(--border); padding: 12px 24px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+  .btn-nav:hover:not(:disabled) { background:var(--gray); }
+  .btn-finish { background: linear-gradient(135deg, var(--green), #28a745); color:#fff; border:none; box-shadow: 0 4px 15px rgba(48,209,88,0.3); }
+
+  /* FOOTER */
+  .site-footer { text-align:center; padding:20px; border-top:1px solid var(--border); font-size:12px; color:var(--muted); background:var(--surface); }
+  .site-footer a { color:var(--blue); text-decoration:none; font-weight:600; }
+
+  /* MODALS & Z-INDEX HIERARCHY */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); align-items:center; justify-content:center; backdrop-filter:blur(10px); animation: fadeIn 0.2s ease; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:20px; max-width:600px; width:90%; max-height:85vh; overflow:auto; padding:32px; position:relative; }
+  .modal-close { position:absolute; top:16px; right:16px; width:32px; height:32px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--muted); cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; z-index:10; }
+  .modal h2 { font-family:'Syne',sans-serif; font-size:22px; margin-bottom:16px; text-align:center; }
+  
+  /* ESKİ MAVİ OKLU LİSTE YAPISI */
+  .standards-list { list-style:none; padding:0; margin-top:10px; }
+  .standards-list li { padding:10px 0; border-bottom:1px solid var(--border); font-size:13.5px; color:#ccc; line-height:1.6; display:flex; align-items:flex-start; gap:10px; }
+  .standards-list li span.blue-arrow { color:var(--blue); font-weight:bold; font-size:14px; margin-top:-1px; }
+
+  /* FORMS */
+  .form-group { margin-bottom:16px; }
+  .form-group label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:600; text-transform:uppercase; }
+  .form-input { width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:12px; border-radius:10px; outline:none; font-family:'DM Sans'; font-size:14px; }
+  .btn-start { width:100%; padding:14px; border-radius:10px; background:var(--primary); color:#fff; font-weight:700; font-family:'Syne'; border:none; cursor:pointer; margin-top:10px; font-size:16px; }
+  .btn-start:hover { background:var(--primary-dark); }
+
+  /* REPORT & ADMIN TABLE */
+  .report-table { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:24px; }
+  .report-table th { background:var(--surface2); padding:10px 14px; text-align:left; font-family:'Syne',sans-serif; font-size:11px; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); }
+  .report-table td { padding:10px 14px; border-bottom:1px solid var(--border); color:var(--text); vertical-align:middle; line-height:1.5; }
+  
+  .badge-s { padding:4px 8px; border-radius:6px; font-size:10px; font-weight:700; white-space:nowrap; }
+  .badge-s.t { background:rgba(255,59,48,0.2); color:var(--red); border:1px solid rgba(255,59,48,0.3); }
+  .badge-s.y { background:rgba(48,209,88,0.2); color:var(--green); border:1px solid rgba(48,209,88,0.3); }
+  .badge-s.n { background:rgba(58,58,63,0.3); color:var(--muted); border:1px solid var(--border); }
+  
+  .modal-score-box { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:12px 16px; text-align:center; }
+  .modal-score-box .v { font-family:'Syne',sans-serif; font-size:24px; font-weight:800; color:var(--amber); }
+  .modal-score-box .l { font-size:11px; color:var(--muted); text-transform:uppercase; margin-top:2px; }
+
+  .print-btn-large {
+    background: linear-gradient(135deg, var(--blue), #0056b3); color: #fff; border: none; padding: 12px 24px; border-radius: 12px;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: 0 4px 15px rgba(10,132,255,0.4); transition: all 0.2s; margin-bottom: 20px;
+  }
+  .print-btn-large:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(10,132,255,0.6); }
+
+  @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+  
+  /* ================== KESİN ÇÖZÜM - PRINT (YAZDIRMA) MOTORU ================== */
+  @media print {
+    @page { margin: 10mm; }
+    html, body { 
+      display: block !important; 
+      position: static !important;
+      background: #fff !important; color: #000 !important; 
+      height: auto !important; min-height: 100% !important; 
+      overflow: visible !important; 
+      margin: 0 !important; padding: 0 !important;
+    }
+    
+    /* Rapor dışındaki her şeyi gizle */
+    body > div:not(#reportModal) { display: none !important; }
+    header, footer, nav, aside, .progress-container { display: none !important; }
+    
+    /* Rapor modalını normal bir evrak gibi yay */
+    #reportModal { 
+      display: block !important; position: static !important; 
+      background: #fff !important; padding: 0 !important; margin: 0 !important;
+      overflow: visible !important; height: auto !important; min-height: auto !important;
+    }
+    #reportModalContent { 
+      display: block !important; position: static !important; 
+      width: 100% !important; max-width: 100% !important; 
+      border: none !important; box-shadow: none !important; 
+      margin: 0 !important; padding: 0 !important;
+      height: auto !important; max-height: none !important; 
+      overflow: visible !important; transform: none !important;
+    }
+    
+    .print-hide, .modal-close { display: none !important; }
+
+    /* Tablo Bölünme Kuralları */
+    .report-table { page-break-inside: auto !important; width: 100% !important; border-collapse: collapse !important; margin-bottom: 20px !important; }
+    .report-table tr { page-break-inside: avoid !important; page-break-after: auto !important; }
+    .report-table th { background: #f0f0f0 !important; color: #000 !important; border-bottom: 2px solid #ccc !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .report-table td { border-bottom: 1px solid #e0e0e0 !important; color: #000 !important; page-break-inside: avoid !important; }
+    
+    .print-chapter-title { color: #000 !important; border-bottom: 2px solid #000 !important; margin-top: 30px !important; margin-bottom: 15px !important; page-break-after: avoid !important; font-size: 18px !important; font-weight: bold !important; }
+    
+    /* Etiket Renklerini Koru (Yeşil/Kırmızı/Gri) */
+    .badge-s { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; border-radius: 6px !important; border: 1px solid transparent !important; }
+    .badge-s.t { background: rgba(255,59,48,0.15) !important; color: #FF3B30 !important; border-color: rgba(255,59,48,0.3) !important; }
+    .badge-s.y { background: rgba(48,209,88,0.15) !important; color: #1E8E3E !important; border-color: rgba(48,209,88,0.3) !important; }
+    .badge-s.n { background: rgba(58,58,63,0.15) !important; color: #555 !important; border-color: #ccc !important; }
+    
+    .modal-score-box { background: #fafafa !important; border: 1px solid #ddd !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; page-break-inside: avoid !important; }
+    .modal-score-box .v { color: inherit !important; }
+
+    .report-img-wrapper { page-break-inside: avoid !important; margin-top:8px !important; display:flex !important; gap:8px !important; flex-wrap:wrap !important; }
+    .report-img { height:100px !important; width:100px !important; object-fit:cover !important; border-radius:4px !important; border:1px solid #aaa !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="modal-overlay open" id="startupModal" style="z-index: 2000;">
+  <div class="modal" style="max-width: 400px;">
+    <h2>Yeni Denetim Başlat</h2>
+    <div class="form-group"><label style="display:block; font-size:12px; color:var(--muted); margin-bottom:5px;">Mağaza Kodu</label><input type="text" id="inpStoreCode" style="width:100%; padding:10px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:8px;" placeholder="Örn: 9070"></div>
+    <div class="form-group" style="margin-top:10px;"><label style="display:block; font-size:12px; color:var(--muted); margin-bottom:5px;">Mağaza İsmi</label><input type="text" id="inpStoreName" style="width:100%; padding:10px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:8px;" placeholder="Mağaza adı..."></div>
+    <div class="form-group" style="margin-top:10px;"><label style="display:block; font-size:12px; color:var(--muted); margin-bottom:5px;">Denetmen</label><input type="text" id="inpAuditor" style="width:100%; padding:10px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:8px;" placeholder="Ad Soyad..."></div>
+    <button onclick="startAudit()" style="width:100%; margin-top:20px; padding:14px; background:var(--primary); color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Sistemi Başlat</button>
+  </div>
+</div>
+
+<div class="modal-overlay print-hide" id="adminAuthModal" style="z-index: 2001;">
+  <div class="modal" style="max-width: 400px;">
+    <button class="modal-close" onclick="closeModal('adminAuthModal')">✕</button>
+    <h2>Yetkili Girişi</h2>
+    <div class="form-group"><label style="display:block; font-size:12px; color:var(--muted); margin-bottom:5px;">Kullanıcı Adı</label><input type="text" id="inpAdminUser" style="width:100%; padding:10px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:8px;" placeholder="Kullanıcı adınızı girin"></div>
+    <div class="form-group" style="margin-top:10px;"><label style="display:block; font-size:12px; color:var(--muted); margin-bottom:5px;">Şifre</label><input type="password" id="inpAdminPass" style="width:100%; padding:10px; background:var(--surface2); border:1px solid var(--border); color:#fff; border-radius:8px;" placeholder="••••••"></div>
+    <button id="adminLoginBtn" onclick="checkAdminAuth()" style="width:100%; margin-top:20px; padding:14px; background:var(--primary); color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Giriş Yap</button>
+  </div>
+</div>
+
+<header class="top-bar print-hide">
+  <div class="brand">
+    <div class="brand-logo">F</div>
+    <div>
+      <div class="brand-name">FLO Operasyonel Denetim</div>
+      <div class="brand-sub">2026 Denetim Sistemi</div>
+    </div>
+  </div>
+  <div class="score-display">
+    <div class="score-pill">
+      <div class="val" id="totalScore">0 <span style="font-size:14px; color:var(--muted)">/ 100</span></div>
+      <div class="lbl">Mevcut Puan</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="audit-code-badge" id="auditCodeBadge">Denetim Bekleniyor...</div>
+    <button class="admin-btn" onclick="document.getElementById('adminAuthModal').classList.add('open')">Yönetim Paneli</button>
+  </div>
+</header>
+
+<div class="progress-container print-hide">
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="progress-stats">
+    <span><span class="dot" style="background:var(--red)"></span><span id="cntTespit">0</span> Tespit</span>
+    <span><span class="dot" style="background:var(--green)"></span><span id="cntYok">0</span> Tespit Yok</span>
+    <span><span class="dot" style="background:var(--gray)"></span><span id="cntNA">0</span> N/A Seçilen</span>
+    <span><span class="dot" style="background:var(--muted)"></span><span id="cntPending">0</span> Bekliyor</span>
+  </div>
+</div>
+
+<main class="container print-hide" id="mainContainer"></main>
+
+<footer class="site-footer print-hide">
+  &copy; 2026 FLO Operasyonel Denetim Sistemi | Altyapı: <a href="https://ardaulas.online" target="_blank">ardaulas.online</a> | İletişim: arda@ardaulas.online
+</footer>
+
+<div class="modal-overlay print-hide" id="adminDataModal" style="z-index: 2002;">
+  <div class="modal" style="max-width:960px">
+    <button class="modal-close" onclick="closeModal('adminDataModal')">✕</button>
+    <h2>Yönetim Paneli - Geçmiş Denetimler</h2>
+    <div id="adminDataArea" style="margin-top:20px; text-align:center; color:var(--muted);">
+      Veriler Yükleniyor...
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay print-hide" id="detailModal" style="z-index: 2003;">
+  <div class="modal" id="detailModalContent" style="max-width:500px">
+    <button class="modal-close print-hide" onclick="closeModal('detailModal')">✕</button>
+    <div id="detailModalBody"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reportModal" style="z-index: 3000;">
+  <div class="modal" style="max-width:940px" id="reportModalContent">
+    <button class="modal-close print-hide" onclick="closeModal('reportModal')">✕</button>
+    <div id="reportModalBody"></div>
+  </div>
+</div>
+
+<script>
+// ==================== FIREBASE CONFIG ====================
+const firebaseConfig = {
+  apiKey: "AIzaSyDIR-nU-xSABs7Jy4292yRIMWdydQ5qboI",
+  authDomain: "flo-digital.firebaseapp.com",
+  projectId: "flo-digital",
+  storageBucket: "flo-digital.firebasestorage.app",
+  messagingSenderId: "914863913629",
+  appId: "1:914863913629:web:aa8c020cf0ffb8aec9b274",
+  measurementId: "G-YV5QKD7K2Q"
+};
+
+if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+const db = firebase.firestore();
+
+// ==================== GLOBAL DEGİŞKENLER ====================
+let currentStoreCode = "";
+let currentStoreName = "";
+let currentAuditor = "";
+let currentQuestionIndex = 0;
+let adminDataCache = {}; 
+
+// ==================== VERİ SETİ (TAM 32 SORU) ====================
+const AUDIT_DATA = [
+  { id:1, code:"FOD01", topic:"Mali Süreçler", title:"Mağaza toplam nakiti doğru mu?", puan:5, 
+    criteria:[ {text:"Mağaza kasa nakiti ile Genius Report'ta belirtilen nakit miktarı arasında fark var mi?", puan:5} ],
+    standards:`• Kasa nakitinden mağaza avansı çıkarılarak sayılır.\n• Kasa çekmecesinde ve çelik kasa içerisinde mağazaya ait nakitten başka nakit olmamalıdır.\n• Yatırılmayan nakit ve banka çıkışları kontrol edilir, nakit eksiklikleri tespit olarak değerlendirilir.\n• Bildirimi yapılmamış kampanya çekleri alışveriş çekleri ve kıymetli madenler tespit olarak değerlendirilir.\n• +/-200 TL ve üzeri farklar tespit olarak değerlendirilir.` },
+  
+  { id:2, code:"FOD02", topic:"Operasyonel Süreçler", title:"İade işlemlerine konu olan ürünlerin sistem ve fiili adetleri tutarlı mı?", puan:3, 
+    criteria:[ {text:"İade işlemlerine konu olan ürünlerin sistem ve fiili adetleri tutarlı mı?", puan:3} ],
+    standards:`• Tüm iade işlemlerine konu olan ürünlerin stok adetleri kontrol edilir.\n• Ürünlerin denetim sırasında ibraz edilmesi gerekmektedir. Denetim değerlendirme sürecinde iletilen ürün fotoğrafları dikkate alınmaz.\n• Örnekleme 5 ürün barkodu ürün kontrolü yapılır.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+  
+  { id:3, code:"FOD03", topic:"Operasyonel Süreçler", title:"İptal işlemlerine konu olan ürünlerin sistem ve fiili adetleri tutarlı mı?", puan:3, 
+    criteria:[ {text:"Fiş/Fatura İptal işlemlerine konu olan ürünlerin sistem ve filli adetleri tutarlı mi?", puan:3} ],
+    standards:`• Tüm iptal işlemlerine konu olan ürünlerin stok adetleri kontrol edilir.\n• Ürünlerin denetim sırasında ibraz edilmesi gerekmektedir. Denetim değerlendirme sürecinde iletilen ürün fotoğrafları dikkate alınmaz.\n• Örnekleme 5 ürün barkodu kontrolü yapılır.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+  
+  { id:4, code:"FOD04", topic:"IT Süreçleri", title:"Kasa süreçleri talimatlara uygun yürütülüyor mu?", puan:2, 
+    criteria:[ {text:"Fiyat göstergeleri, barkod okuyucuları çalışıyor mu ve Yazarkasa versiyonları güncel mi?", puan:2} ],
+    standards:`• Tüm kasalara ait fiyat göstergelerinin çalışıp çalışmadığı kontrol edilir.\n• Tüm kasalara ait barkod okuyucusu var mı kontrol edilir.\n• Çalışmayan fiyat göstergeleri için kasa numarası belirtilerek FloDesk üzerinden kayıt açılmalıdır.\n• Yazarkasa versiyonlarının ve saatlerinin güncel olması gerekmektedir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:5, code:"FOD05", topic:"Mali Süreçler", title:"Kasa föyleri kriterlere uygun hazırlanmış mı?", puan:3, 
+    criteria:[ {text:"Kasa föyü doğru yapılmış mı? Multinet & iWallet, Edenred satış işlemleri belirtilen kurallara uygun yapılıyor mu?", puan:3} ],
+    standards:`• Herhangi bir güne ait kasa föyü; Z raporlarından ve banka gün sonu evraklarından Genius Report programı kontrol edilerek, doğruluğu denetlenir.\n• Banka gün sonlarının toplamı kontrol edilir, fark var ise tespit olarak değerlendirilir.\n• Örnekleme 3 gün kasa föyü kontrol edilir.\n• Haftalık iletilen Multinet, iWallet ve Edenred Satış İşlemleri raporları incelenir.\n• Hatalı işlem ve uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:6, code:"FOD06", topic:"IK Süreçleri", title:"Haftalık çalışma programı standartlara uygun mu?", puan:5, 
+    criteria:[ {text:"Portal'den alınan güncel shift panoya asılmış mı ve fiili çalışanlar uyuşuyor mu?", puan:4}, {text:"Geçici görevlendirme belgesi mağazada ve imzalı mı? Mağaza açılış kapanışlarını yöneticiler yapmış mı?", puan:1} ],
+    standards:`• Çalışma programının; mağazalarda bir sonraki haftaya ait içinde bulunulan hafta pazar gün sonuna kadar yapılması ve ortak panoda duyurulması gerekmektedir.\n• Yeni/revize çalışma programlarının çıktısı alınarak ortak panoya asılmış olması gerekmektedir.\n• Portal shift çıktısı dışında başka shift tabloları kullanılmamalıdır.\n• Denetimin yapıldığı gün ortak panoda asılı olan çalışma programı ile personelin fiili çalışma durumunda uyuşmazlık olmamalıdır.\n• SGK' sız çalışan olmamalıdır.\n• Geçici görevlendirme ile gelen çalışanların geçici görev formları kontrol edilir. Bölge müdüründen mail ile onay alınması gerekmektedir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:7, code:"FOD07", topic:"IK Süreçleri", title:"Mağaza iletişim panosu güncel mi?", puan:2, 
+    criteria:[ {text:"Mağaza iletişim panosu güncel mi?", puan:2} ],
+    standards:`• İletişim Panosu: Qr kodlu etik hat posteri, Mağaza aylık hedefleri, Çalışan Kişisel Verilerinin Korunması ve İşlenmesi Politikası asılı olmalıdır.\n• Çalışan Aydınlatma metni, 2026 denkleştirme dönemleri bilgilendirme yazısı, İade süresi görseli asılı olmalıdır.\n• Stok kabul ve stok çıkış görselleri asılı olmalıdır.\n• HqFlo Operasyondan ve insan kaynakları departmanından gelen maillerde panoda asılması gerekliliği bildirilen tüm evrakların güncel haliyle kontrolü yapılır.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:8, code:"FOD08", topic:"Mali Süreçler", title:"Katlarda, reyonlarda ve kasa noktasında gereken belgeler mevcut mu?", puan:3, 
+    criteria:[ {text:"Katlarda, reyonlarda ve kasa noktasında gereken belgeler mevcut mu?", puan:3} ],
+    standards:`• Kasa noktasında; İş yeri açma ruhsatı, iade ve değişim uyarı yazısı, bez torba ücretlendirilmesine ilişkin bilgilendirme metni asılı olmalıdır.\n• Vergi levhası asılmadan kasa noktasında bulundurulmalıdır.\n• Kasa noktasından bağımsız Omni kasalarda bu belgelerden sadece bez torba ücretlendirilmesine ilişkin bilgilendirme kasa önünde konumlandırılmalıdır.\n• Sigara içilmez uyarı görselinde İhbar hattı numarası yazılı olmalı ve her katta en az 1 adet olmalıdır.\n• Her kategoride/katta reyonunda en az 1 adet vinyet bilgilendirme görseli bulunmalıdır.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:9, code:"FOD09", topic:"Mali Süreçler", title:"KVKK uyum süreçleri belirtilen kriterlere uygun mu?", puan:3, 
+    criteria:[ {text:"KVKK uyum süreçleri belirtilen kriterlere uygun mu?", puan:3} ],
+    standards:`• Omni kasalar dahil Kasa önünde QR kodlu müşteri aydınlatma metni (4 adet ve üzeri kasalarda 2 adet) asılı olmalıdır.\n• Kategorilerde ve kasa noktasında 1'er adet CCTV ve kamera görseli asılı olmalıdır.\n• Kişisel verilerin işlenmesine ilişkin müşteri aydınlatma metni asılmadan bulundurulmalıdır.\n• CCTV aydınlatma metninin kasa noktasında asılmadan bulundurulmalıdır.\n• Eksik belge olması ve KVKK uyum belgelerinden asılması gereken belgelerin haricinde asılan belgeler tespit olarak değerlendirilir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:10, code:"FOD10", topic:"Mali Süreçler", title:"Fis/fatura/taxfree iptal işlemleri ve gider pusulaları kriterlere uygun mu?", puan:5, 
+    criteria:[ {text:"Z raporlarındaki iptal işlem sayısı ve fiili iptal işlem sayısı aynı mı? İki denetim arası tüm işlem iptalleri mağazada mı?", puan:2}, {text:"İptal fişlerinde yönetici parafı var mı?", puan:1}, {text:"Gider pusulalarında yönetici ve kasiyer parafları tam mi?", puan:2} ],
+    standards:`• Z raporlarında bulunan toplam fiş/fatura/taxfree iptallerinin adetleri kontrol edilir.\n• Tüm fiş/fatura/taxfree iptallerinde mağaza yöneticisinin isim soy isim ve imzası bulunmalıdır.\n• İşlem iptal fişleri mağazada muhafaza edilir. Muhasebe departmanına gönderilmemelidir.\n• Gider pusulalarında müşteriye ait imza, işlemi alan çalışana ait imza, kontrol eden yöneticiye ait isim soy isim imza olması gerekmektedir.\n• Gider pusulaları iki denetim arasındaki 30 gün örnekleme kontrol edilir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:11, code:"FOD11", topic:"İş Sağlığı ve Güvenliği", title:"Yangın çıkış kapıları ve bu kapılara giden koridorlar kriterlere uygun mu?", puan:3, 
+    criteria:[ {text:"Yangın çıkış kapısı ve koridoru standartlara uygun mu?", puan:2}, {text:"Exit levhaları çalışıyor mu?", puan:1} ],
+    standards:`• Yangın kaçış kapısı önünde arkasında ve tahliye alanına giden koridorlarda hiçbir malzeme/ürün/koli vb. konulmamalıdır.\n• Yangın çıkış kapıları push-barlı olmalı ve kilitli olmamalıdır.\n• Yangın çıkış kapısı ve kapıya giden koridorların genişliğinin min. 80 cm olması gerekmektedir.\n• Yangın kaçış (exit) levhasının olması ve ışıklarının çalışıyor olması gerekmektedir.\n• Tüm bağımsız alanlarda exit yönlendirme tabelasının olması gerekmektedir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:12, code:"FOD12", topic:"İş Sağlığı ve Güvenliği", title:"Elektrik panosu/odası belirtilen kriterlere uygun mu?", puan:3, 
+    criteria:[ {text:"Elektrik odası/ panosu standartlara uygun mu?", puan:2}, {text:"Pano kapakları kapalı mı? Yalıtkan paspas standartlara uygun mu?", puan:1} ],
+    standards:`• Elektrik odası boş ve temiz olmalı içerisinde malzeme olmamalıdır.\n• Elektrik panosu olan mağazalarda etki alanı (minimum 1 metre çevresi) boş ve temiz olmalıdır.\n• Tali panolar dahil elektrik panoları önünde mutlaka uygun ölçülerde yalıtkan paspas olmalıdır.\n• Tüm elektrik panolarının müdahale kapakları her zaman kapalı tutulmalıdır.\n• Elektrik panosu üzerinde uyarı levhasının bulunması gerekmektedir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:13, code:"FOD13", topic:"İş Sağlığı ve Güvenliği", title:"Yangın tüpleri belirtilen kriterlere uygun mu?", puan:4, 
+    criteria:[ {text:"Yangın tüpü basıncı, kontrol etiketi ve pimi var mı? Eksik yangın tüpü var mı?", puan:2}, {text:"Uyarı levhaları var mı?", puan:2} ],
+    standards:`• Mağazalarda her 150 m² ye 1 adet olacak şekilde 6 kg ABC sınıfı kuru kimyevi yangın söndürme cihazı bulundurulmalıdır.\n• Elektrik panosunun yanında veya elektrik odası var ise oda içinde bir adet 6 kg ABC sınıfı veya E sınıfı yangın söndürme cihazı olmalıdır.\n• Mevcut yangın söndürme cihazlarının dışında 1 adet kullanabilir durumda yedek yangın söndürme cihazı bulundurulmalıdır.\n• Yangın söndürme cihazlarının konumlandırıldığı alanlarda herkesin görebileceği şekilde uyarı levhasının bulunması gerekmektedir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:14, code:"FOD14", topic:"İş Sağlığı ve Güvenliği", title:"Ecza dolapları ve içerikleri belirlenen standartlarda mı?", puan:2, 
+    criteria:[ {text:"Mağazada bulunan ecza dolapları ve içerikleri belirlenen standartlarda mi?", puan:2} ],
+    standards:`• Mağaza İlk yardım dolaplarının varlığı ve içeriği tam olmalıdır (Plaster, Yara bandı, Sargı bezi, Elastik bandaj vb).\n• Liste dışı harici malzeme bulunmamalıdır ve belirtilen malzemelerin tükenmesi durumunda yenisi temin edilmelidir.\n• İlgili malzemelerin son kullanma tarihleri geçmemiş olmalıdır.\n• Ecza dolapları herkesin ulaşabileceği bir alanda asılı olması gerekmektedir. Kilitlenmemelidir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:15, code:"FOD15", topic:"İş Sağlığı ve Güvenliği", title:"Merdivenler İş sağlığı ve güvenliği kriterlerine uygun mu?", puan:1, 
+    criteria:[ {text:"Mağazada bulunan merdivenler belirlenen standartlarda mi?", puan:1} ],
+    standards:`• Mağaza girişinde ve katlar arasında bulunan tüm merdivenlerin korkuluklarının iş sağlığı ve güvenliği standartları ve kaydırmaz bantların uygunlukları kontrol edilir.\n• Mağazada bulunan tüm seyyar merdivenlerin İSG standartlarına uygunluğu kontrol edilir.\n• 7+1 basamaktan yüksek, tek ayaklı, kaydırmaz pabucu olmayan ve merkez tarafından gönderilmeyen merdivenler kullanılmamalı ve mağazada muhafaza edilmemelidir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:16, code:"FOD16", topic:"İş Sağlığı ve Güvenliği", title:"Mağazalarda yangın risklerine karşı önlemler alınmış mı?", puan:3, 
+    criteria:[ {text:"Mağazalarda yangın risklerine karşı önlemler alınmış mı?", puan:3} ],
+    standards:`• Mağazalarda Yangın Risklerine Karşı Alınacak Önlemler Talimatı'na göre kontroller yapılır.\n• Merkezden gönderilen cihazlarda orijinal kabloları kullanılmalıdır.\n• Depoda ya da mağazanın içinde cattle, ısıtıcı, vantilatör, mikrodalga fırın vb. cihazlar bulundurulmamalıdır.\n• Yanıcı ve parlayıcı madde bulundurulmamalıdır.\n• Depolarda ürün istiflemesi, yangın sprintlerinin önünü kapatacak şekilde yapılmamalıdır.\n• Duman dedektörlerinin her 40m² de bir bulunması gerekmektedir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:17, code:"FOD17", topic:"Operasyonel Süreçler", title:"Depoda boşta ve açık kapı var mi?", puan:1, 
+    criteria:[ {text:"Depoda boşta ve açık kapı var mı?", puan:1} ],
+    standards:`• Mağazadan dışarıya açılan kapılar açık olmamalıdır.\n• Açık olduğu durumlarda etki alanında bir personelin olması gerekmektedir. Personelin olmadığı durumlar tespit olarak değerlendirilir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:18, code:"FOD18", topic:"Operasyonel Süreçler", title:"Depodan reyona çıkartılmayan ürün var mı?", puan:3, 
+    criteria:[ {text:"Depodan reyona çıkartılmayan ürün var mi?", puan:3} ],
+    standards:`• Depodan reyona çıkartılmamış 48 saati geçmiş asorti bazlı ürün olmamalıdır.\n• Örnekleme kutulu 10 sku ürün kontrol edilir.\n• Ürünlerin tekrar ürün olup olmadığı kontrol edilir.\n• Depodan reyona çıkartılmayan ürünler için malzeme numarası belirtilerek bölge müdürüne mail ile bilgi verilmelidir.\n• Sku içerisindeki 6 adet ve üzeri ürünler tespit olarak değerlendirilir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:19, code:"FOD19", topic:"IT Süreçleri", title:"Kamera sistemi çalışıyor mu?", puan:3, 
+    criteria:[ {text:"Kameralar çalışır durumda ve internet bağlantısı var mı?", puan:3} ],
+    standards:`• Tüm kameraların net olarak çalışıp çalışmadığı ve ethernet bağlantısı olup olmadığı kontrol edilir.\n• Kasa ve depo/dış depo noktalarında kamera olması gerekmektedir.\n• Kamera saatlerinin güncel olması gerekmektedir.\n• Çalışmayan kameralar için desk açılması gerekmektedir.\n• Mağazada bulunan kameraların görüş açılarını engelleyecek herhangi bir malzeme bulunmamalıdır.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:20, code:"FOD20", topic:"IT Süreçleri", title:"KSS cihazları çalışıyor mu?", puan:3, 
+    criteria:[ {text:"KSS cihazlarından arızalı cihaz var mi?", puan:3} ],
+    standards:`• Mağazalarda KSS cihazının olması gerekmektedir.\n• Adrese giriş yapılarak mağazada bulunan fiili cihaz adedi ile veri gelen cihaz adedinin aynı olup olmadığı kontrol edilir.\n• Arızalı veya eksik olan cihazlar için 2 gün içerisinde FloDesk üzerinden kayıt açılmalıdır.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:21, code:"FOD21", topic:"IT Süreçleri", title:"Mağaza envanter girişleri doğru yapılmış mı?", puan:5, 
+    criteria:[ {text:"Mağaza envanter girişleri doğru yapılmış mı?", puan:5} ],
+    standards:`• El Terminalleri ve Zebra mobil barkod yazıcıların kontrolleri yapılır.\n• Satış Kasaları ve Mali Yazıcılar kontrolleri yapılır.\n• Mağaza Bilgisayarı, Monitörler, Yazıcılar, Kişi sayım cihazları UPS güç kaynağı ve DVR'ın kontrolleri yapılır.\n• Servise, merkeze gönderilen cihazlar için en geç ertesi gün FLO Desk kaydı açılmış olmalıdır.\n• Denetim sırasında ibraz edilemeyen ve hatalı giriş yapılan cihazlar tespit olarak değerlendirilir.` },
+
+  { id:22, code:"FOD22", topic:"Kapasite Süreçleri", title:"Kapasitede tanımlı ünite sayısı doğru mu?", puan:5, 
+    criteria:[ {text:"Fiili ünite sayısı ile kapasitede tanımlı ünite sayısı doğru mu?", puan:5} ],
+    standards:`• Mağaza kapasitesine tanımlı ünite adetleri ile mağazada bulunan fiili ünite adetlerinin durumu kontrol edilir.\n• Kategoriler arası geçici süreli ve eksik/fazla ünite değişikliklerinde süre bilgisi belirtilerek bölge müdüründen onay alınmalıdır.\n• Süre belirtilmeyen geçici süreli değişiklikler dikkate alınmaz.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:23, code:"FOD23", topic:"Omnichannel Süreçleri", title:"OMS standartlarına uygun işlemler yapılıyor mu?", puan:3, 
+    criteria:[ {text:"OMS standartlarına uygun işlemler yapılıyor mu?", puan:3} ],
+    standards:`• OMS alanının düzgün olup olmadığı kontrol edilir.\n• OMS alanında paketleme kurallarının olduğu poster var mı kontrol edilir.\n• Çıkışı yapılan Oms sipariş paketleri deforme ve yırtık gönderilmiş mi kontrol edilir.\n• Kutusuz ayakkabılar kutulandıktan sonra mı gönderimi yapılıyor kontrol edilir.\n• OMS sipariş içinde olması gereken ürünlerle çıkış yapılan ürünler aynı mı kontrol edilir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:24, code:"FOD24", topic:"Operasyonel Süreçler", title:"Tekleme ürünlerin sisteme girişi yapılıyor mu?", puan:3, 
+    criteria:[ {text:"Mağazada bulunan tüm teklemeler sisteme işlenmiş mi?", puan:3} ],
+    standards:`• Tekleme Tamamlama Talimatı'na göre işlemler yapılır.\n• SAP programında ZRT025 tekleme giriş modülü ekranı açılarak tekleme ürünler sisteme işlenir.\n• Sisteme girişi yapılan ürünlerden örnekleme kontrolü yapılır.\n• Cluster' a göre eksik girişler tespit olarak değerlendirilir.` },
+
+  { id:25, code:"FOD25", topic:"Operasyonel Süreçler", title:"Personel kıyafeti ve yaka kartı standartlara uygun mu?", puan:2, 
+    criteria:[ {text:"Personel kıyafetleri yönetmeliğe uygun mu?", puan:1}, {text:"Yaka kartı var mı?", puan:1} ],
+    standards:`• Personel kıyafet yönetmeliği standartlarına göre çalışan kıyafetleri kontrol edilir.\n• Tüm çalışanların yaka kartları eksiksiz ve isimlerinin yazılı olması gerekmektedir.\n• Mağaza şefleri personel kıyafet yönetmeliği standartlarına göre giyinmelidirler.\n• Çalışanlara ait yaka kartı ve kıyafetleri gelmediyse 7 gün içinde Workplace'dan talepte bulunulmalıdır.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:26, code:"FOD26", topic:"Operasyonel Süreçler", title:"Fiyat etiketleri standartlara uygun mu?", puan:8, 
+    criteria:[ {text:"Fiyat etiketleri eksiksiz ve doğru mu?", puan:4}, {text:"Vitrinde bulunan ürünlerin fiyatlıkları doğru mu?", puan:2}, {text:"Hangtag etiket eksiksiz ve doğru mu?", puan:2} ],
+    standards:`• Etiketlerin Flo Dijital üzerinden basımı ve güncel standartlara uygunluğu kontrol edilir.\n• Fiyat vurguları kontrol edilir, uygunsuzluk varsa tespit olarak değerlendirilir.\n• Vitrinde bulunan ürünlerin fiyatlıkları kontrol edilir.\n• Gondol etiketi kullanılmayan alanlarda bulunan teşhirler ürünlerinde hangtag etiket kullanımı kontrol edilir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:27, code:"FOD27", topic:"Operasyonel Süreçler", title:"Alarmsız ürün var mı?", puan:3, 
+    criteria:[ {text:"Alarmsız ürün var mı?", puan:2}, {text:"Alarmlama standartlara uygun olarak yapılıyor mu?", puan:1} ],
+    standards:`• Reyona çıkartılan ürünlerde alarm olması gerekmektedir.\n• Mağaza stoğunun %1'i kontrol edilir ve kontrol edilen ürünlerde %2 ve üzeri alarmsız ürün tespit olarak değerlendirilir.\n• Teşhirde yer alan tüm ürünlerde en fazla 1 alarm olmalıdır.\n• Takım ürünlerinde birleşik alarm yapılmış mı kontrol edilir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:28, code:"FOD28", topic:"IT Süreçleri", title:"Kapı antenleri çalışır durumda mı?", puan:2, 
+    criteria:[ {text:"Mağazada bulunan tüm alarm antenleri çalışıyor mu?", puan:2} ],
+    standards:`• Kapı girişlerindeki güvenlik antenlerinin mağaza satışa açık olduğu sürelerde çalışır durumda olması gerekmektedir.\n• Alarm antenlerine ait şarteller kapalı olmamalıdır.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:29, code:"FOD29", topic:"Operasyonel Süreçler", title:"Fırsat gondolları kriterlere uygun mu?", puan:2, 
+    criteria:[ {text:"Firsat gondollarında kurallara uyuluyor mu? Alarmlama ve etiketleme yapılıyor mu?", puan:2} ],
+    standards:`• Açılan fırsat gondollarında 10 altın kuralın sağlanmış olması gerekmektedir.\n• Fırsat gondollarında bulunan ürünlerde sağ tek, sol tek ve tel alarmda dahil olmak üzere en fazla 2 adet alarm olması gerekmektedir.\n• Fırsat gondollarında sergilenen ürünlerin cinsiyet ayrımının yapılması gerekmektedir.\n• Global fırsat gondollarının standartlara uygunluğu kontrol edilir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` },
+
+  { id:30, code:"FOD30", topic:"Operasyonel Süreçler", title:"Nakil Stok süreçleri kontrol ediliyor mu?", puan:5, 
+    criteria:[ {text:"Nakil Stok süreçleri kontrol ediliyor mu?", puan:5} ],
+    standards:`• 30 günü geçmiş koli kabul yapılmayan koli ve koli kabul yapılıp mal kabul yapılmayan ürünler kontrol edilir.\n• Uygunsuzlar tespit olarak değerlendirilir.` },
+
+  { id:31, code:"FOD31", topic:"Görsel Süreçler", title:"Kampanya uygulamaları kriterlere uygun mu?", puan:2, 
+    criteria:[ {text:"Kampanya uygulamaları kriterlere uygun mu?", puan:2} ],
+    standards:`• Kampanya görsellerinde güncel tarih ve bilgilendirme metni olmalıdır.\n• Uygunsuzlar tespit olarak değerlendirilir.` },
+
+  { id:32, code:"FOD32", topic:"İş Sağlığı ve Güvenliği", title:"Cadde mağazalarda sıfır atık çevre sistemine uyuluyor mu?", puan:0, 
+    criteria:[ {text:"Cadde mağazalarda sıfır atık kutuları mevcut mu?", puan:0} ],
+    standards:`• Atık kutuları görünür yerde olmalıdır. (kapı yanı, kasa önü vb.)\n• Net 1-500m² bir takım (3 adet yan yana)\n• Net 500-1500m² arasında 2 takım, Net 1500-3000m² arasında 3 takım atık kutusu olması gereklidir.\n• Uygunsuzluklar tespit olarak değerlendirilir.` }
+];
+
+const SECTION_GROUPS = {
+  "Mali Süreçler": { icon:"💰", color:"var(--green)" },
+  "Operasyonel Süreçler": { icon:"⚙️", color:"var(--amber)" },
+  "IT Süreçleri": { icon:"💻", color:"var(--blue)" },
+  "IK Süreçleri": { icon:"👥", color:"#BF5AF2" },
+  "İş Sağlığı ve Güvenliği": { icon:"🛡️", color:"#FF2D55" },
+  "Kapasite Süreçleri": { icon:"📦", color:"#FF9F0A" },
+  "Omnichannel Süreçleri": { icon:"🌐", color:"#30D158" },
+  "Görsel Süreçler": { icon:"🎨", color:"#5E5CE6" },
+  "Genel": { icon:"📋", color:"var(--muted)" }
+};
+
+// ==================== STATE ====================
+const state_obj = {};
+let totalCriteriaCount = 0; // Dinamik sayaç için
+
+AUDIT_DATA.forEach(d => { 
+  state_obj[d.id] = { note:'', images:[], criteriaStatus: new Array(d.criteria.length).fill(null) }; 
+  totalCriteriaCount += d.criteria.length;
+});
+
+// ==================== STARTUP LOGIC ====================
+function startAudit() {
+  const code = document.getElementById('inpStoreCode').value.trim();
+  const name = document.getElementById('inpStoreName').value.trim();
+  const auditor = document.getElementById('inpAuditor').value.trim();
+
+  if(!code || !name || !auditor) {
+    alert("Lütfen tüm alanları eksiksiz doldurun.");
+    return;
+  }
+  
+  currentStoreCode = code;
+  currentStoreName = name;
+  currentAuditor = auditor;
+  
+  document.getElementById('auditCodeBadge').innerText = `${currentStoreName} Operasyonel Denetim`;
+  document.getElementById('startupModal').classList.remove('open');
+  
+  render();
+  updateScores();
+}
+
+// ==================== YÖNETİM PANELİ KULLANICI / ŞİFRE KONTROLÜ ====================
+async function checkAdminAuth() {
+  const userInp = document.getElementById('inpAdminUser').value.trim();
+  const passInp = document.getElementById('inpAdminPass').value;
+  const btn = document.getElementById('adminLoginBtn');
+  
+  if(!userInp || !passInp) return alert("Kullanıcı adı ve şifreyi giriniz.");
+  
+  const originalText = btn.innerText;
+  btn.innerText = "Doğrulanıyor...";
+  btn.disabled = true;
+
+  try {
+    const querySnapshot = await db.collection("adminUsers")
+      .where("username", "==", userInp)
+      .where("password", "==", passInp)
+      .get();
+
+    if (!querySnapshot.empty) {
+      document.getElementById('adminAuthModal').classList.remove('open');
+      openAdminPanel();
+    } else {
+      alert("Hatalı kullanıcı adı veya şifre!");
+    }
+  } catch (error) {
+    console.error("Giriş Hatası:", error);
+    alert("Bağlantı hatası oluştu, lütfen tekrar deneyin.");
+  } finally {
+    btn.innerText = originalText;
+    btn.disabled = false;
+  }
+}
+
+// ==================== RENDER ====================
+function render() {
+  const container = document.getElementById('mainContainer');
+  const item = AUDIT_DATA[currentQuestionIndex];
+  const g = SECTION_GROUPS[item.topic] || {icon:'📌',color:'var(--muted)'};
+
+  const isLastQuestion = currentQuestionIndex === AUDIT_DATA.length - 1;
+  const nextBtnHtml = isLastQuestion 
+    ? `<button onclick="finishAudit()" class="btn-action btn-nav btn-finish">Denetimi Bitir <i style="margin-left:4px">✓</i></button>`
+    : `<button onclick="nextQ()" class="btn-action btn-nav">Sonraki Madde →</button>`;
+
+  let html = `
+    <div class="section-group">
+      <div class="section-group-title">
+        <span class="section-icon">${g.icon}</span>
+        <span style="color:${g.color}">${item.topic}</span>
+      </div>
+      ${renderCard(item)}
+    </div>
+
+    <div class="pagination-controls print-hide">
+      <button onclick="prevQ()" class="btn-action btn-nav" ${currentQuestionIndex === 0 ? 'disabled' : ''}>← Önceki Madde</button>
+      <div class="page-indicator">Madde ${currentQuestionIndex + 1} / ${AUDIT_DATA.length}</div>
+      ${nextBtnHtml}
+    </div>
+  `;
+  container.innerHTML = html;
+}
+
+function prevQ() { if(currentQuestionIndex > 0) { currentQuestionIndex--; render(); window.scrollTo({top: 0, behavior: 'smooth'}); } }
+function nextQ() { if(currentQuestionIndex < AUDIT_DATA.length - 1) { currentQuestionIndex++; render(); window.scrollTo({top: 0, behavior: 'smooth'}); } }
+
+function renderCard(item) {
+  const s = state_obj[item.id];
+  let criteriaHtml = '';
+  let showExtras = false;
+
+  item.criteria.forEach((c, idx) => {
+    const cStatus = s.criteriaStatus[idx];
+    if (cStatus === 'tespit' || cStatus === 'yok') showExtras = true;
+    const rowClass = cStatus === 'na' ? 'na-active' : '';
+
+    criteriaHtml += `
+      <div class="criterion-row ${rowClass}">
+        <div class="criterion-text-box">
+          <div class="criterion-text">${c.text}</div>
+          <div class="criterion-pts">${c.puan} Puan</div>
+        </div>
+        <div class="card-actions" style="margin-top:10px;">
+          <button class="btn-action btn-tespit ${cStatus==='tespit'?'active':''}" onclick="setCriterionStatus(${item.id}, ${idx}, 'tespit')">⚠ Tespit Var</button>
+          <button class="btn-action btn-yok ${cStatus==='yok'?'active':''}" onclick="setCriterionStatus(${item.id}, ${idx}, 'yok')">✓ Tespit Yok</button>
+          <button class="btn-action btn-na ${cStatus==='na'?'active':''}" onclick="setCriterionStatus(${item.id}, ${idx}, 'na')">— N/A</button>
+        </div>
+      </div>
+    `;
+  });
+
+  const isAnyTespit = s.criteriaStatus.includes('tespit');
+
+  return `
+  <div class="audit-card" id="card-${item.id}">
+    <div class="card-header">
+      <div class="card-num">${String(item.id).padStart(2,'0')}</div>
+      <div class="card-meta">
+        <div class="card-code">${item.code} • Max Puan: ${item.puan}</div>
+        <div class="card-title">${item.title}</div>
+      </div>
+      <div class="card-right">
+        <button class="info-btn" title="Kriter Standartları" onclick="showDetail(${item.id})">ℹ</button>
+      </div>
+    </div>
+    <div class="criteria-list">${criteriaHtml}</div>
+    <div class="extras-area">
+      <div class="image-upload-area ${isAnyTespit ? 'visible':''}" id="imgArea-${item.id}">
+        <label class="upload-label">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Fotoğraf Yükle (Opsiyonel)
+          <input type="file" accept="image/*" multiple onchange="addImages(${item.id}, this)">
+        </label>
+        <div class="uploaded-images" id="imgs-${item.id}">
+          ${s.images.map((src,i)=>`<img class="uploaded-img-thumb" src="${src}" onclick="removeImage(${item.id},${i})" title="Kaldır">`).join('')}
+        </div>
+      </div>
+      <textarea class="note-input ${showExtras ? 'visible':''}" placeholder="Açıklama veya not ekleyin…" onchange="setNote(${item.id}, this.value)">${s.note}</textarea>
+    </div>
+  </div>`;
+}
+
+// ==================== ACTIONS ====================
+function setCriterionStatus(itemId, criterionIdx, status) {
+  state_obj[itemId].criteriaStatus[criterionIdx] = state_obj[itemId].criteriaStatus[criterionIdx] === status ? null : status;
+  render(); updateScores();
+}
+function setNote(id, val) { state_obj[id].note = val; }
+function addImages(id, input) {
+  Array.from(input.files).forEach(f => {
+    const r = new FileReader(); r.onload = e => { state_obj[id].images.push(e.target.result); render(); }; r.readAsDataURL(f);
+  });
+}
+function removeImage(id, idx) { state_obj[id].images.splice(idx,1); render(); }
+
+function updateScores() {
+  let earned = 0, answeredSubItems = 0;
+  let cT=0, cY=0, cN=0;
+
+  AUDIT_DATA.forEach(d => {
+    const s = state_obj[d.id];
+    d.criteria.forEach((c, idx) => {
+      const cStat = s.criteriaStatus[idx];
+      if(cStat) answeredSubItems++;
+      if (cStat === 'yok' || cStat === 'na') { earned += c.puan; } 
+      if (cStat === 'tespit') { cT++; } 
+      else if (cStat === 'yok') { cY++; } 
+      else if (cStat === 'na') { cN++; }
+    });
+  });
+
+  document.getElementById('totalScore').innerHTML = `${earned} <span style="font-size:14px;color:var(--muted)">/ 100</span>`;
+  document.getElementById('progressFill').style.width = (answeredSubItems / totalCriteriaCount * 100) + '%';
+  document.getElementById('cntTespit').textContent = cT;
+  document.getElementById('cntYok').textContent = cY;
+  document.getElementById('cntNA').textContent = cN;
+  document.getElementById('cntPending').textContent = (totalCriteriaCount - answeredSubItems);
+}
+
+// ==================== DETAIL MODAL (ESKİ OKLU LİSTE YAPISI) ====================
+function showDetail(id) {
+  const item = AUDIT_DATA.find(d=>d.id===id);
+  
+  const listItemsHtml = item.standards.split('\n').filter(l=>l.trim()).map(l => {
+     return `<li><span class="blue-arrow">→</span> <span>${l.replace(/^•\s*/,'')}</span></li>`;
+  }).join('');
+
+  const body = `
+    <div class="modal-code" style="color:var(--primary); font-size:12px; font-weight:700; margin-bottom:10px;">${item.code} • ${item.topic}</div>
+    <h2 style="font-family:'Syne',sans-serif; font-size:20px; line-height:1.4;">${item.title}</h2>
+    <div class="standards-list" style="margin-top:20px;">
+      <h4 style="color:var(--blue); font-family:'Syne',sans-serif; text-transform:uppercase; font-size:12px; margin-bottom:4px;">Kriter Standartları</h4>
+      <ul class="standards-list">
+        ${listItemsHtml}
+      </ul>
+    </div>
+  `;
+  document.getElementById('detailModalBody').innerHTML = body;
+  document.getElementById('detailModal').classList.add('open');
+}
+
+// ==================== FİNİSH & FIREBASE KAYIT ====================
+function finishAudit() {
+  let unanswered = 0;
+  AUDIT_DATA.forEach(d => { d.criteria.forEach((c, idx) => { if(!state_obj[d.id].criteriaStatus[idx]) unanswered++; }); });
+
+  if(unanswered > 0) {
+    alert(`Eksik işlem tespit edildi! Lütfen yanıtlanmayan ${unanswered} adet kriteri doldurun.`);
+    return;
+  }
+
+  const btn = document.querySelector('.btn-finish');
+  if(btn) btn.innerHTML = "Rapor Oluşturuluyor... <i style='margin-left:4px'>⌛</i>";
+
+  const finalScore = document.getElementById('totalScore').innerText.split('/')[0].trim();
+  
+  const auditDetails = AUDIT_DATA.map(d => {
+    return {
+      code: d.code,
+      topic: d.topic,
+      title: d.title,
+      note: state_obj[d.id].note,
+      images: state_obj[d.id].images, 
+      results: d.criteria.map((c, idx) => ({ text: c.text, status: state_obj[d.id].criteriaStatus[idx], puan: c.puan }))
+    };
+  });
+
+  const payload = {
+    storeCode: currentStoreCode,
+    storeName: currentStoreName,
+    auditor: currentAuditor,
+    date: new Date().toISOString(),
+    score: finalScore,
+    details: auditDetails
+  };
+
+  // FIREBASE ARKA PLAN KAYDI
+  if(firebase.apps.length > 0) {
+      db.collection("denetimler").add(payload)
+        .then(() => console.log("Denetim DB'ye işlendi."))
+        .catch(error => console.error("Kayıt hatası: ", error));
+  } else {
+      console.warn("Firebase Config eksik, sadece yerel rapor oluşturuldu.");
+  }
+  
+  // ANINDA RAPORU AÇ
+  setTimeout(() => {
+    generateReportHTML(payload);
+    if(btn) btn.innerHTML = "Denetimi Bitir <i style='margin-left:4px'>✓</i>";
+  }, 300);
+}
+
+// ==================== YÖNETİM PANELİ VERİ ÇEKME ====================
+async function openAdminPanel() {
+  document.getElementById('adminDataModal').classList.add('open');
+  const area = document.getElementById('adminDataArea');
+  
+  if(!firebase.apps.length) {
+      area.innerHTML = "<p style='color:red;'>Firebase Config eksik! API key eklenmeden veriler çekilemez.</p>";
+      return;
+  }
+
+  area.innerHTML = "Veriler Yükleniyor...";
+  try {
+      const snapshot = await db.collection("denetimler").orderBy("date", "desc").get();
+      if(snapshot.empty) {
+          area.innerHTML = "<p>Henüz kaydedilmiş bir denetim bulunmuyor.</p>";
+          return;
+      }
+      
+      adminDataCache = {};
+      let html = `<table class="report-table" style="text-align:left;">
+          <thead><tr><th>Tarih</th><th>Mağaza Kodu</th><th>Mağaza İsmi</th><th>Denetmen</th><th>Puan</th><th>Rapor</th></tr></thead><tbody>`;
+          
+      snapshot.forEach(doc => {
+          const data = doc.data();
+          adminDataCache[doc.id] = data;
+          const d = new Date(data.date).toLocaleDateString('tr-TR', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+          html += `<tr>
+              <td>${d}</td>
+              <td style="font-weight:bold; color:var(--primary)">${data.storeCode}</td>
+              <td>${data.storeName}</td>
+              <td>${data.auditor}</td>
+              <td style="font-weight:bold; color:var(--green)">${data.score}</td>
+              <td><button class="btn-action btn-yok" style="padding:6px 10px; font-size:11px;" onclick="viewPastReport('${doc.id}')">Görüntüle</button></td>
+          </tr>`;
+      });
+      html += `</tbody></table>`;
+      area.innerHTML = html;
+  } catch(err) {
+      area.innerHTML = `<p style="color:red;">Veriler çekilirken hata oluştu: ${err.message}</p>`;
+  }
+}
+
+// YÖNETİM PANELİNDEN GÖRÜNTÜLE'YE BASILINCA
+function viewPastReport(docId) {
+    const data = adminDataCache[docId];
+    if(data) {
+       generateReportHTML(data);
+    }
+}
+
+// ==================== RAPOR / EXPORT OLUŞTURUCU ====================
+function generateReportHTML(dataObj) {
+  const groups = {};
+  let cT=0, cY=0, cN=0;
+
+  dataObj.details.forEach(d => {
+    if(!groups[d.topic]) groups[d.topic] = [];
+    groups[d.topic].push(d);
+
+    d.results.forEach(res => {
+      if(res.status==='na') cN++;
+      else if(res.status==='yok') cY++;
+      else if(res.status==='tespit') cT++;
+    });
+  });
+
+  let chaptersHtml = '';
+  for(const [topic, items] of Object.entries(groups)) {
+    let rows = '';
+    items.forEach(d => {
+      d.results.forEach((res, idx) => {
+        const badge = res.status==='tespit'?'<span class="badge-s t">Tespit Var</span>':res.status==='yok'?'<span class="badge-s y">Tespit Yok</span>':res.status==='na'?'<span class="badge-s n">N/A</span>':'<span style="color:var(--muted);font-size:11px">—</span>';
+        const pts = (res.status==='yok' || res.status==='na') ? res.puan : res.status==='tespit' ? 0 : '?';
+        
+        let extrasHtml = '';
+        if(idx === d.results.length - 1) {
+           if(d.note) extrasHtml += `<div style="font-size:11px;color:var(--muted);margin-top:6px;font-style:italic;">Not: ${d.note}</div>`;
+           if(d.images && d.images.length > 0) {
+               extrasHtml += `<div class="report-img-wrapper">` + d.images.map(img => `<img src="${img}" class="report-img">`).join('') + `</div>`;
+           }
+        }
+        
+        const codeCell = idx === 0 ? `<td rowspan="${d.results.length}" style="color:var(--primary);font-weight:700;width:12%; border-right:1px solid var(--border);">${d.code}</td>` : '';
+        const rowOpacity = res.status==='na' ? 'opacity: 0.6;' : '';
+
+        rows += `<tr class="row-${res.status||''}" style="${rowOpacity}">${codeCell}<td><span style="font-weight:500">${res.text}</span>${extrasHtml}</td><td style="width:15%">${badge}</td><td style="text-align:center;font-family:'Syne',sans-serif;font-weight:700;color:var(--amber);width:10%">${pts}</td></tr>`;
+      });
+    });
+
+    chaptersHtml += `
+      <div class="print-chapter-title">
+        ${topic}
+      </div>
+      <table class="report-table">
+        <thead><tr><th>Kod</th><th>Değerlendirilen Kriter</th><th>Sonuç</th><th style="text-align:center">Puan</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  const body = `
+    <div style="text-align:center; margin-bottom:30px; border-bottom:1px solid var(--border); padding-bottom:24px;">
+      <h2 style="font-family:'Syne',sans-serif; font-size:26px; font-weight:800; margin-bottom:6px; color:var(--text)">Operasyonel Denetim Sonuç Raporu</h2>
+      <p style="color:var(--muted); font-size:14px; margin-bottom:20px;">
+        Mağaza: <strong style="color:var(--primary)">${dataObj.storeCode} - ${dataObj.storeName}</strong> &bull; 
+        Denetmen: <strong style="color:var(--primary)">${dataObj.auditor}</strong> &bull;
+        Tarih: ${new Date(dataObj.date).toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric', hour:'2-digit', minute:'2-digit'})}
+      </p>
+      
+      <button class="print-btn-large print-hide" onclick="window.print()">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"></path>
+        </svg>
+        Raporu PDF Olarak İndir / Yazdır
+      </button>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap">
+      <div class="modal-score-box"><div class="v">${dataObj.score}</div><div class="l">Mevcut Puan</div></div>
+      <div class="modal-score-box"><div class="v" style="color:var(--red)">${cT}</div><div class="l">Tespit</div></div>
+      <div class="modal-score-box"><div class="v" style="color:var(--green)">${cY}</div><div class="l">Tespit Yok</div></div>
+      <div class="modal-score-box"><div class="v" style="color:var(--muted)">${cN}</div><div class="l">N/A Seçimi</div></div>
+    </div>
+    ${chaptersHtml}
+  `;
+  
+  document.getElementById('reportModalBody').innerHTML = body;
+  document.getElementById('reportModal').classList.add('open');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.getElementById('reportModal').addEventListener('click', function(e){ if(e.target===this) closeModal('reportModal'); });
+document.getElementById('adminDataModal').addEventListener('click', function(e){ if(e.target===this) closeModal('adminDataModal'); });
+document.getElementById('adminAuthModal').addEventListener('click', function(e){ if(e.target===this) closeModal('adminAuthModal'); });
+document.getElementById('detailModal').addEventListener('click', function(e){ if(e.target===this) closeModal('detailModal'); });
+
+</script>
+</body>
+</html>
