@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
@@ -195,11 +194,8 @@
     .report-img { height:100px !important; width:100px !important; object-fit:cover !important; border-radius:4px !important; border:1px solid #aaa !important; }
   }
 </style>
-
 </head>
 <body>
-
-<!-- STARTUP MODAL -->
 
 <div class="modal-overlay open" id="startupModal" style="z-index: 2000;">
   <div class="modal" style="max-width: 400px;">
@@ -217,8 +213,6 @@
   </div>
 </div>
 
-<!-- ADMIN AUTH MODAL -->
-
 <div class="modal-overlay print-hide" id="adminAuthModal" style="z-index: 2001;">
   <div class="modal" style="max-width: 400px;">
     <button class="modal-close" onclick="closeModal('adminAuthModal')">✕</button>
@@ -229,13 +223,11 @@
   </div>
 </div>
 
-<!-- HEADER -->
-
 <header class="top-bar print-hide">
   <div class="brand">
     <div class="brand-logo">F</div>
     <div class="brand-text">
-      <div class="brand-name">FLO Operasyonel Denetim</div>
+      <div class="brand-name" id="uiBrandName">FLO Denetim</div>
       <div class="brand-sub">2026 Denetim Sistemi</div>
     </div>
   </div>
@@ -248,8 +240,6 @@
     <button class="admin-btn" onclick="document.getElementById('adminAuthModal').classList.add('open')">Yönetim</button>
   </div>
 </header>
-
-<!-- PROGRESS -->
 
 <div class="progress-container print-hide">
   <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
@@ -264,10 +254,8 @@
 <main class="container print-hide" id="mainContainer"></main>
 
 <footer class="site-footer print-hide">
-  &copy; 2026 FLO Operasyonel Denetim Sistemi | Altyapı: <a href="https://ardaulas.online" target="_blank">ardaulas.online</a> | İletişim: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="b6d7c4d2d7f6d7c4d2d7c3dad7c598d9d8dadfd8d3">[email&#160;protected]</a>
+  &copy; 2026 FLO Denetim Sistemi | Altyapı: <a href="https://ardaulas.online" target="_blank">ardaulas.online</a> | İletişim: arda.ulash@gmail.com
 </footer>
-
-<!-- ADMIN DATA MODAL -->
 
 <div class="modal-overlay print-hide" id="adminDataModal" style="z-index: 2002;">
   <div class="modal" style="max-width:960px">
@@ -277,16 +265,12 @@
   </div>
 </div>
 
-<!-- DETAIL MODAL -->
-
 <div class="modal-overlay print-hide" id="detailModal" style="z-index: 2003;">
   <div class="modal" id="detailModalContent" style="max-width:500px">
     <button class="modal-close print-hide" onclick="closeModal('detailModal')">✕</button>
     <div id="detailModalBody"></div>
   </div>
 </div>
-
-<!-- REPORT MODAL -->
 
 <div class="modal-overlay" id="reportModal" style="z-index: 3000;">
   <div class="modal" style="max-width:940px" id="reportModalContent">
@@ -295,289 +279,288 @@
   </div>
 </div>
 
-<!-- Cloudflare email script removed for GitHub Pages compatibility --><script data-cfasync="false">
-
+<script>
 // ==================== FIREBASE CONFIG ====================
 const firebaseConfig = {
-apiKey: “AIzaSyDIR-nU-xSABs7Jy4292yRIMWdydQ5qboI”,
-authDomain: “flo-digital.firebaseapp.com”,
-projectId: “flo-digital”,
-storageBucket: “flo-digital.firebasestorage.app”,
-messagingSenderId: “914863913629”,
-appId: “1:914863913629:web:aa8c020cf0ffb8aec9b274”,
-measurementId: “G-YV5QKD7K2Q”
+  apiKey: "AIzaSyDIR-nU-xSABs7Jy4292yRIMWdydQ5qboI",
+  authDomain: "flo-digital.firebaseapp.com",
+  projectId: "flo-digital",
+  storageBucket: "flo-digital.firebasestorage.app",
+  messagingSenderId: "914863913629",
+  appId: "1:914863913629:web:aa8c020cf0ffb8aec9b274",
+  measurementId: "G-YV5QKD7K2Q"
 };
+
 let db = null;
 try {
-if (typeof firebase !== ‘undefined’ && !window._firebaseLoadError) {
-if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-db = firebase.firestore();
-console.log(“Firebase bağlantısı kuruldu.”);
-} else {
-console.warn(“Firebase yüklenemedi - sistem çevrimdışı modda çalışıyor.”);
-}
+  if (typeof firebase !== 'undefined' && !window._firebaseLoadError) {
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    db = firebase.firestore();
+    console.log("Firebase bağlantısı kuruldu.");
+  } else {
+    console.warn("Firebase yüklenemedi - sistem çevrimdışı modda çalışıyor.");
+  }
 } catch(e) {
-console.warn(“Firebase başlatma hatası:”, e.message);
-db = null;
+  console.warn("Firebase başlatma hatası:", e.message);
+  db = null;
 }
 
 // ==================== GLOBAL ====================
-let currentStoreCode = “”, currentStoreName = “”, currentAuditor = “”, currentAuditType = “operasyonel”;
+let currentStoreCode = "", currentStoreName = "", currentAuditor = "", currentAuditType = "operasyonel";
 let currentQuestionIndex = 0;
 let adminDataCache = {};
 
 // ==================== VERİ SETİ ====================
-// FOD01-FOD32: Operasyonel Denetim (FLO_2026_Operasyonel_Denetim_Kriterleri.pdf)
-// FLOD01-FLOD28: Dijital Denetim (FLO_DijitalDenetim_2026_20260202.pdf)
 
 const AUDIT_DATA_OPERASYONEL = [
-{ id:1, code:“FOD01”, topic:“Mali Süreçler”, title:“Mağaza toplam nakiti doğru mu?”, puan:5,
-criteria:[{text:“Mağaza kasa nakiti ile Genius Report’ta belirtilen nakit miktarı arasında fark var mı?”, puan:5}],
-standards:“Kasa nakitinden mağaza avansı çıkarılarak sayılır.\nKasa çekmecesinde ve çelik kasa içerisinde mağazaya ait nakitten başka nakit olmamalıdır.\nYatırılmayan nakit ve banka çıkışları kontrol edilir, nakit eksiklikleri tespit olarak değerlendirilir.\n+/- 200 TL ve üzeri farklar tespit olarak değerlendirilir.” },
-{ id:2, code:“FOD02”, topic:“Operasyonel Süreçler”, title:“İade işlemlerine konu olan ürünlerin sistem ve fiili adetleri tutarlı mı?”, puan:3,
-criteria:[{text:“İade işlemlerine konu olan ürünlerin sistem ve fiili adetleri tutarlı mı?”, puan:3}],
-standards:“Tüm iade işlemlerine konu olan ürünlerin stok adetleri kontrol edilir.\nÜrünlerin denetim sırasında ibraz edilmesi gerekmektedir.\nÖrnekleme 5 ürün barkodu ürün kontrolü yapılır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:3, code:“FOD03”, topic:“Operasyonel Süreçler”, title:“İptal işlemlerine konu olan ürünlerin sistem ve fiili adetleri tutarlı mı?”, puan:3,
-criteria:[{text:“Fiş/Fatura İptal işlemlerine konu olan ürünlerin sistem ve fiili adetleri tutarlı mı?”, puan:3}],
-standards:“Tüm iptal işlemlerine konu olan ürünlerin stok adetleri kontrol edilir.\nÜrünlerin denetim sırasında ibraz edilmesi gerekmektedir.\nÖrnekleme 5 ürün barkodu kontrolü yapılır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:4, code:“FOD04”, topic:“IT Süreçleri”, title:“Kasa süreçleri talimatlara uygun yürütülüyor mu?”, puan:2,
-criteria:[{text:“Fiyat göstergeleri ve barkod okuyucuları çalışıyor mu? Yazarkasa versiyonları güncel mi?”, puan:2}],
-standards:“Tüm kasalara ait fiyat göstergelerinin çalışıp çalışmadığı kontrol edilir.\nTüm kasalara ait barkod okuyucusu var mı kontrol edilir.\nYazarkasa versiyonlarının ve saatlerinin güncel olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:5, code:“FOD05”, topic:“Mali Süreçler”, title:“Kasa föyleri kriterlere uygun hazırlanmış mı?”, puan:3,
-criteria:[{text:“Kasa föyü doğru yapılmış mı? Multinet & iWallet, Edenred satış işlemleri belirtilen kurallara uygun yapılıyor mu?”, puan:3}],
-standards:“Herhangi bir güne ait kasa föyü; Z raporlarından ve banka gün sonu evraklarından Genius Report programı kontrol edilerek doğruluğu denetlenir.\nÖrnekleme 3 gün kasa föyü kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:6, code:“FOD06”, topic:“İK Süreçleri”, title:“Haftalık çalışma programı standartlara uygun mu?”, puan:5,
-criteria:[
-{text:“Portal’den alınan güncel shift mağaza panosuna asılmış mı? Portalda kayıtlı shift ile fiili çalışan personeller uyuşuyor mu?”, puan:4},
-{text:“Geçici görevlendirme belgesi mağazada ve imzalanmış mı? Mağaza açılış kapanışlarını yöneticiler yapmış mı?”, puan:1}
-],
-standards:“Çalışma programı pazar günü sonuna kadar yapılmalı ve ortak panoda duyurulmalıdır.\nPortal shift çıktısı dışında başka shift tabloları kullanılmamalıdır.\nSGK’sız çalışan olmamalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:7, code:“FOD07”, topic:“İK Süreçleri”, title:“Mağaza iletişim panosu güncel mi?”, puan:2,
-criteria:[{text:“Mağaza iletişim panosu güncel mi?”, puan:2}],
-standards:“İletişim panosunda: QR kodlu etik hat posteri, mağaza aylık hedefleri, Çalışan KVK Politikası, Aydınlatma Metni, 2026 denkleştirme dönemleri, iade süresi görseli, stok kabul ve çıkış görselleri asılmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:8, code:“FOD08”, topic:“Mali Süreçler”, title:“Katlarda, reyonlarda ve kasa noktasında gereken belgeler mevcut mu?”, puan:3,
-criteria:[{text:“Katlarda, reyonlarda ve kasa noktasında gereken belgeler mevcut mu?”, puan:3}],
-standards:“Kasa noktasında; iş yeri açma ruhsatı, iade ve değişim uyarı yazısı, bez torba ücretlendirilmesine ilişkin bilgilendirme metni asılmalıdır.\nSigara içilmez uyarı görselinde ihbar hattı numarası yazılı olmalı ve her katta en az 1 adet olmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:9, code:“FOD09”, topic:“Mali Süreçler”, title:“KVKK uyum süreçleri belirtilen kriterlere uygun mu?”, puan:3,
-criteria:[{text:“KVKK uyum süreçleri belirtilen kriterlere uygun mu?”, puan:3}],
-standards:“Omni kasalar dahil kasa önünde QR kodlu müşteri aydınlatma metni asılmalıdır.\nKategorilerde ve kasa noktasında 1’er adet CCTV ve kamera görseli asılmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:10, code:“FOD10”, topic:“Mali Süreçler”, title:“Fiş/fatura/taxfree iptal işlemleri ve gider pusulaları kriterlere uygun mu?”, puan:5,
-criteria:[
-{text:“Z raporlarındaki iptal işlem sayısı ve fiili iptal işlem sayısı aynı mı? İki denetim arası tüm işlem iptalleri mağazada mı?”, puan:2},
-{text:“İptal fişlerinde yönetici parafı var mı?”, puan:1},
-{text:“Gider pusulalarında yönetici ve kasiyer parafları tam mı?”, puan:2}
-],
-standards:“Z raporlarında bulunan toplam fiş/fatura/taxfree iptallerinin adetleri kontrol edilir.\nTüm iptallerde mağaza yöneticisinin isim soyisim ve imzası bulunmalıdır.\nGider pusulalarından 30 gün örnekleme kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:11, code:“FOD11”, topic:“İş Sağlığı ve Güvenliği”, title:“Yangın çıkış kapıları ve bu kapılara giden koridorlar kriterlere uygun mu?”, puan:3,
-criteria:[
-{text:“Yangın çıkış kapısı ve koridoru standartlara uygun mu?”, puan:2},
-{text:“Exit levhaları çalışıyor mu?”, puan:1}
-],
-standards:“Yangın kaçış kapısı önünde ve koridorlarda hiçbir malzeme/ürün/koli konulmamalıdır.\nYangın çıkış kapıları push-barlı olmalı ve kilitli olmamalıdır.\nKoridorların genişliği min. 80 cm olmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:12, code:“FOD12”, topic:“İş Sağlığı ve Güvenliği”, title:“Elektrik panosu/odası belirtilen kriterlere uygun mu?”, puan:3,
-criteria:[
-{text:“Elektrik odası/panosu standartlara uygun mu?”, puan:2},
-{text:“Pano kapakları kapalı mı? Yalıtkan paspas standartlara uygun mu?”, puan:1}
-],
-standards:“Elektrik odası boş ve temiz olmalı, içerisinde malzeme olmamalıdır.\nPano etki alanı (min. 1 metre çevresi) boş olmalıdır.\nTüm elektrik panolarının müdahale kapakları her zaman kapalı tutulmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:13, code:“FOD13”, topic:“İş Sağlığı ve Güvenliği”, title:“Yangın tüpleri belirtilen kriterlere uygun mu?”, puan:4,
-criteria:[
-{text:“Yangın tüpü basıncı, kontrol etiketi ve pimi var mı? Eksik yangın tüpü var mı?”, puan:2},
-{text:“Uyarı levhaları var mı?”, puan:2}
-],
-standards:“Her 150 m² ye 1 adet 6 kg ABC sınıfı yangın söndürme cihazı bulundurulmalıdır.\nMevcut cihazların dışında 1 adet kullanılabilir yedek cihaz bulundurulmalıdır.\nCihazların konumlandırıldığı alanlarda uyarı levhası bulunmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:14, code:“FOD14”, topic:“İş Sağlığı ve Güvenliği”, title:“Ecza dolapları ve içerikleri belirlenen standartlarda mı?”, puan:2,
-criteria:[{text:“Mağazada bulunan ecza dolapları ve içerikleri belirlenen standartlarda mı?”, puan:2}],
-standards:“Mağaza ilk yardım dolaplarının varlığı ve içeriği kontrol edilir: Plaster, yara bandı, sargı bezi, elastik bandaj, steril gaz kompres, hidrofil pamuk, medikal turnike, temizleme mendili, makas.\nEcza dolapları herkesin ulaşabileceği bir alanda asılı olmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:15, code:“FOD15”, topic:“İş Sağlığı ve Güvenliği”, title:“Merdivenler iş sağlığı ve güvenliği kriterlerine uygun mu?”, puan:1,
-criteria:[{text:“Mağazada bulunan merdivenler belirlenen standartlarda mı?”, puan:1}],
-standards:“Tüm merdivenlerin korkuluklarının İSG standartları ve kaydırmaz bantların uygunlukları kontrol edilir.\nTüm seyyar merdivenlerin İSG standartlarına uygunluğu kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:16, code:“FOD16”, topic:“İş Sağlığı ve Güvenliği”, title:“Mağazalarda yangın risklerine karşı önlemler alınmış mı?”, puan:3,
-criteria:[{text:“Mağazalarda yangın risklerine karşı önlemler alınmış mı?”, puan:3}],
-standards:“Merkezden gönderilen cihazlarda orijinal kablolar kullanılmalıdır.\nDepoda ısıtıcı, vantilatör, mikrodalga fırın vb. cihazlar bulundurulmamalıdır.\nDepolarda ürün istifleme yangın sprinklerinin önünü kapatacak şekilde yapılmamalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:17, code:“FOD17”, topic:“Operasyonel Süreçler”, title:“Depoda boşta ve açık kapı var mı?”, puan:1,
-criteria:[{text:“Depoda boşta ve açık kapı var mı?”, puan:1}],
-standards:“Mağazadan dışarıya açılan kapılar açık olmamalıdır.\nAçık olduğu durumlarda etki alanında bir personelin olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:18, code:“FOD18”, topic:“Operasyonel Süreçler”, title:“Depodan reyona çıkartılmayan ürün var mı?”, puan:3,
-criteria:[{text:“Depodan reyona çıkartılmayan ürün var mı?”, puan:3}],
-standards:“Depodan reyona çıkartılmamış 48 saati geçmiş asorti bazlı ürün olmamalıdır.\nÖrnekleme kutulu 10 SKU ürün kontrol edilir.\nSKU içerisindeki 6 adet ve üzeri ürünler tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:19, code:“FOD19”, topic:“IT Süreçleri”, title:“Kamera sistemi çalışıyor mu?”, puan:3,
-criteria:[{text:“Kameralar çalışır durumda ve internet bağlantısı var mı?”, puan:3}],
-standards:“Tüm kameraların çalışıp çalışmadığı ve ethernet bağlantısı olup olmadığı kontrol edilir.\nKasa ve depo noktalarında kamera olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:20, code:“FOD20”, topic:“IT Süreçleri”, title:“KSS cihazları çalışıyor mu?”, puan:3,
-criteria:[{text:“KSS cihazlarından arızalı cihaz var mı?”, puan:3}],
-standards:“Mağazalarda KSS cihazının olması gerekmektedir.\nArızalı veya eksik olan cihazlar için 2 gün içerisinde FloDesk üzerinden kayıt açılmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:21, code:“FOD21”, topic:“IT Süreçleri”, title:“Mağaza envanter girişleri doğru yapılmış mı?”, puan:5,
-criteria:[{text:“Mağaza envanter girişleri doğru yapılmış mı?”, puan:5}],
-standards:“El Terminalleri ve Zebra yazıcılar kontrol edilir.\nSatış Kasaları ve Mali Yazıcılar kontrol edilir.\nDenetim sırasında ibraz edilemeyen ve hatalı giriş yapılan cihazlar tespit olarak değerlendirilir.” },
-{ id:22, code:“FOD22”, topic:“Kapasite Süreçleri”, title:“Kapasitede tanımlı ünite sayısı doğru mu?”, puan:5,
-criteria:[{text:“Fiili ünite sayısı ile kapasitede tanımlı ünite sayısı doğru mu?”, puan:5}],
-standards:“Mağaza kapasitesine tanımlı ünite adetleri ile mağazada bulunan fiili ünite adetleri kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:23, code:“FOD23”, topic:“Omnichannel Süreçleri”, title:“OMS standartlarına uygun işlemler yapılıyor mu?”, puan:3,
-criteria:[{text:“OMS standartlarına uygun işlemler yapılıyor mu?”, puan:3}],
-standards:“OMS alanının düzgün olup olmadığı kontrol edilir.\nOMS alanında paketleme kurallarının olduğu poster var mı kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:24, code:“FOD24”, topic:“Operasyonel Süreçler”, title:“Tekleme ürünlerin sisteme girişi yapılıyor mu?”, puan:3,
-criteria:[{text:“Mağazada bulunan tüm teklemeler sisteme işlenmiş mi?”, puan:3}],
-standards:“SAP programında ZRT025 tekleme giriş modülü ekranı açılarak tekleme ürünler sisteme işlenir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:25, code:“FOD25”, topic:“Operasyonel Süreçler”, title:“Personel kıyafeti ve yaka kartı standartlara uygun mu?”, puan:2,
-criteria:[
-{text:“Personel kıyafetleri yönetmeliğe uygun mu?”, puan:1},
-{text:“Yaka kartı var mı?”, puan:1}
-],
-standards:“Personel kıyafet yönetmeliği standartlarına göre çalışanlar kontrol edilir.\nTüm çalışanların yaka kartları eksiksiz ve isimlerinin yazılı olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:26, code:“FOD26”, topic:“Operasyonel Süreçler”, title:“Fiyat etiketleri standartlara uygun mu?”, puan:8,
-criteria:[
-{text:“Fiyat etiketleri eksiksiz ve doğru mu?”, puan:4},
-{text:“Vitrinde bulunan ürünlerin fiyatlıkları doğru mu?”, puan:2},
-{text:“Hangtag etiket eksiksiz ve doğru mu?”, puan:2}
-],
-standards:“Etiketlerin Flo Dijital üzerinden basımı ve güncel standartlara uygunluğu kontrol edilir.\nFiyat vurgulamaları kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:27, code:“FOD27”, topic:“Operasyonel Süreçler”, title:“Alarmsız ürün var mı?”, puan:3,
-criteria:[
-{text:“Alarmsız ürün var mı?”, puan:2},
-{text:“Alarmlama standartlara uygun olarak yapılıyor mu?”, puan:1}
-],
-standards:“Reyona çıkartılan ürünlerde alarm olması gerekmektedir.\nMağaza stoğunun %1’i kontrol edilir; %2 ve üzeri alarmsız ürün tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:28, code:“FOD28”, topic:“IT Süreçleri”, title:“Kapı antenleri çalışır durumda mı?”, puan:2,
-criteria:[{text:“Mağazada bulunan tüm alarm antenleri çalışıyor mu?”, puan:2}],
-standards:“Kapı girişlerindeki güvenlik antenlerinin mağaza satışa açık olduğu sürelerde çalışır durumda olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:29, code:“FOD29”, topic:“Operasyonel Süreçler”, title:“Fırsat gondolları kriterlere uygun mu?”, puan:2,
-criteria:[{text:“Fırsat gondollarında kurallara uyuluyor mu? Alarmlama ve etiketleme yapılıyor mu?”, puan:2}],
-standards:“Açılan fırsat gondollarında 10 altın kuralın sağlanmış olması gerekmektedir.\nFırsat gondollarında en fazla 2 adet alarm olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:30, code:“FOD30”, topic:“Operasyonel Süreçler”, title:“Nakil Stok süreçleri kontrol ediliyor mu?”, puan:5,
-criteria:[{text:“Nakil Stok süreçleri kontrol ediliyor mu?”, puan:5}],
-standards:“30 günü geçmiş koli kabul yapılmayan koli ve koli kabul yapılıp mal kabul yapılmayan ürünler kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:31, code:“FOD31”, topic:“Görsel Süreçler”, title:“Kampanya uygulamaları kriterlere uygun mu?”, puan:2,
-criteria:[{text:“Kampanya uygulamaları kriterlere uygun mu?”, puan:2}],
-standards:“Kampanya görsellerinde güncel tarih ve bilgilendirme metni olmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:32, code:“FOD32”, topic:“İş Sağlığı ve Güvenliği”, title:“Cadde mağazalarda sıfır atık çevre sistemine uyuluyor mu?”, puan:0,
-criteria:[{text:“Cadde mağazalarda sıfır atık kutuları mevcut mu?”, puan:0}],
-standards:“Atık kutuları görünür yerde olmalıdır.\nNet 1-500 m²: 1 takım, 500-1500 m²: 2 takım, 1500-3000 m²: 3 takım, 3000+ m²: 4 takım.\nUygunsuzluklar tespit olarak değerlendirilir.” }
+  { id:1, code:"FOD01", topic:"Mali Süreçler", title:"Mağaza toplam nakiti doğru mu?", puan:5,
+    criteria:[{text:"Mağaza kasa nakiti ile Genius Report'ta belirtilen nakit miktarı arasında fark var mı?", puan:5}],
+    standards:"Kasa nakitinden mağaza avansı çıkarılarak sayılır.\nKasa çekmecesinde ve çelik kasa içerisinde mağazaya ait nakitten başka nakit olmamalıdır.\nYatırılmayan nakit ve banka çıkışları kontrol edilir, nakit eksiklikleri tespit olarak değerlendirilir.\n+/- 200 TL ve üzeri farklar tespit olarak değerlendirilir." },
+  { id:2, code:"FOD02", topic:"Operasyonel Süreçler", title:"İade işlemlerine konu olan ürünlerin sistem ve fiili adetleri tutarlı mı?", puan:3,
+    criteria:[{text:"İade işlemlerine konu olan ürünlerin sistem ve fiili adetleri tutarlı mı?", puan:3}],
+    standards:"Tüm iade işlemlerine konu olan ürünlerin stok adetleri kontrol edilir.\nÜrünlerin denetim sırasında ibraz edilmesi gerekmektedir.\nÖrnekleme 5 ürün barkodu ürün kontrolü yapılır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:3, code:"FOD03", topic:"Operasyonel Süreçler", title:"İptal işlemlerine konu olan ürünlerin sistem ve fiili adetleri tutarlı mı?", puan:3,
+    criteria:[{text:"Fiş/Fatura İptal işlemlerine konu olan ürünlerin sistem ve fiili adetleri tutarlı mı?", puan:3}],
+    standards:"Tüm iptal işlemlerine konu olan ürünlerin stok adetleri kontrol edilir.\nÜrünlerin denetim sırasında ibraz edilmesi gerekmektedir.\nÖrnekleme 5 ürün barkodu kontrolü yapılır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:4, code:"FOD04", topic:"IT Süreçleri", title:"Kasa süreçleri talimatlara uygun yürütülüyor mu?", puan:2,
+    criteria:[{text:"Fiyat göstergeleri ve barkod okuyucuları çalışıyor mu? Yazarkasa versiyonları güncel mi?", puan:2}],
+    standards:"Tüm kasalara ait fiyat göstergelerinin çalışıp çalışmadığı kontrol edilir.\nTüm kasalara ait barkod okuyucusu var mı kontrol edilir.\nYazarkasa versiyonlarının ve saatlerinin güncel olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:5, code:"FOD05", topic:"Mali Süreçler", title:"Kasa föyleri kriterlere uygun hazırlanmış mı?", puan:3,
+    criteria:[{text:"Kasa föyü doğru yapılmış mı? Multinet & iWallet, Edenred satış işlemleri belirtilen kurallara uygun yapılıyor mu?", puan:3}],
+    standards:"Herhangi bir güne ait kasa föyü; Z raporlarından ve banka gün sonu evraklarından Genius Report programı kontrol edilerek doğruluğu denetlenir.\nÖrnekleme 3 gün kasa föyü kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:6, code:"FOD06", topic:"İK Süreçleri", title:"Haftalık çalışma programı standartlara uygun mu?", puan:5,
+    criteria:[
+      {text:"Portal'den alınan güncel shift mağaza panosuna asılmış mı? Portalda kayıtlı shift ile fiili çalışan personeller uyuşuyor mu?", puan:4},
+      {text:"Geçici görevlendirme belgesi mağazada ve imzalanmış mı? Mağaza açılış kapanışlarını yöneticiler yapmış mı?", puan:1}
+    ],
+    standards:"Çalışma programı pazar günü sonuna kadar yapılmalı ve ortak panoda duyurulmalıdır.\nPortal shift çıktısı dışında başka shift tabloları kullanılmamalıdır.\nSGK'sız çalışan olmamalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:7, code:"FOD07", topic:"İK Süreçleri", title:"Mağaza iletişim panosu güncel mi?", puan:2,
+    criteria:[{text:"Mağaza iletişim panosu güncel mi?", puan:2}],
+    standards:"İletişim panosunda: QR kodlu etik hat posteri, mağaza aylık hedefleri, Çalışan KVK Politikası, Aydınlatma Metni, 2026 denkleştirme dönemleri, iade süresi görseli, stok kabul ve çıkış görselleri asılmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:8, code:"FOD08", topic:"Mali Süreçler", title:"Katlarda, reyonlarda ve kasa noktasında gereken belgeler mevcut mu?", puan:3,
+    criteria:[{text:"Katlarda, reyonlarda ve kasa noktasında gereken belgeler mevcut mu?", puan:3}],
+    standards:"Kasa noktasında; iş yeri açma ruhsatı, iade ve değişim uyarı yazısı, bez torba ücretlendirilmesine ilişkin bilgilendirme metni asılmalıdır.\nSigara içilmez uyarı görselinde ihbar hattı numarası yazılı olmalı ve her katta en az 1 adet olmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:9, code:"FOD09", topic:"Mali Süreçler", title:"KVKK uyum süreçleri belirtilen kriterlere uygun mu?", puan:3,
+    criteria:[{text:"KVKK uyum süreçleri belirtilen kriterlere uygun mu?", puan:3}],
+    standards:"Omni kasalar dahil kasa önünde QR kodlu müşteri aydınlatma metni asılmalıdır.\nKategorilerde ve kasa noktasında 1'er adet CCTV ve kamera görseli asılmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:10, code:"FOD10", topic:"Mali Süreçler", title:"Fiş/fatura/taxfree iptal işlemleri ve gider pusulaları kriterlere uygun mu?", puan:5,
+    criteria:[
+      {text:"Z raporlarındaki iptal işlem sayısı ve fiili iptal işlem sayısı aynı mı? İki denetim arası tüm işlem iptalleri mağazada mı?", puan:2},
+      {text:"İptal fişlerinde yönetici parafı var mı?", puan:1},
+      {text:"Gider pusulalarında yönetici ve kasiyer parafları tam mı?", puan:2}
+    ],
+    standards:"Z raporlarında bulunan toplam fiş/fatura/taxfree iptallerinin adetleri kontrol edilir.\nTüm iptallerde mağaza yöneticisinin isim soyisim ve imzası bulunmalıdır.\nGider pusulalarından 30 gün örnekleme kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:11, code:"FOD11", topic:"İş Sağlığı ve Güvenliği", title:"Yangın çıkış kapıları ve bu kapılara giden koridorlar kriterlere uygun mu?", puan:3,
+    criteria:[
+      {text:"Yangın çıkış kapısı ve koridoru standartlara uygun mu?", puan:2},
+      {text:"Exit levhaları çalışıyor mu?", puan:1}
+    ],
+    standards:"Yangın kaçış kapısı önünde ve koridorlarda hiçbir malzeme/ürün/koli konulmamalıdır.\nYangın çıkış kapıları push-barlı olmalı ve kilitli olmamalıdır.\nKoridorların genişliği min. 80 cm olmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:12, code:"FOD12", topic:"İş Sağlığı ve Güvenliği", title:"Elektrik panosu/odası belirtilen kriterlere uygun mu?", puan:3,
+    criteria:[
+      {text:"Elektrik odası/panosu standartlara uygun mu?", puan:2},
+      {text:"Pano kapakları kapalı mı? Yalıtkan paspas standartlara uygun mu?", puan:1}
+    ],
+    standards:"Elektrik odası boş ve temiz olmalı, içerisinde malzeme olmamalıdır.\nPano etki alanı (min. 1 metre çevresi) boş olmalıdır.\nTüm elektrik panolarının müdahale kapakları her zaman kapalı tutulmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:13, code:"FOD13", topic:"İş Sağlığı ve Güvenliği", title:"Yangın tüpleri belirtilen kriterlere uygun mu?", puan:4,
+    criteria:[
+      {text:"Yangın tüpü basıncı, kontrol etiketi ve pimi var mı? Eksik yangın tüpü var mı?", puan:2},
+      {text:"Uyarı levhaları var mı?", puan:2}
+    ],
+    standards:"Her 150 m² ye 1 adet 6 kg ABC sınıfı yangın söndürme cihazı bulundurulmalıdır.\nMevcut cihazların dışında 1 adet kullanılabilir yedek cihaz bulundurulmalıdır.\nCihazların konumlandırıldığı alanlarda uyarı levhası bulunmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:14, code:"FOD14", topic:"İş Sağlığı ve Güvenliği", title:"Ecza dolapları ve içerikleri belirlenen standartlarda mı?", puan:2,
+    criteria:[{text:"Mağazada bulunan ecza dolapları ve içerikleri belirlenen standartlarda mı?", puan:2}],
+    standards:"Mağaza ilk yardım dolaplarının varlığı ve içeriği kontrol edilir: Plaster, yara bandı, sargı bezi, elastik bandaj, steril gaz kompres, hidrofil pamuk, medikal turnike, temizleme mendili, makas.\nEcza dolapları herkesin ulaşabileceği bir alanda asılı olmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:15, code:"FOD15", topic:"İş Sağlığı ve Güvenliği", title:"Merdivenler iş sağlığı ve güvenliği kriterlerine uygun mu?", puan:1,
+    criteria:[{text:"Mağazada bulunan merdivenler belirlenen standartlarda mı?", puan:1}],
+    standards:"Tüm merdivenlerin korkuluklarının İSG standartları ve kaydırmaz bantların uygunlukları kontrol edilir.\nTüm seyyar merdivenlerin İSG standartlarına uygunluğu kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:16, code:"FOD16", topic:"İş Sağlığı ve Güvenliği", title:"Mağazalarda yangın risklerine karşı önlemler alınmış mı?", puan:3,
+    criteria:[{text:"Mağazalarda yangın risklerine karşı önlemler alınmış mı?", puan:3}],
+    standards:"Merkezden gönderilen cihazlarda orijinal kablolar kullanılmalıdır.\nDepoda ısıtıcı, vantilatör, mikrodalga fırın vb. cihazlar bulundurulmamalıdır.\nDepolarda ürün istifleme yangın sprinklerinin önünü kapatacak şekilde yapılmamalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:17, code:"FOD17", topic:"Operasyonel Süreçler", title:"Depoda boşta ve açık kapı var mı?", puan:1,
+    criteria:[{text:"Depoda boşta ve açık kapı var mı?", puan:1}],
+    standards:"Mağazadan dışarıya açılan kapılar açık olmamalıdır.\nAçık olduğu durumlarda etki alanında bir personelin olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:18, code:"FOD18", topic:"Operasyonel Süreçler", title:"Depodan reyona çıkartılmayan ürün var mı?", puan:3,
+    criteria:[{text:"Depodan reyona çıkartılmayan ürün var mı?", puan:3}],
+    standards:"Depodan reyona çıkartılmamış 48 saati geçmiş asorti bazlı ürün olmamalıdır.\nÖrnekleme kutulu 10 SKU ürün kontrol edilir.\nSKU içerisindeki 6 adet ve üzeri ürünler tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:19, code:"FOD19", topic:"IT Süreçleri", title:"Kamera sistemi çalışıyor mu?", puan:3,
+    criteria:[{text:"Kameralar çalışır durumda ve internet bağlantısı var mı?", puan:3}],
+    standards:"Tüm kameraların çalışıp çalışmadığı ve ethernet bağlantısı olup olmadığı kontrol edilir.\nKasa ve depo noktalarında kamera olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:20, code:"FOD20", topic:"IT Süreçleri", title:"KSS cihazları çalışıyor mu?", puan:3,
+    criteria:[{text:"KSS cihazlarından arızalı cihaz var mı?", puan:3}],
+    standards:"Mağazalarda KSS cihazının olması gerekmektedir.\nArızalı veya eksik olan cihazlar için 2 gün içerisinde FloDesk üzerinden kayıt açılmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:21, code:"FOD21", topic:"IT Süreçleri", title:"Mağaza envanter girişleri doğru yapılmış mı?", puan:5,
+    criteria:[{text:"Mağaza envanter girişleri doğru yapılmış mı?", puan:5}],
+    standards:"El Terminalleri ve Zebra yazıcılar kontrol edilir.\nSatış Kasaları ve Mali Yazıcılar kontrol edilir.\nDenetim sırasında ibraz edilemeyen ve hatalı giriş yapılan cihazlar tespit olarak değerlendirilir." },
+  { id:22, code:"FOD22", topic:"Kapasite Süreçleri", title:"Kapasitede tanımlı ünite sayısı doğru mu?", puan:5,
+    criteria:[{text:"Fiili ünite sayısı ile kapasitede tanımlı ünite sayısı doğru mu?", puan:5}],
+    standards:"Mağaza kapasitesine tanımlı ünite adetleri ile mağazada bulunan fiili ünite adetleri kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:23, code:"FOD23", topic:"Omnichannel Süreçleri", title:"OMS standartlarına uygun işlemler yapılıyor mu?", puan:3,
+    criteria:[{text:"OMS standartlarına uygun işlemler yapılıyor mu?", puan:3}],
+    standards:"OMS alanının düzgün olup olmadığı kontrol edilir.\nOMS alanında paketleme kurallarının olduğu poster var mı kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:24, code:"FOD24", topic:"Operasyonel Süreçler", title:"Tekleme ürünlerin sisteme girişi yapılıyor mu?", puan:3,
+    criteria:[{text:"Mağazada bulunan tüm teklemeler sisteme işlenmiş mi?", puan:3}],
+    standards:"SAP programında ZRT025 tekleme giriş modülü ekranı açılarak tekleme ürünler sisteme işlenir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:25, code:"FOD25", topic:"Operasyonel Süreçler", title:"Personel kıyafeti ve yaka kartı standartlara uygun mu?", puan:2,
+    criteria:[
+      {text:"Personel kıyafetleri yönetmeliğe uygun mu?", puan:1},
+      {text:"Yaka kartı var mı?", puan:1}
+    ],
+    standards:"Personel kıyafet yönetmeliği standartlarına göre çalışanlar kontrol edilir.\nTüm çalışanların yaka kartları eksiksiz ve isimlerinin yazılı olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:26, code:"FOD26", topic:"Operasyonel Süreçler", title:"Fiyat etiketleri standartlara uygun mu?", puan:8,
+    criteria:[
+      {text:"Fiyat etiketleri eksiksiz ve doğru mu?", puan:4},
+      {text:"Vitrinde bulunan ürünlerin fiyatlıkları doğru mu?", puan:2},
+      {text:"Hangtag etiket eksiksiz ve doğru mu?", puan:2}
+    ],
+    standards:"Etiketlerin Flo Dijital üzerinden basımı ve güncel standartlara uygunluğu kontrol edilir.\nFiyat vurgulamaları kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:27, code:"FOD27", topic:"Operasyonel Süreçler", title:"Alarmsız ürün var mı?", puan:3,
+    criteria:[
+      {text:"Alarmsız ürün var mı?", puan:2},
+      {text:"Alarmlama standartlara uygun olarak yapılıyor mu?", puan:1}
+    ],
+    standards:"Reyona çıkartılan ürünlerde alarm olması gerekmektedir.\nMağaza stoğunun %1'i kontrol edilir; %2 ve üzeri alarmsız ürün tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:28, code:"FOD28", topic:"IT Süreçleri", title:"Kapı antenleri çalışır durumda mı?", puan:2,
+    criteria:[{text:"Mağazada bulunan tüm alarm antenleri çalışıyor mu?", puan:2}],
+    standards:"Kapı girişlerindeki güvenlik antenlerinin mağaza satışa açık olduğu sürelerde çalışır durumda olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:29, code:"FOD29", topic:"Operasyonel Süreçler", title:"Fırsat gondolları kriterlere uygun mu?", puan:2,
+    criteria:[{text:"Fırsat gondollarında kurallara uyuluyor mu? Alarmlama ve etiketleme yapılıyor mu?", puan:2}],
+    standards:"Açılan fırsat gondollarında 10 altın kuralın sağlanmış olması gerekmektedir.\nFırsat gondollarında en fazla 2 adet alarm olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:30, code:"FOD30", topic:"Operasyonel Süreçler", title:"Nakil Stok süreçleri kontrol ediliyor mu?", puan:5,
+    criteria:[{text:"Nakil Stok süreçleri kontrol ediliyor mu?", puan:5}],
+    standards:"30 günü geçmiş koli kabul yapılmayan koli ve koli kabul yapılıp mal kabul yapılmayan ürünler kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:31, code:"FOD31", topic:"Görsel Süreçler", title:"Kampanya uygulamaları kriterlere uygun mu?", puan:2,
+    criteria:[{text:"Kampanya uygulamaları kriterlere uygun mu?", puan:2}],
+    standards:"Kampanya görsellerinde güncel tarih ve bilgilendirme metni olmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:32, code:"FOD32", topic:"İş Sağlığı ve Güvenliği", title:"Cadde mağazalarda sıfır atık çevre sistemine uyuluyor mu?", puan:0,
+    criteria:[{text:"Cadde mağazalarda sıfır atık kutuları mevcut mu?", puan:0}],
+    standards:"Atık kutuları görünür yerde olmalıdır.\nNet 1-500 m²: 1 takım, 500-1500 m²: 2 takım, 1500-3000 m²: 3 takım, 3000+ m²: 4 takım.\nUygunsuzluklar tespit olarak değerlendirilir." }
 ];
 
 const AUDIT_DATA_DIJITAL = [
-{ id:1, code:“FLOD01”, topic:“Operasyonel Süreçler”, title:“Koli kabul işlemleri mağaza tarafından belirlenen talimatlara ve prosedürlere göre yapılmakta mıdır?”, puan:6,
-criteria:[
-{text:“Tüm gelen sevkiyatlar için mutabakat alındı mı?”, puan:3},
-{text:“Tüm giden sevkiyatlar için mutabakat alındı mı?”, puan:3}
-],
-standards:“Mutabakat formunun tüm sayfalarında tarih, ad soyad, araç plaka bilgileri yazılı olmalıdır.\nForm kargo firması ile karşılıklı imzalanmalıdır.\nKoli kabul işlemleri PTC ile yapılmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:2, code:“FLOD02”, topic:“Operasyonel Süreçler”, title:“Koli çıkış işlemleri mağaza tarafından belirlenen talimatlara ve prosedürlere göre yapılmakta mıdır?”, puan:6,
-criteria:[
-{text:“Tüm giden sevkiyatlar için mutabakat alındı mı?”, puan:3},
-{text:“Koli çıkış süreci talimatlara uygun mu?”, puan:3}
-],
-standards:“Koli Çıkış Formlarının tüm sayfalarında kargo ve mağaza personelinin ad-soyad, tarih, imza ve araç plaka bilgileri olmalıdır.\nBelgelerin Forbis Ortak Alan Kullanım Talimatı’na göre yüklenmesi gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:3, code:“FLOD03”, topic:“Operasyonel Süreçler”, title:“Kullanılmayıp satış ekranında olan kasa var mı? Kasa şifresi süreçleri talimatlara uygun yürütüldü mü?”, puan:3,
-criteria:[
-{text:“Boşta olup satışa açık kasa veya boşta olup anahtarı üzerinde olan kasa var mı?”, puan:2},
-{text:“Kasa personeli taahhütnameleri imzalatıldı mı? İşten ayrılan personelin şifre iptal taahhütnamesi imzalatıldı mı?”, puan:1}
-],
-standards:“Personel kasadan ayrıldığı anda kasiyer kodunu kapatmalıdır.\nBoşta ve içinde nakit para olan kasa çekmecesinin üzerinde anahtar bulundurulmamalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:4, code:“FLOD04”, topic:“Operasyonel Süreçler”, title:“Tekleme ürünlerinin sisteme girişi yapıldı mı?”, puan:4,
-criteria:[
-{text:“Başka mağaza ile eşleşen tekleme ürünler gönderilmiş mi?”, puan:4}
-],
-standards:“Başka mağazayla eşlenen ürünlerin gönderilmesi gerekmektedir.\n7 iş gününde çıkışı yapılmayan teklemeler tespit olarak değerlendirilir.\nF+ F1 mağazalarda 7 adet ve üzeri, F2’de 5 adet ve üzeri, F3-F4’te 3 adet ve üzeri hata tespit olarak değerlendirilir.” },
-{ id:5, code:“FLOD05”, topic:“Operasyonel Süreçler”, title:“Zimmet Formları bulunmakta mıdır?”, puan:2,
-criteria:[{text:“Çelik kasa ve mağaza anahtarı için zimmet formları düzenlenmiş mi?”, puan:2}],
-standards:“Mağaza açma/kapama yetkisi olan tüm yöneticilerin çelik kasa ve mağaza anahtarı zimmet formları olması gerekmektedir.\nForm en geç 3 gün içerisinde ortak alana yüklenmeli, Bölge Müdürüne e-posta ile gönderilmelidir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:6, code:“FLOD06”, topic:“Operasyonel Süreçler”, title:“Personel kıyafeti ve yaka kartı standartlara uygun mu?”, puan:2,
-criteria:[
-{text:“Personel kıyafetleri yönetmeliğe uygun mu? Yaka kartı var mı?”, puan:2}
-],
-standards:“Personel Kıyafet Yönetmeliği Standartları’na göre çalışan kıyafetleri kontrol edilir.\nTüm çalışanların yaka kartları eksiksiz ve isimlerinin yazılı olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:7, code:“FLOD07”, topic:“Operasyonel Süreçler”, title:“AÜİM olarak iade alınan ürünlerin çıkışları zamanında yapılmakta mıdır?”, puan:3,
-criteria:[{text:“AÜİM olarak iade alınan ürünlerin çıkışları zamanında yapılıyor mu?”, puan:3}],
-standards:“Çıkış yapılması gereken ürünler minimum 6 adet olarak gönderilmelidir.\n6 adete tamamlanan AÜİM ürünlerinin 7 iş günü içerisinde çıkışlarının yapılması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:8, code:“FLOD08”, topic:“Operasyonel Süreçler”, title:“Reengen süreçleri kurallara uygun yürütülmekte midir?”, puan:3,
-criteria:[
-{text:“Reengen için gece yüksek kullanım, geç kapanış ya da erken açılış yapan mağaza var mı?”, puan:3}
-],
-standards:“Erken açılış ve gece çalışmaları için öncesinde Bölge Müdürünün onayı alınmalıdır.\nYüzde 8 ve üzeri kullanımlarda ve 360 kWh üzeri oranlar tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:9, code:“FLOD09”, topic:“Operasyonel Süreçler”, title:“Kasa bekleme sırası belirlenen kriterlere göre uygulanmakta mıdır?”, puan:4,
-criteria:[{text:“Kasa bekleme sırası belirlenen kriterlere göre uygulandı mı?”, puan:4}],
-standards:“Kasada 4 kişiden fazla müşteri varsa ve müşterilerin 4 dakikadan fazla beklediği durumlarda ilave kasa açılmalıdır.\nKasa bölgesinde personel olmadığında müşterinin 2 dakikadan fazla beklediği durumlar tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:10, code:“FLOD10”, topic:“Operasyonel Süreçler”, title:“Mağazalarda mesai saatleri dışında yapılan çalışmalar portala girildi mi ve uyumlu mu?”, puan:2,
-criteria:[{text:“Mesai saati dışında yapılan çalışma durumu ile portala girildi mi ve uyumlu mu?”, puan:2}],
-standards:“Mesai saati dışında yapılan çalışmaların portal shift sisteme girilmesi gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:11, code:“FLOD11”, topic:“Operasyonel Süreçler”, title:“Çalışmayan ve görüş açısı kapatılmış/değiştirilmiş kamera bulunmakta mıdır?”, puan:2,
-criteria:[{text:“Çalışmayan ve görüş açısı kapatılmış/değiştirilmiş kamera var mı?”, puan:2}],
-standards:“Mağazada bulunan tüm kameraların çalışıyor ve görüş açılarının kapatılmamış olması gerekmektedir.\nKameraların kasa ve depo noktasını görüyor olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:12, code:“FLOD12”, topic:“Operasyonel Süreçler”, title:“Boş gondol, duvar ve ünite bulunmakta mıdır?”, puan:5,
-criteria:[{text:“Boş gondol, duvar ve ünite bulunmakta mıdır?”, puan:5}],
-standards:“Cadde ve AVM mağazalarında belirlenen yoğun saatlerde ünitelerde boşluklar olmamalıdır.\n13:00’den sonra ve mağaza kapanışından 1 saat öncesine kadar kontrol edilir.\n15 dakika içerisinde doldurulamayan boşluklar tespit olarak değerlendirilir.” },
-{ id:13, code:“FLOD13”, topic:“Operasyonel Süreçler”, title:“Yoğun saatlerde mağaza içinde ve kasa noktasında koli, atıl malzeme, merdiven vb. malzemeler bulunmakta mıdır?”, puan:5,
-criteria:[{text:“Yoğun saatlerde mağaza içinde ve kasa noktasında koli, atıl malzeme, merdiven vb. malzemeler bulunmakta mıdır?”, puan:5}],
-standards:“Saat 13:00’den sonra tespitler yapılmaktadır.\n15 dakikadan fazla kaldırılmayan malzemeler tespit olarak değerlendirilir.” },
-{ id:14, code:“FLOD14”, topic:“Operasyonel Süreçler”, title:“Reyonda müşteri alışverişi etkileyecek dağınıklık var mı?”, puan:5,
-criteria:[{text:“Reyonda müşteri alışverişi etkileyecek dağınıklık var mı?”, puan:5}],
-standards:“Yoğun saatlerde müşteri alışverişini engelleyecek dağınıklık olmamalıdır.\n3 adet ve üzeri kaldırılmayan ürün tespit olarak değerlendirilir.” },
-{ id:15, code:“FLOD15”, topic:“Operasyonel Süreçler”, title:“Kasa noktasında ürün kontrolü yapılıyor mu?”, puan:2,
-criteria:[{text:“Kasa noktasında kasiyer tarafından ürünlerin numara ve teklerinin kontrolü sağlanıyor mu?”, puan:2}],
-standards:“Kasa noktasında kasiyer tarafından müşteriden alınan ürünün model, numara ve teklerinin kontrolü sağlanması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:16, code:“FLOD16”, topic:“Operasyonel Süreçler”, title:“Çalışanlar görevleri dışında farklı işlerle uğraşıyor mu?”, puan:1,
-criteria:[{text:“Çalışanlar görevleri dışında farklı işlerle uğraşıyor mu?”, puan:1}],
-standards:“Çalışanların görevleri sırasında farklı işlerle uğraşmaları tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:17, code:“FLOD17”, topic:“Operasyonel Süreçler”, title:“Manuel iade işlemleri belirtilen kriterlere göre yapılmakta mıdır?”, puan:5,
-criteria:[{text:“Manuel iade işlemleri belirtilen kriterlere göre yapılmakta mıdır?”, puan:5}],
-standards:“Telefonla sözlü olarak onay alınan manuel iade işlemine ait onay talep e-postası aynı gün içerisinde Bölge Müdürüne gönderilir.\nBölge Müdürü’nün en geç ertesi gün onay e-postasını iletmesi gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:18, code:“FLOD18”, topic:“Operasyonel Süreçler”, title:“OMS siparişleri kurallara uygun yürütülmekte midir?”, puan:10,
-criteria:[
-{text:“Otomatik iptal olan OMS siparişleri bulunmakta mıdır? OMS siparişleri kurallara uygun yapılmakta mıdır?”, puan:5},
-{text:“24 saat içerisinde kargoya teslim edilmeyen sipariş bulunmakta mıdır?”, puan:5}
-],
-standards:“OMS Mağazalarında sipariş 24 saat içerisinde sonuçlandırılmalıdır.\n2 adet ve üzeri sonuçlandırılmayan siparişler tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:19, code:“FLOD19”, topic:“Mali Süreçler”, title:“Çıkışı yapılan sevkiyatlara ait eksik e-irsaliyelerin aktarımı yapıldı mı?”, puan:2,
-criteria:[{text:“Çıkışı yapılan sevkiyatlara ait eksik e-irsaliyelerin aktarımı yapıldı mı?”, puan:2}],
-standards:“E-İrsaliyelerin sistemsel olarak düzenlenemediği durumlarda 48 saat içinde ZCSED ekranından aktarım yapılması gerekmektedir.\n48 saat içinde aktarımı yapılmayan ve Desk açılmayan e-irsaliyeler tespit olarak değerlendirilir.” },
-{ id:20, code:“FLOD20”, topic:“Mali Süreçler”, title:“Gider pusulaları mali yükümlülükler ile operasyonel kriterlere/prosedüre uygun olarak düzenlenmekte midir?”, puan:5,
-criteria:[{text:“Gider Pusulası için alınması gereken bilgiler sisteme girildi mi?”, puan:5}],
-standards:“Gider pusulası üzerinde ürün, tutar, müşteri adı-soyadı, ilçe/il, telefon numarası imza bilgilerinin eksiksiz olması gerekmektedir.\nF+ F1 mağazalarda 7 adet ve üzeri, F2’de 5 ve üzeri, F3-F4’te 3 adet ve üzeri hata tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:21, code:“FLOD21”, topic:“Mali Süreçler”, title:“Kasa föyleri kriterlere uygun hazırlandı mı?”, puan:4,
-criteria:[
-{text:“Tüm günlere ait kasa föyleri yapıldı mı, mağazada mevcut mu? Mağaza Yöneticisi ve Kasa Sorumlusu’nun imzaları tam mı?”, puan:4}
-],
-standards:“İki denetim arasındaki 60 gün örnekleme kontrol edilir.\nTüm kasa föylerinin sistem üzerinde kayıtlı, doğru yapılmış olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:22, code:“FLOD22”, topic:“Mali Süreçler”, title:“Kasalardan Z raporu alındı mı?”, puan:2,
-criteria:[{text:“Mağazada bulunan tüm kasalardan Z raporu alındı mı?”, puan:2}],
-standards:“Z raporları günlük olarak alınmalıdır.\nAy bittikten sonraki diğer ayın ilk haftası bir önceki ayın Z raporları muhasebeye gönderilmelidir.\nEksik veya aynı gün alınmayan Z raporları tespit olarak değerlendirilir.” },
-{ id:23, code:“FLOD23”, topic:“Mali Süreçler”, title:“Kasa nakitleri mağaza nakit yatırma talimatına göre yatırılmakta mıdır?”, puan:4,
-criteria:[
-{text:“Mağaza nakitleri belirtilen saate kadar ve eksiksiz yatırıldı mı? Dekontlar ortak alanda mevcut mu? Dekontta mağaza kodu var mı?”, puan:4}
-],
-standards:“Kasa nakiti yatırılırken 4 haneli mağaza kodu belirtilmelidir.\nMağaza nakitleri her gün en geç saat 11:30’a kadar yatırılmalıdır.\nNakitin eksik, geç yatırılması durumunda aynı gün en geç saat 12:00’a kadar info.nakit\u0040flo.com.tr adresine bildirilmesi gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:24, code:“FLOD24”, topic:“Mali Süreçler”, title:“Ödeme Kaydedici Cihazların Levha, Ruhsat ve zimmet süreçleri belirtilen kurallara uygun yürütülmekte midir?”, puan:2,
-criteria:[{text:“Ödeme Kaydedici Cihazların Levha, Ruhsat ve zimmet süreçleri belirtilen kurallara uygun yürütülmekte midir?”, puan:2}],
-standards:“Tüm ödeme kaydedici cihazlara ait ruhsatların ve levhaların mağazada bulundurulması ve mağaza yöneticisine zimmetlenmesi gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:25, code:“FLOD25”, topic:“İnsan Kaynakları Süreçleri”, title:“Giriş-çıkış ve mola imzaları tam mı? İmza çizelgesi ile portal uyumlu mu?”, puan:7,
-criteria:[
-{text:“Giriş/Çıkış/Mola saat ve imzaları tam mı? Shift portal ekranına geçici görevlendirme belgesi imzalanıp yüklenmiş mi?”, puan:3},
-{text:“İmza çizelgesi ve portal tutarlı mı?”, puan:2},
-{text:“Bütün çalışanlara aylık imza çizelgeleri imzalatılıyor mu?”, puan:2}
-],
-standards:“Çalışma Esasları Talimatı’na göre mağazada çalışma/dinlenme sürelerine uyulup uyulmadığı ve personel imzaları kontrol edilir.\nİmza çizelgesi ile portal shift bilgileri arasında fark olup olmadığı kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:26, code:“FLOD26”, topic:“İş Sağlığı ve Güvenliği”, title:“Mağaza Risk Analiz Raporu ve Acil Durum Eylem Planı doğru şekilde oluşturuldu mu?”, puan:2,
-criteria:[{text:“Acil durum eylem planı doğru oluşturulmuş mu?”, puan:2}],
-standards:“Mağazalarda risk analiz raporunun olması gerekmektedir.\nAcil durum ekipleri: A: Genel koordinasyon, B: Yangın söndürme, C: İlk yardım, D: Tahliye, E: Koruma. Her ekip en az 2 çalışandan oluşmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:27, code:“FLOD27”, topic:“İş Sağlığı ve Güvenliği”, title:“Cadde mağazalarda sıfır atık çevre sistemine karşı önlemler alınmış mı?”, puan:2,
-criteria:[{text:“Cadde mağazalarda atıklar anlaşmalı firmaya teslim ediliyor mu?”, puan:2}],
-standards:“Atık kutuları içerisinde toplanan atıklar belediye veya lisanslı firmaya teslim edilmeli ve teslim makbuzu aylık olarak alınmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir.” },
-{ id:28, code:“FLOD28”, topic:“Genel”, title:“Kapsam dışı tespit var mı?”, puan:0,
-criteria:[{text:“Kapsam dışı tespit var mı?”, puan:0}],
-standards:“Dijital denetim kriterleri dışında kalan her türlü uygunsuz durum tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir.” }
+  { id:1, code:"FLOD01", topic:"Operasyonel Süreçler", title:"Koli kabul işlemleri mağaza tarafından belirlenen talimatlara ve prosedürlere göre yapılmakta mıdır?", puan:6,
+    criteria:[
+      {text:"Tüm gelen sevkiyatlar için mutabakat alındı mı?", puan:3},
+      {text:"Tüm giden sevkiyatlar için mutabakat alındı mı?", puan:3}
+    ],
+    standards:"Mutabakat formunun tüm sayfalarında tarih, ad soyad, araç plaka bilgileri yazılı olmalıdır.\nForm kargo firması ile karşılıklı imzalanmalıdır.\nKoli kabul işlemleri PTC ile yapılmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:2, code:"FLOD02", topic:"Operasyonel Süreçler", title:"Koli çıkış işlemleri mağaza tarafından belirlenen talimatlara ve prosedürlere göre yapılmakta mıdır?", puan:6,
+    criteria:[
+      {text:"Tüm giden sevkiyatlar için mutabakat alındı mı?", puan:3},
+      {text:"Koli çıkış süreci talimatlara uygun mu?", puan:3}
+    ],
+    standards:"Koli Çıkış Formlarının tüm sayfalarında kargo ve mağaza personelinin ad-soyad, tarih, imza ve araç plaka bilgileri olmalıdır.\nBelgelerin Forbis Ortak Alan Kullanım Talimatı'na göre yüklenmesi gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:3, code:"FLOD03", topic:"Operasyonel Süreçler", title:"Kullanılmayıp satış ekranında olan kasa var mı? Kasa şifresi süreçleri talimatlara uygun yürütüldü mü?", puan:3,
+    criteria:[
+      {text:"Boşta olup satışa açık kasa veya boşta olup anahtarı üzerinde olan kasa var mı?", puan:2},
+      {text:"Kasa personeli taahhütnameleri imzalatıldı mı? İşten ayrılan personelin şifre iptal taahhütnamesi imzalatıldı mı?", puan:1}
+    ],
+    standards:"Personel kasadan ayrıldığı anda kasiyer kodunu kapatmalıdır.\nBoşta ve içinde nakit para olan kasa çekmecesinin üzerinde anahtar bulundurulmamalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:4, code:"FLOD04", topic:"Operasyonel Süreçler", title:"Tekleme ürünlerinin sisteme girişi yapıldı mı?", puan:4,
+    criteria:[
+      {text:"Başka mağaza ile eşleşen tekleme ürünler gönderilmiş mi?", puan:4}
+    ],
+    standards:"Başka mağazayla eşlenen ürünlerin gönderilmesi gerekmektedir.\n7 iş gününde çıkışı yapılmayan teklemeler tespit olarak değerlendirilir.\nF+ F1 mağazalarda 7 adet ve üzeri, F2'de 5 adet ve üzeri, F3-F4'te 3 adet ve üzeri hata tespit olarak değerlendirilir." },
+  { id:5, code:"FLOD05", topic:"Operasyonel Süreçler", title:"Zimmet Formları bulunmakta mıdır?", puan:2,
+    criteria:[{text:"Çelik kasa ve mağaza anahtarı için zimmet formları düzenlenmiş mi?", puan:2}],
+    standards:"Mağaza açma/kapama yetkisi olan tüm yöneticilerin çelik kasa ve mağaza anahtarı zimmet formları olması gerekmektedir.\nForm en geç 3 gün içerisinde ortak alana yüklenmeli, Bölge Müdürüne e-posta ile gönderilmelidir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:6, code:"FLOD06", topic:"Operasyonel Süreçler", title:"Personel kıyafeti ve yaka kartı standartlara uygun mu?", puan:2,
+    criteria:[
+      {text:"Personel kıyafetleri yönetmeliğe uygun mu? Yaka kartı var mı?", puan:2}
+    ],
+    standards:"Personel Kıyafet Yönetmeliği Standartları'na göre çalışan kıyafetleri kontrol edilir.\nTüm çalışanların yaka kartları eksiksiz ve isimlerinin yazılı olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:7, code:"FLOD07", topic:"Operasyonel Süreçler", title:"AÜİM olarak iade alınan ürünlerin çıkışları zamanında yapılmakta mıdır?", puan:3,
+    criteria:[{text:"AÜİM olarak iade alınan ürünlerin çıkışları zamanında yapılıyor mu?", puan:3}],
+    standards:"Çıkış yapılması gereken ürünler minimum 6 adet olarak gönderilmelidir.\n6 adete tamamlanan AÜİM ürünlerinin 7 iş günü içerisinde çıkışlarının yapılması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:8, code:"FLOD08", topic:"Operasyonel Süreçler", title:"Reengen süreçleri kurallara uygun yürütülmekte midir?", puan:3,
+    criteria:[
+      {text:"Reengen için gece yüksek kullanım, geç kapanış ya da erken açılış yapan mağaza var mı?", puan:3}
+    ],
+    standards:"Erken açılış ve gece çalışmaları için öncesinde Bölge Müdürünün onayı alınmalıdır.\nYüzde 8 ve üzeri kullanımlarda ve 360 kWh üzeri oranlar tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:9, code:"FLOD09", topic:"Operasyonel Süreçler", title:"Kasa bekleme sırası belirlenen kriterlere göre uygulanmakta mıdır?", puan:4,
+    criteria:[{text:"Kasa bekleme sırası belirlenen kriterlere göre uygulandı mı?", puan:4}],
+    standards:"Kasada 4 kişiden fazla müşteri varsa ve müşterilerin 4 dakikadan fazla beklediği durumlarda ilave kasa açılmalıdır.\nKasa bölgesinde personel olmadığında müşterinin 2 dakikadan fazla beklediği durumlar tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:10, code:"FLOD10", topic:"Operasyonel Süreçler", title:"Mağazalarda mesai saatleri dışında yapılan çalışmalar portala girildi mi ve uyumlu mu?", puan:2,
+    criteria:[{text:"Mesai saati dışında yapılan çalışma durumu ile portala girildi mi ve uyumlu mu?", puan:2}],
+    standards:"Mesai saati dışında yapılan çalışmaların portal shift sisteme girilmesi gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:11, code:"FLOD11", topic:"Operasyonel Süreçler", title:"Çalışmayan ve görüş açısı kapatılmış/değiştirilmiş kamera bulunmakta mıdır?", puan:2,
+    criteria:[{text:"Çalışmayan ve görüş açısı kapatılmış/değiştirilmiş kamera var mı?", puan:2}],
+    standards:"Mağazada bulunan tüm kameraların çalışıyor ve görüş açılarının kapatılmamış olması gerekmektedir.\nKameraların kasa ve depo noktasını görüyor olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:12, code:"FLOD12", topic:"Operasyonel Süreçler", title:"Boş gondol, duvar ve ünite bulunmakta mıdır?", puan:5,
+    criteria:[{text:"Boş gondol, duvar ve ünite bulunmakta mıdır?", puan:5}],
+    standards:"Cadde ve AVM mağazalarında belirlenen yoğun saatlerde ünitelerde boşluklar olmamalıdır.\n13:00'den sonra ve mağaza kapanışından 1 saat öncesine kadar kontrol edilir.\n15 dakika içerisinde doldurulamayan boşluklar tespit olarak değerlendirilir." },
+  { id:13, code:"FLOD13", topic:"Operasyonel Süreçler", title:"Yoğun saatlerde mağaza içinde ve kasa noktasında koli, atıl malzeme, merdiven vb. malzemeler bulunmakta mıdır?", puan:5,
+    criteria:[{text:"Yoğun saatlerde mağaza içinde ve kasa noktasında koli, atıl malzeme, merdiven vb. malzemeler bulunmakta mıdır?", puan:5}],
+    standards:"Saat 13:00'den sonra tespitler yapılmaktadır.\n15 dakikadan fazla kaldırılmayan malzemeler tespit olarak değerlendirilir." },
+  { id:14, code:"FLOD14", topic:"Operasyonel Süreçler", title:"Reyonda müşteri alışverişi etkileyecek dağınıklık var mı?", puan:5,
+    criteria:[{text:"Reyonda müşteri alışverişi etkileyecek dağınıklık var mı?", puan:5}],
+    standards:"Yoğun saatlerde müşteri alışverişini engelleyecek dağınıklık olmamalıdır.\n3 adet ve üzeri kaldırılmayan ürün tespit olarak değerlendirilir." },
+  { id:15, code:"FLOD15", topic:"Operasyonel Süreçler", title:"Kasa noktasında ürün kontrolü yapılıyor mu?", puan:2,
+    criteria:[{text:"Kasa noktasında kasiyer tarafından ürünlerin numara ve teklerinin kontrolü sağlanıyor mu?", puan:2}],
+    standards:"Kasa noktasında kasiyer tarafından müşteriden alınan ürünün model, numara ve teklerinin kontrolü sağlanması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:16, code:"FLOD16", topic:"Operasyonel Süreçler", title:"Çalışanlar görevleri dışında farklı işlerle uğraşıyor mu?", puan:1,
+    criteria:[{text:"Çalışanlar görevleri dışında farklı işlerle uğraşıyor mu?", puan:1}],
+    standards:"Çalışanların görevleri sırasında farklı işlerle uğraşmaları tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:17, code:"FLOD17", topic:"Operasyonel Süreçler", title:"Manuel iade işlemleri belirtilen kriterlere göre yapılmakta mıdır?", puan:5,
+    criteria:[{text:"Manuel iade işlemleri belirtilen kriterlere göre yapılmakta mıdır?", puan:5}],
+    standards:"Telefonla sözlü olarak onay alınan manuel iade işlemine ait onay talep e-postası aynı gün içerisinde Bölge Müdürüne gönderilir.\nBölge Müdürü'nün en geç ertesi gün onay e-postasını iletmesi gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:18, code:"FLOD18", topic:"Operasyonel Süreçler", title:"OMS siparişleri kurallara uygun yürütülmekte midir?", puan:10,
+    criteria:[
+      {text:"Otomatik iptal olan OMS siparişleri bulunmakta mıdır? OMS siparişleri kurallara uygun yapılmakta mıdır?", puan:5},
+      {text:"24 saat içerisinde kargoya teslim edilmeyen sipariş bulunmakta mıdır?", puan:5}
+    ],
+    standards:"OMS Mağazalarında sipariş 24 saat içerisinde sonuçlandırılmalıdır.\n2 adet ve üzeri sonuçlandırılmayan siparişler tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:19, code:"FLOD19", topic:"Mali Süreçler", title:"Çıkışı yapılan sevkiyatlara ait eksik e-irsaliyelerin aktarımı yapıldı mı?", puan:2,
+    criteria:[{text:"Çıkışı yapılan sevkiyatlara ait eksik e-irsaliyelerin aktarımı yapıldı mı?", puan:2}],
+    standards:"E-İrsaliyelerin sistemsel olarak düzenlenemediği durumlarda 48 saat içinde ZCSED ekranından aktarım yapılması gerekmektedir.\n48 saat içinde aktarımı yapılmayan ve Desk açılmayan e-irsaliyeler tespit olarak değerlendirilir." },
+  { id:20, code:"FLOD20", topic:"Mali Süreçler", title:"Gider pusulaları mali yükümlülükler ile operasyonel kriterlere/prosedüre uygun olarak düzenlenmekte midir?", puan:5,
+    criteria:[{text:"Gider Pusulası için alınması gereken bilgiler sisteme girildi mi?", puan:5}],
+    standards:"Gider pusulası üzerinde ürün, tutar, müşteri adı-soyadı, ilçe/il, telefon numarası imza bilgilerinin eksiksiz olması gerekmektedir.\nF+ F1 mağazalarda 7 adet ve üzeri, F2'de 5 ve üzeri, F3-F4'te 3 adet ve üzeri hata tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:21, code:"FLOD21", topic:"Mali Süreçler", title:"Kasa föyleri kriterlere uygun hazırlandı mı?", puan:4,
+    criteria:[
+      {text:"Tüm günlere ait kasa föyleri yapıldı mı, mağazada mevcut mu? Mağaza Yöneticisi ve Kasa Sorumlusu'nun imzaları tam mı?", puan:4}
+    ],
+    standards:"İki denetim arasındaki 60 gün örnekleme kontrol edilir.\nTüm kasa föylerinin sistem üzerinde kayıtlı, doğru yapılmış olması gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:22, code:"FLOD22", topic:"Mali Süreçler", title:"Kasalardan Z raporu alındı mı?", puan:2,
+    criteria:[{text:"Mağazada bulunan tüm kasalardan Z raporu alındı mı?", puan:2}],
+    standards:"Z raporları günlük olarak alınmalıdır.\nAy bittikten sonraki diğer ayın ilk haftası bir önceki ayın Z raporları muhasebeye gönderilmelidir.\nEksik veya aynı gün alınmayan Z raporları tespit olarak değerlendirilir." },
+  { id:23, code:"FLOD23", topic:"Mali Süreçler", title:"Kasa nakitleri mağaza nakit yatırma talimatına göre yatırılmakta mıdır?", puan:4,
+    criteria:[
+      {text:"Mağaza nakitleri belirtilen saate kadar ve eksiksiz yatırıldı mı? Dekontlar ortak alanda mevcut mu? Dekontta mağaza kodu var mı?", puan:4}
+    ],
+    standards:"Kasa nakiti yatırılırken 4 haneli mağaza kodu belirtilmelidir.\nMağaza nakitleri her gün en geç saat 11:30'a kadar yatırılmalıdır.\nNakitin eksik, geç yatırılması durumunda aynı gün en geç saat 12:00'a kadar info.nakit@flo.com.tr adresine bildirilmesi gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:24, code:"FLOD24", topic:"Mali Süreçler", title:"Ödeme Kaydedici Cihazların Levha, Ruhsat ve zimmet süreçleri belirtilen kurallara uygun yürütülmekte midir?", puan:2,
+    criteria:[{text:"Ödeme Kaydedici Cihazların Levha, Ruhsat ve zimmet süreçleri belirtilen kurallara uygun yürütülmekte midir?", puan:2}],
+    standards:"Tüm ödeme kaydedici cihazlara ait ruhsatların ve levhaların mağazada bulundurulması ve mağaza yöneticisine zimmetlenmesi gerekmektedir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:25, code:"FLOD25", topic:"İnsan Kaynakları Süreçleri", title:"Giriş-çıkış ve mola imzaları tam mı? İmza çizelgesi ile portal uyumlu mu?", puan:7,
+    criteria:[
+      {text:"Giriş/Çıkış/Mola saat ve imzaları tam mı? Shift portal ekranına geçici görevlendirme belgesi imzalanıp yüklenmiş mi?", puan:3},
+      {text:"İmza çizelgesi ve portal tutarlı mı?", puan:2},
+      {text:"Bütün çalışanlara aylık imza çizelgeleri imzalatılıyor mu?", puan:2}
+    ],
+    standards:"Çalışma Esasları Talimatı'na göre mağazada çalışma/dinlenme sürelerine uyulup uyulmadığı ve personel imzaları kontrol edilir.\nİmza çizelgesi ile portal shift bilgileri arasında fark olup olmadığı kontrol edilir.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:26, code:"FLOD26", topic:"İş Sağlığı ve Güvenliği", title:"Mağaza Risk Analiz Raporu ve Acil Durum Eylem Planı doğru şekilde oluşturuldu mu?", puan:2,
+    criteria:[{text:"Acil durum eylem planı doğru oluşturulmuş mu?", puan:2}],
+    standards:"Mağazalarda risk analiz raporunun olması gerekmektedir.\nAcil durum ekipleri: A: Genel koordinasyon, B: Yangın söndürme, C: İlk yardım, D: Tahliye, E: Koruma. Her ekip en az 2 çalışandan oluşmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:27, code:"FLOD27", topic:"İş Sağlığı ve Güvenliği", title:"Cadde mağazalarda sıfır atık çevre sistemine karşı önlemler alınmış mı?", puan:2,
+    criteria:[{text:"Cadde mağazalarda atıklar anlaşmalı firmaya teslim ediliyor mu?", puan:2}],
+    standards:"Atık kutuları içerisinde toplanan atıklar belediye veya lisanslı firmaya teslim edilmeli ve teslim makbuzu aylık olarak alınmalıdır.\nUygunsuzluklar tespit olarak değerlendirilir." },
+  { id:28, code:"FLOD28", topic:"Genel", title:"Kapsam dışı tespit var mı?", puan:0,
+    criteria:[{text:"Kapsam dışı tespit var mı?", puan:0}],
+    standards:"Dijital denetim kriterleri dışında kalan her türlü uygunsuz durum tespit olarak değerlendirilir.\nUygunsuzluklar tespit olarak değerlendirilir." }
 ];
 
 const SECTION_GROUPS = {
-“Mali Süreçler”:           { icon:“💰”, color:“var(–green)” },
-“Operasyonel Süreçler”:    { icon:“⚙️”, color:“var(–amber)” },
-“IT Süreçleri”:            { icon:“💻”, color:“var(–blue)” },
-“IK Süreçleri”:            { icon:“👥”, color:”#BF5AF2” },
-“İş Sağlığı ve Güvenliği”:{ icon:“🛡️”, color:”#FF2D55” },
-“Kapasite Süreçleri”:      { icon:“📦”, color:”#FF9F0A” },
-“Omnichannel Süreçleri”:   { icon:“🌐”, color:”#30D158” },
-“Görsel Süreçler”:         { icon:“🎨”, color:”#5E5CE6” },
-“Genel”:                   { icon:“📋”, color:“var(–muted)” }
+  "Mali Süreçler": { icon:"💰", color:"var(--green)" },
+  "Operasyonel Süreçler": { icon:"⚙️", color:"var(--amber)" },
+  "IT Süreçleri": { icon:"💻", color:"var(--blue)" },
+  "IK Süreçleri": { icon:"👥", color:"#BF5AF2" },
+  "İş Sağlığı ve Güvenliği": { icon:"🛡️", color:"#FF2D55" },
+  "İnsan Kaynakları Süreçleri": { icon:"👥", color:"#BF5AF2" },
+  "Kapasite Süreçleri": { icon:"📦", color:"#FF9F0A" },
+  "Omnichannel Süreçleri": { icon:"🌐", color:"#30D158" },
+  "Görsel Süreçler": { icon:"🎨", color:"#5E5CE6" },
+  "Genel": { icon:"📋", color:"var(--muted)" }
 };
 
 // ==================== STATE ====================
@@ -586,256 +569,131 @@ let totalCriteriaCount = 0;
 let AUDIT_DATA = [];
 
 function initState(data) {
-AUDIT_DATA = data;
-state_obj = {};
-totalCriteriaCount = 0;
-data.forEach(d => {
-state_obj[d.id] = { note:’’, images:[], criteriaStatus: new Array(d.criteria.length).fill(null) };
-totalCriteriaCount += d.criteria.length;
-});
+  AUDIT_DATA = data;
+  state_obj = {};
+  totalCriteriaCount = 0;
+  data.forEach(d => {
+    state_obj[d.id] = { note:'', images:[], criteriaStatus: new Array(d.criteria.length).fill(null) };
+    totalCriteriaCount += d.criteria.length;
+  });
 }
 
 // ==================== STARTUP ====================
 function startAudit() {
-const code      = document.getElementById(‘inpStoreCode’).value.trim();
-const name      = document.getElementById(‘inpStoreName’).value.trim();
-const auditor   = document.getElementById(‘inpAuditor’).value.trim();
-const auditType = document.getElementById(‘inpAuditType’).value;
-if(!code || !name || !auditor) { alert(‘Lütfen tüm alanları eksiksiz doldurun.’); return; }
-currentStoreCode = code; currentStoreName = name; currentAuditor = auditor; currentAuditType = auditType;
-const typeLabel = auditType === ‘dijital’ ? ‘Dijital Denetim’ : ‘Operasyonel Denetim’;
-const badge = document.getElementById(‘auditCodeBadge’);
-badge.innerText = name + ’ | ’ + typeLabel;
-badge.style.display = ‘block’;
-document.getElementById(‘startupModal’).classList.remove(‘open’);
-const dataset = auditType === ‘dijital’ ? AUDIT_DATA_DIJITAL : AUDIT_DATA_OPERASYONEL;
-initState(dataset);
-currentQuestionIndex = 0;
-render();
-updateScores();
+  const code      = document.getElementById('inpStoreCode').value.trim();
+  const name      = document.getElementById('inpStoreName').value.trim();
+  const auditor   = document.getElementById('inpAuditor').value.trim();
+  const auditType = document.getElementById('inpAuditType').value;
+  
+  if(!code || !name || !auditor) { alert('Lütfen tüm alanları eksiksiz doldurun.'); return; }
+  
+  currentStoreCode = code; currentStoreName = name; currentAuditor = auditor; currentAuditType = auditType;
+  const typeLabel = auditType === 'dijital' ? 'Dijital Denetim' : 'Operasyonel Denetim';
+  const badge = document.getElementById('auditCodeBadge');
+  badge.innerText = name + ' | ' + typeLabel;
+  badge.style.display = 'block';
+  
+  document.getElementById('uiBrandName').innerText = `FLO ${typeLabel.split(' ')[0]}`;
+  
+  document.getElementById('startupModal').classList.remove('open');
+  const dataset = auditType === 'dijital' ? AUDIT_DATA_DIJITAL : AUDIT_DATA_OPERASYONEL;
+  initState(dataset);
+  currentQuestionIndex = 0;
+  
+  render();
+  updateScores();
 }
 
 // ==================== ADMIN AUTH ====================
 async function checkAdminAuth() {
-const userInp = document.getElementById(‘inpAdminUser’).value.trim();
-const passInp = document.getElementById(‘inpAdminPass’).value;
-const btn = document.getElementById(‘adminLoginBtn’);
-if(!userInp || !passInp) return alert(“Kullanıcı adı ve şifreyi giriniz.”);
-const originalText = btn.innerText;
-btn.innerText = “Doğrulanıyor…”; btn.disabled = true;
-try {
-const querySnapshot = await db.collection(“adminUsers”).where(“username”,”==”,userInp).where(“password”,”==”,passInp).get();
-if (!querySnapshot.empty) {
-document.getElementById(‘adminAuthModal’).classList.remove(‘open’);
-openAdminPanel();
-} else { alert(“Hatalı kullanıcı adı veya şifre!”); }
-} catch(error) { console.error(“Giriş Hatası:”, error); alert(“Bağlantı hatası oluştu.”); }
-finally { btn.innerText = originalText; btn.disabled = false; }
+  const userInp = document.getElementById('inpAdminUser').value.trim();
+  const passInp = document.getElementById('inpAdminPass').value;
+  const btn = document.getElementById('adminLoginBtn');
+  
+  if(!userInp || !passInp) return alert("Kullanıcı adı ve şifreyi giriniz.");
+  
+  const originalText = btn.innerText;
+  btn.innerText = "Doğrulanıyor..."; btn.disabled = true;
+  
+  try {
+    const querySnapshot = await db.collection("adminUsers").where("username","==",userInp).where("password","==",passInp).get();
+    if (!querySnapshot.empty) {
+      document.getElementById('adminAuthModal').classList.remove('open');
+      openAdminPanel();
+    } else { alert("Hatalı kullanıcı adı veya şifre!"); }
+  } catch(error) { console.error("Giriş Hatası:", error); alert("Bağlantı hatası oluştu."); }
+  finally { btn.innerText = originalText; btn.disabled = false; }
 }
 
 // ==================== RENDER ====================
 function render() {
-const container = document.getElementById(‘mainContainer’);
-const item = AUDIT_DATA[currentQuestionIndex];
-const g = SECTION_GROUPS[item.topic] || {icon:‘📌’,color:‘var(–muted)’};
-const isLast = currentQuestionIndex === AUDIT_DATA.length - 1;
-const nextBtnHtml = isLast
-? `<button onclick="finishAudit()" class="btn-action btn-nav btn-finish">Denetimi Bitir ✓</button>`
-: `<button onclick="nextQ()" class="btn-action btn-nav">Sonraki →</button>`;
+  const container = document.getElementById('mainContainer');
+  const item = AUDIT_DATA[currentQuestionIndex];
+  const g = SECTION_GROUPS[item.topic] || {icon:'📌',color:'var(--muted)'};
+  const isLast = currentQuestionIndex === AUDIT_DATA.length - 1;
+  const nextBtnHtml = isLast
+    ? `<button onclick="finishAudit()" class="btn-action btn-nav btn-finish">Denetimi Bitir ✓</button>`
+    : `<button onclick="nextQ()" class="btn-action btn-nav">Sonraki →</button>`;
 
-container.innerHTML = ` <div class="section-group"> <div class="section-group-title"> <span class="section-icon">${g.icon}</span> <span style="color:${g.color}">${item.topic}</span> </div> ${renderCard(item)} </div> <div class="pagination-controls print-hide"> <button onclick="prevQ()" class="btn-action btn-nav" ${currentQuestionIndex===0?'disabled':''}>← Önceki</button> <div class="page-indicator">Madde ${currentQuestionIndex+1} / ${AUDIT_DATA.length}</div> ${nextBtnHtml} </div>`;
+  container.innerHTML = ` 
+    <div class="section-group"> 
+      <div class="section-group-title"> 
+        <span class="section-icon">${g.icon}</span> 
+        <span style="color:${g.color}">${item.topic}</span> 
+      </div> 
+      ${renderCard(item)} 
+    </div> 
+    <div class="pagination-controls print-hide"> 
+      <button onclick="prevQ()" class="btn-action btn-nav" ${currentQuestionIndex===0?'disabled':''}>← Önceki</button> 
+      <div class="page-indicator">Madde ${currentQuestionIndex+1} / ${AUDIT_DATA.length}</div> 
+      ${nextBtnHtml} 
+    </div>`;
 }
 
-function prevQ() { if(currentQuestionIndex > 0) { currentQuestionIndex–; render(); window.scrollTo({top:0,behavior:‘smooth’}); } }
-function nextQ() { if(currentQuestionIndex < AUDIT_DATA.length-1) { currentQuestionIndex++; render(); window.scrollTo({top:0,behavior:‘smooth’}); } }
+function prevQ() { if(currentQuestionIndex > 0) { currentQuestionIndex--; render(); window.scrollTo({top:0,behavior:'smooth'}); } }
+function nextQ() { if(currentQuestionIndex < AUDIT_DATA.length-1) { currentQuestionIndex++; render(); window.scrollTo({top:0,behavior:'smooth'}); } }
 
 function renderCard(item) {
-const s = state_obj[item.id];
-let criteriaHtml = ‘’;
-let showExtras = false;
+  const s = state_obj[item.id];
+  let criteriaHtml = '';
+  let showExtras = false;
 
-item.criteria.forEach((c, idx) => {
-const cStatus = s.criteriaStatus[idx];
-if(cStatus===‘tespit’||cStatus===‘yok’) showExtras = true;
-const rowClass = cStatus===‘na’?‘na-active’:’’;
-criteriaHtml += ` <div class="criterion-row ${rowClass}"> <div class="criterion-text-box"> <div class="criterion-text">${c.text}</div> <div class="criterion-pts">${c.puan} P</div> </div> <div class="card-actions"> <button class="btn-action btn-tespit ${cStatus==='tespit'?'active':''}" onclick="setCriterionStatus(${item.id},${idx},'tespit')">⚠ Tespit Var</button> <button class="btn-action btn-yok ${cStatus==='yok'?'active':''}" onclick="setCriterionStatus(${item.id},${idx},'yok')">✓ Tespit Yok</button> <button class="btn-action btn-na ${cStatus==='na'?'active':''}" onclick="setCriterionStatus(${item.id},${idx},'na')">— N/A</button> </div> </div>`;
-});
+  item.criteria.forEach((c, idx) => {
+    const cStatus = s.criteriaStatus[idx];
+    if(cStatus==='tespit'||cStatus==='yok') showExtras = true;
+    const rowClass = cStatus==='na'?'na-active':'';
+    criteriaHtml += ` 
+      <div class="criterion-row ${rowClass}"> 
+        <div class="criterion-text-box"> 
+          <div class="criterion-text">${c.text}</div> 
+          <div class="criterion-pts">${c.puan} P</div> 
+        </div> 
+        <div class="card-actions"> 
+          <button class="btn-action btn-tespit ${cStatus==='tespit'?'active':''}" onclick="setCriterionStatus(${item.id},${idx},'tespit')">⚠ Tespit Var</button> 
+          <button class="btn-action btn-yok ${cStatus==='yok'?'active':''}" onclick="setCriterionStatus(${item.id},${idx},'yok')">✓ Tespit Yok</button> 
+          <button class="btn-action btn-na ${cStatus==='na'?'active':''}" onclick="setCriterionStatus(${item.id},${idx},'na')">— N/A</button> 
+        </div> 
+      </div>`;
+  });
 
-const isAnyTespit = s.criteriaStatus.includes(‘tespit’);
-return `
-
-  <div class="audit-card" id="card-${item.id}">
-    <div class="card-header">
-      <div class="card-num">${String(item.id).padStart(2,'0')}</div>
-      <div class="card-meta">
-        <div class="card-code">${item.code} • Max: ${item.puan} Puan</div>
-        <div class="card-title">${item.title}</div>
-      </div>
-      <button class="info-btn" title="Kriter Standartları" onclick="showDetail(${item.id})">ℹ</button>
-    </div>
-    <div class="criteria-list">${criteriaHtml}</div>
-    <div class="extras-area">
-      <div class="image-upload-area ${isAnyTespit?'visible':''}" id="imgArea-${item.id}">
-        <label class="upload-label">
-          <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          Fotoğraf Yükle (Opsiyonel)
-          <input type="file" accept="image/*" multiple onchange="addImages(${item.id},this)">
-        </label>
-        <div class="uploaded-images" id="imgs-${item.id}">
-          ${s.images.map((src,i)=>`<img class="uploaded-img-thumb" src="${src}" onclick="removeImage(${item.id},${i})" title="Kaldır">`).join('')}
+  const isAnyTespit = s.criteriaStatus.includes('tespit');
+  return `
+    <div class="audit-card" id="card-${item.id}">
+      <div class="card-header">
+        <div class="card-num">${String(item.id).padStart(2,'0')}</div>
+        <div class="card-meta">
+          <div class="card-code">${item.code} • Max: ${item.puan} Puan</div>
+          <div class="card-title">${item.title}</div>
         </div>
+        <button class="info-btn" title="Kriter Standartları" onclick="showDetail(${item.id})">ℹ</button>
       </div>
-      <textarea class="note-input ${showExtras?'visible':''}" placeholder="Açıklama veya not ekleyin…" onchange="setNote(${item.id},this.value)">${s.note}</textarea>
-    </div>
-  </div>`;
-}
-
-// ==================== ACTIONS ====================
-function setCriterionStatus(itemId, idx, status) {
-state_obj[itemId].criteriaStatus[idx] = state_obj[itemId].criteriaStatus[idx]===status ? null : status;
-render(); updateScores();
-}
-function setNote(id, val) { state_obj[id].note = val; }
-function addImages(id, input) {
-Array.from(input.files).forEach(f => {
-const r = new FileReader(); r.onload = e => { state_obj[id].images.push(e.target.result); render(); }; r.readAsDataURL(f);
-});
-}
-function removeImage(id, idx) { state_obj[id].images.splice(idx,1); render(); }
-
-function calcEarned() {
-let earned = 0;
-AUDIT_DATA.forEach(d => {
-const criteriaSum = d.criteria.reduce((s, c) => s + c.puan, 0);
-d.criteria.forEach((c, idx) => {
-const st = state_obj[d.id].criteriaStatus[idx];
-// Normalize: kriterin sorudaki oranı * sorunun gerçek puanı
-const normalized = criteriaSum > 0 ? (c.puan / criteriaSum) * d.puan : 0;
-if(st === ‘yok’ || st === ‘na’) earned += normalized;
-});
-});
-return Math.round(earned * 10) / 10;
-}
-
-function updateScores() {
-let answered = 0, cT=0, cY=0, cN=0;
-AUDIT_DATA.forEach(d => {
-d.criteria.forEach((c, idx) => {
-const st = state_obj[d.id].criteriaStatus[idx];
-if(st) answered++;
-if(st===‘tespit’) cT++; else if(st===‘yok’) cY++; else if(st===‘na’) cN++;
-});
-});
-const earned = calcEarned();
-const elScore   = document.getElementById(‘totalScore’);
-const elFill    = document.getElementById(‘progressFill’);
-const elTespit  = document.getElementById(‘cntTespit’);
-const elYok     = document.getElementById(‘cntYok’);
-const elNA      = document.getElementById(‘cntNA’);
-const elPending = document.getElementById(‘cntPending’);
-if(elScore)   elScore.innerHTML = earned + ’ <span style="font-size:12px;color:var(--muted)">/ 100</span>’;
-if(elFill)    elFill.style.width = (answered/totalCriteriaCount*100)+’%’;
-if(elTespit)  elTespit.textContent = cT;
-if(elYok)     elYok.textContent = cY;
-if(elNA)      elNA.textContent = cN;
-if(elPending) elPending.textContent = (totalCriteriaCount-answered);
-}
-
-// ==================== DETAIL MODAL ====================
-function showDetail(id) {
-const item = AUDIT_DATA.find(d=>d.id===id);
-const listHtml = item.standards.split(’\n’).filter(l=>l.trim()).map(l =>
-`<li><span class="blue-arrow">→</span><span>${l.replace(/^•\s*/,'')}</span></li>`
-).join(’’);
-document.getElementById(‘detailModalBody’).innerHTML = ` <div style="color:var(--primary);font-size:11px;font-weight:700;margin-bottom:8px;">${item.code} • ${item.topic}</div> <h2 style="font-family:'Syne',sans-serif;font-size:17px;line-height:1.4;">${item.title}</h2> <div style="margin-top:18px;"> <h4 style="color:var(--blue);font-family:'Syne',sans-serif;text-transform:uppercase;font-size:11px;margin-bottom:6px;">Kriter Standartları</h4> <ul class="standards-list">${listHtml}</ul> </div>`;
-document.getElementById(‘detailModal’).classList.add(‘open’);
-}
-
-// ==================== FINISH & FIREBASE ====================
-function finishAudit() {
-let unanswered = 0;
-AUDIT_DATA.forEach(d => { d.criteria.forEach((c, idx) => { if(!state_obj[d.id].criteriaStatus[idx]) unanswered++; }); });
-if(unanswered > 0) { alert(`Eksik işlem tespit edildi! ${unanswered} adet kriter yanıtlanmamış.`); return; }
-
-const btn = document.querySelector(’.btn-finish’);
-if(btn) btn.innerHTML = “Oluşturuluyor ⌛”;
-
-let finalScore = String(calcEarned());
-const auditDetails = AUDIT_DATA.map(d => ({
-code: d.code, topic: d.topic, title: d.title,
-note: state_obj[d.id].note, images: state_obj[d.id].images,
-results: d.criteria.map((c, idx) => ({ text: c.text, status: state_obj[d.id].criteriaStatus[idx], puan: c.puan }))
-}));
-
-const payload = { storeCode:currentStoreCode, storeName:currentStoreName, auditor:currentAuditor, auditType:currentAuditType, date:new Date().toISOString(), score:finalScore, details:auditDetails };
-
-if(db) {
-db.collection(“denetimler”).add(payload).then(()=>console.log(“DB’ye işlendi.”)).catch(e=>console.error(“Kayıt hatası:”,e));
-}
-setTimeout(() => { generateReportHTML(payload); if(btn) btn.innerHTML = “Denetimi Bitir ✓”; }, 300);
-}
-
-// ==================== ADMIN PANEL ====================
-async function openAdminPanel() {
-document.getElementById(‘adminDataModal’).classList.add(‘open’);
-const area = document.getElementById(‘adminDataArea’);
-if(!db) { area.innerHTML = “<p style='color:red;'>Sunucu bağlantısı kurulamadı.</p>”; return; }
-area.innerHTML = “Veriler Yükleniyor…”;
-try {
-const snapshot = await db.collection(“denetimler”).orderBy(“date”,“desc”).get();
-if(snapshot.empty) { area.innerHTML = “<p>Henüz kayıtlı denetim yok.</p>”; return; }
-adminDataCache = {};
-let html = `<div style="overflow-x:auto;"><table class="report-table"><thead><tr><th>Tarih</th><th>Kod</th><th>Mağaza</th><th>Denetmen</th><th>Puan</th><th>Rapor</th></tr></thead><tbody>`;
-snapshot.forEach(doc => {
-const data = doc.data(); adminDataCache[doc.id] = data;
-const d = new Date(data.date).toLocaleDateString(‘tr-TR’,{day:‘2-digit’,month:‘2-digit’,year:‘numeric’,hour:‘2-digit’,minute:‘2-digit’});
-html += `<tr><td>${d}</td><td style="font-weight:bold;color:var(--primary)">${data.storeCode}</td><td>${data.storeName}</td><td>${data.auditor}</td><td style="font-weight:bold;color:var(--green)">${data.score}</td><td><button class="btn-action btn-yok" style="padding:5px 9px;font-size:11px;" onclick="viewPastReport('${doc.id}')">Görüntüle</button></td></tr>`;
-});
-html += `</tbody></table></div>`;
-area.innerHTML = html;
-} catch(err) { area.innerHTML = `<p style="color:red;">Hata: ${err.message}</p>`; }
-}
-
-function viewPastReport(docId) { const data = adminDataCache[docId]; if(data) generateReportHTML(data); }
-
-// ==================== RAPOR ====================
-function generateReportHTML(dataObj) {
-const groups = {}; let cT=0, cY=0, cN=0;
-dataObj.details.forEach(d => {
-if(!groups[d.topic]) groups[d.topic] = [];
-groups[d.topic].push(d);
-d.results.forEach(res => { if(res.status===‘na’) cN++; else if(res.status===‘yok’) cY++; else if(res.status===‘tespit’) cT++; });
-});
-
-let chaptersHtml = ‘’;
-for(const [topic, items] of Object.entries(groups)) {
-let rows = ‘’;
-items.forEach(d => {
-d.results.forEach((res, idx) => {
-const badge = res.status===‘tespit’?’<span class="badge-s t">Tespit Var</span>’:res.status===‘yok’?’<span class="badge-s y">Tespit Yok</span>’:res.status===‘na’?’<span class="badge-s n">N/A</span>’:’<span style="color:var(--muted);font-size:11px">—</span>’;
-const pts = (res.status===‘yok’||res.status===‘na’) ? res.puan : res.status===‘tespit’ ? 0 : ‘?’;
-let extrasHtml = ‘’;
-if(idx===d.results.length-1) {
-if(d.note) extrasHtml += `<div style="font-size:11px;color:var(--muted);margin-top:5px;font-style:italic;">Not: ${d.note}</div>`;
-if(d.images&&d.images.length>0) extrasHtml += `<div class="report-img-wrapper">${d.images.map(img=>`<img src="${img}" class="report-img">`).join('')}</div>`;
-}
-const codeCell = idx===0 ? `<td rowspan="${d.results.length}" style="color:var(--primary);font-weight:700;width:11%;border-right:1px solid var(--border);">${d.code}</td>` : ‘’;
-rows += `<tr style="${res.status==='na'?'opacity:.6':''}">${codeCell}<td><span style="font-weight:500">${res.text}</span>${extrasHtml}</td><td style="width:14%">${badge}</td><td style="text-align:center;font-family:'Syne',sans-serif;font-weight:700;color:var(--amber);width:8%">${pts}</td></tr>`;
-});
-});
-chaptersHtml += `<div class="print-chapter-title" style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;padding-bottom:8px;margin:24px 0 12px;border-bottom:1px solid var(--border);">${topic}</div><div style="overflow-x:auto;"><table class="report-table"><thead><tr><th>Kod</th><th>Değerlendirilen Kriter</th><th>Sonuç</th><th style="text-align:center">Puan</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-}
-
-document.getElementById(‘reportModalBody’).innerHTML = ` <div style="text-align:center;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:20px;"> <h2 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px;">Operasyonel Denetim Sonuç Raporu</h2> <p style="color:var(--muted);font-size:13px;margin-bottom:18px;"> Mağaza: <strong style="color:var(--primary)">${dataObj.storeCode} - ${dataObj.storeName}</strong> &bull; Denetmen: <strong style="color:var(--primary)">${dataObj.auditor}</strong> &bull; ${new Date(dataObj.date).toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})} </p> <button class="print-btn-large print-hide" onclick="window.print()"> <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg> Raporu PDF Olarak İndir / Yazdır </button> </div> <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;"> <div class="modal-score-box"><div class="v">${dataObj.score}</div><div class="l">Mevcut Puan</div></div> <div class="modal-score-box"><div class="v" style="color:var(--red)">${cT}</div><div class="l">Tespit</div></div> <div class="modal-score-box"><div class="v" style="color:var(--green)">${cY}</div><div class="l">Tespit Yok</div></div> <div class="modal-score-box"><div class="v" style="color:var(--muted)">${cN}</div><div class="l">N/A</div></div> </div> ${chaptersHtml}`;
-document.getElementById(‘reportModal’).classList.add(‘open’);
-}
-
-function closeModal(id) { document.getElementById(id).classList.remove(‘open’); }
-document.getElementById(‘reportModal’).addEventListener(‘click’, function(e){ if(e.target===this) closeModal(‘reportModal’); });
-document.getElementById(‘adminDataModal’).addEventListener(‘click’, function(e){ if(e.target===this) closeModal(‘adminDataModal’); });
-document.getElementById(‘adminAuthModal’).addEventListener(‘click’, function(e){ if(e.target===this) closeModal(‘adminAuthModal’); });
-document.getElementById(‘detailModal’).addEventListener(‘click’, function(e){ if(e.target===this) closeModal(‘detailModal’); });
-</script>
-
-</body>
-</html>
+      <div class="criteria-list">${criteriaHtml}</div>
+      <div class="extras-area">
+        <div class="image-upload-area ${isAnyTespit?'visible':''}" id="imgArea-${item.id}">
+          <label class="upload-label">
+            <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            Fotoğraf Yükle (Opsiyonel)
+            <input type="file" accept="image/*" multiple onchange="addImages(${item.id},this)">
+          </label>
+          <div class="uploaded-images" id="imgs-${item.id}">
+            ${s.images.map((src,i)=>`<img class="uploaded-img-thumb" src="${src}" onclick="removeImage
