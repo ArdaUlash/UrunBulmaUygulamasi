@@ -300,8 +300,13 @@ messagingSenderId: “914863913629”,
 appId: “1:914863913629:web:aa8c020cf0ffb8aec9b274”,
 measurementId: “G-YV5QKD7K2Q”
 };
+let db = null;
+try {
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-const db = firebase.firestore();
+db = firebase.firestore();
+} catch(e) {
+console.warn(“Firebase başlatılamadı:”, e);
+}
 
 // ==================== GLOBAL ====================
 let currentStoreCode = “”, currentStoreName = “”, currentAuditor = “”;
@@ -801,7 +806,7 @@ results: d.criteria.map((c, idx) => ({ text: c.text, status: state_obj[d.id].cri
 
 const payload = { storeCode:currentStoreCode, storeName:currentStoreName, auditor:currentAuditor, date:new Date().toISOString(), score:finalScore, details:auditDetails };
 
-if(firebase.apps.length > 0) {
+if(db) {
 db.collection(“denetimler”).add(payload).then(()=>console.log(“DB’ye işlendi.”)).catch(e=>console.error(“Kayıt hatası:”,e));
 }
 setTimeout(() => { generateReportHTML(payload); if(btn) btn.innerHTML = “Denetimi Bitir ✓”; }, 300);
@@ -811,7 +816,7 @@ setTimeout(() => { generateReportHTML(payload); if(btn) btn.innerHTML = “Denet
 async function openAdminPanel() {
 document.getElementById(‘adminDataModal’).classList.add(‘open’);
 const area = document.getElementById(‘adminDataArea’);
-if(!firebase.apps.length) { area.innerHTML = “<p style='color:red;'>Firebase Config eksik!</p>”; return; }
+if(!db) { area.innerHTML = “<p style='color:red;'>Sunucu bağlantısı kurulamadı.</p>”; return; }
 area.innerHTML = “Veriler Yükleniyor…”;
 try {
 const snapshot = await db.collection(“denetimler”).orderBy(“date”,“desc”).get();
