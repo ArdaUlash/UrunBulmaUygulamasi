@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>FLO Operasyonel Denetim Sistemi | ardaulas.online</title>
+<title>FLO Denetim Sistemi | ardaulas.online</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js" onerror="window._firebaseLoadError=true"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js" onerror="window._firebaseLoadError=true"></script>
@@ -229,8 +229,8 @@
   <div class="brand">
     <div class="brand-logo">F</div>
     <div class="brand-text">
-      <div class="brand-name">FLO Operasyonel Denetim</div>
-      <div class="brand-sub">2026 Denetim Sistemi</div>
+      <div class="brand-name">FLO Denetim Sistemi</div>
+      <div class="brand-sub" id="brandSub">2026 Denetim Sistemi</div>
     </div>
   </div>
   <div class="score-pill">
@@ -256,7 +256,7 @@
 <main class="container print-hide" id="mainContainer"></main>
 
 <footer class="site-footer print-hide">
-  &copy; 2026 FLO Operasyonel Denetim Sistemi | Altyapı: <a href="https://ardaulas.online" target="_blank">ardaulas.online</a> | İletişim: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="b6d7c4d2d7f6d7c4d2d7c3dad7c598d9d8dadfd8d3">[email&#160;protected]</a>
+  &copy; 2026 FLO Denetim Sistemi | <a href="https://ardaulas.online" target="_blank">ardaulas.online</a> | arda&#64;ardaulas.online
 </footer>
 
 <div class="modal-overlay print-hide" id="adminDataModal" style="z-index: 2002;">
@@ -555,15 +555,15 @@ standards:"Dijital denetim kriterleri dışında kalan her türlü uygunsuz duru
 ];
 
 const SECTION_GROUPS = {
-"Mali Süreçler":           { icon:"$", color:"var(--green)" },
-"Operasyonel Süreçler":    { icon:"Op", color:"var(--amber)" },
-"IT Süreçleri":            { icon:"IT", color:"var(--blue)" },
-"IK Süreçleri":            { icon:"IK", color:"#BF5AF2" },
-"İş Sağlığı ve Güvenliği":{ icon:"SG", color:"#FF2D55" },
-"Kapasite Süreçleri":      { icon:"Kp", color:"#FF9F0A" },
-"Omnichannel Süreçleri":   { icon:"OC", color:"#30D158" },
-"Görsel Süreçler":         { icon:"Gr", color:"#5E5CE6" },
-"Genel":                   { icon:"Gn", color:"var(--muted)" }
+"Mali Süreçler":           { icon:"💰", color:"var(--green)" },
+"Operasyonel Süreçler":    { icon:"⚙", color:"var(--amber)" },
+"IT Süreçleri":            { icon:"💻", color:"var(--blue)" },
+"IK Süreçleri":            { icon:"👥", color:"#BF5AF2" },
+"İş Sağlığı ve Güvenliği":{ icon:"🛡", color:"#FF2D55" },
+"Kapasite Süreçleri":      { icon:"📦", color:"#FF9F0A" },
+"Omnichannel Süreçleri":   { icon:"🌐", color:"#30D158" },
+"Görsel Süreçler":         { icon:"🎨", color:"#5E5CE6" },
+"Genel":                   { icon:"📋", color:"var(--muted)" }
 };
 
 // ==================== STATE ====================
@@ -593,6 +593,8 @@ const typeLabel = auditType === 'dijital' ? 'Dijital Denetim' : 'Operasyonel Den
 const badge = document.getElementById('auditCodeBadge');
 badge.innerText = name + ' | ' + typeLabel;
 badge.style.display = 'block';
+var bs = document.getElementById('brandSub');
+if(bs) bs.textContent = typeLabel + ' | 2026';
 document.getElementById('startupModal').classList.remove('open');
 const dataset = auditType === 'dijital' ? AUDIT_DATA_DIJITAL : AUDIT_DATA_OPERASYONEL;
 initState(dataset);
@@ -644,7 +646,7 @@ item.criteria.forEach((c, idx) => {
 const cStatus = s.criteriaStatus[idx];
 if(cStatus==='tespit'||cStatus==='yok') showExtras = true;
 const rowClass = cStatus==='na'?'na-active':'';
-criteriaHtml += ` <div class="criterion-row ${rowClass}"> <div class="criterion-text-box"> <div class="criterion-text">${c.text}</div> <div class="criterion-pts">${c.puan} P</div> </div> <div class="card-actions"> <button class="btn-action btn-tespit ${cStatus==='tespit'?'active':''}" onclick="setCriterionStatus(${item.id},${idx},'tespit')">! Tespit Var</button> <button class="btn-action btn-yok ${cStatus==='yok'?'active':''}" onclick="setCriterionStatus(${item.id},${idx},'yok')">v Tespit Yok</button> <button class="btn-action btn-na ${cStatus==='na'?'active':''}" onclick="setCriterionStatus(${item.id},${idx},'na')">N/A</button> </div> </div>`;
+criteriaHtml += ` <div class="criterion-row ${rowClass}"> <div class="criterion-text-box"> <div class="criterion-text">${c.text}</div> <div class="criterion-pts">${c.puan} P</div> </div> <div class="card-actions"> <button class="btn-action btn-tespit ${cStatus==='tespit'?'active':''}" onclick="setCriterionStatus(${item.id},${idx},'tespit')">&#9888; Tespit Var</button> <button class="btn-action btn-yok ${cStatus==='yok'?'active':''}" onclick="setCriterionStatus(${item.id},${idx},'yok')">&#10003; Tespit Yok</button> <button class="btn-action btn-na ${cStatus==='na'?'active':''}" onclick="setCriterionStatus(${item.id},${idx},'na')">N/A</button> </div> </div>`;
 });
 
 const isAnyTespit = s.criteriaStatus.includes('tespit');
@@ -657,7 +659,7 @@ return `
         <div class="card-code">${item.code} * Max: ${item.puan} Puan</div>
         <div class="card-title">${item.title}</div>
       </div>
-      <button class="info-btn" title="Kriter Standartları" onclick="showDetail(${item.id})">i</button>
+      <button class="info-btn" title="Kriter Standartları" onclick="showDetail(${item.id})">&#9432;</button>
     </div>
     <div class="criteria-list">${criteriaHtml}</div>
     <div class="extras-area">
