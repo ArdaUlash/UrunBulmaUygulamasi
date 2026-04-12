@@ -1,4 +1,4 @@
-// app.js - v63 (Güvenli Admin Girişi - Şifre Veritabanına Taşındı, Parçalı Doküman Mimarisi)
+// app.js - v63 (Güvenli Admin Girişi - Şifre Veritabanına Taşındı, Parçalı Doküman Mimarisi + Sıfır Gecikmeli Bildirim Modülü)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -29,6 +29,37 @@ const SHARD_LIMIT = 5000;
 
 let unsubInv = null;
 let unsubDesc = null;
+
+// --- JUST SCAN FINDER: BİLDİRİM VE TEPKİ MODÜLÜ ---
+function playSuccessFeedback() {
+    try {
+        let successSound = document.getElementById('audioSuccess');
+        if (successSound) {
+            successSound.currentTime = 0; // Sesi başa sar (Seri okutma kilidini açar)
+            successSound.play().catch(e => console.warn("Başarı sesi engellendi:", e));
+        }
+        
+        // Titreşim (Sadece ürün bulunduğunda - 200 milisaniye)
+        if ("vibrate" in navigator) {
+            navigator.vibrate(200); 
+        }
+    } catch (error) {
+        console.error("Başarı bildirimi hatası:", error);
+    }
+}
+
+function playErrorFeedback() {
+    try {
+        let errorSound = document.getElementById('audioError');
+        if (errorSound) {
+            errorSound.currentTime = 0; // Sesi başa sar
+            errorSound.play().catch(e => console.warn("Hata sesi engellendi:", e));
+        }
+    } catch (error) {
+        console.error("Hata bildirimi hatası:", error);
+    }
+}
+// --------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
     listenWorkspaces();
@@ -294,7 +325,8 @@ async function searchProduct() {
             result.style.border = '1px solid var(--accent-green)';
             result.style.background = 'rgba(0, 230, 118, 0.1)';
         }
-        document.getElementById('audioSuccess')?.play().catch(()=>{});
+        
+        playSuccessFeedback(); // YENİ: Başarı sesi ve titreşim fonksiyonu eklendi
         
         if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Arandı: ${barcode} (BULUNDU)`);
     } else {
@@ -304,7 +336,8 @@ async function searchProduct() {
             result.style.border = '1px solid var(--accent-red)';
             result.style.background = 'rgba(255, 51, 51, 0.1)';
         }
-        document.getElementById('audioError')?.play().catch(()=>{});
+        
+        playErrorFeedback(); // YENİ: Hata sesi ve anında tekrar fonksiyonu eklendi
         
         if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Arandı: ${barcode} (YOK)`);
     }
@@ -347,7 +380,6 @@ async function resetSystemData() {
     if(res) res.style.display = 'none';
 }
 
-// 🔴 GÜVENLİK GÜNCELLEMESİ: Admin girişi artık Firebase'den kontrol ediliyor.
 async function loginAdmin() {
     const user = document.getElementById('adminUser').value;
     const pass = document.getElementById('adminPass').value;
@@ -358,12 +390,10 @@ async function loginAdmin() {
     }
 
     try {
-        // Firebase'den admin_users koleksiyonunda bu kullanıcı adını (document ID) ara
         const adminDoc = await db.collection('admin_users').doc(user).get();
 
         if (adminDoc.exists) {
             const data = adminDoc.data();
-            // Veritabanındaki şifre ile girilen şifreyi karşılaştır
             if (data.password === pass) {
                 currentUser.role = 'ROOT';
                 document.getElementById('adminLoginModal').style.display = 'none';
@@ -374,7 +404,6 @@ async function loginAdmin() {
                 document.getElementById('adminPanelModal').style.display = 'flex';
                 refreshServerList();
                 
-                // Güvenlik için inputları temizle
                 document.getElementById('adminUser').value = '';
                 document.getElementById('adminPass').value = '';
             } else {
