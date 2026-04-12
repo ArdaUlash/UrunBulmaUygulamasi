@@ -1,4 +1,4 @@
-// app.js - v63 (Güvenli Admin Girişi - Şifre Veritabanına Taşındı, Parçalı Doküman Mimarisi + Sıfır Gecikmeli Bildirim Modülü)
+// app.js - v64 (Güvenli Admin, Parçalı Doküman, Sıfır Gecikmeli Polifonik Ses & Titreşim Modülü)
 
 const firebaseConfig = {
     apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
@@ -35,8 +35,14 @@ function playSuccessFeedback() {
     try {
         let successSound = document.getElementById('audioSuccess');
         if (successSound) {
-            successSound.currentTime = 0; // Sesi başa sar (Seri okutma kilidini açar)
-            successSound.play().catch(e => console.warn("Başarı sesi engellendi:", e));
+            // Sesi klonlayarak çal (Seri okutmalarda seslerin üst üste binmesini sağlar)
+            let soundClone = successSound.cloneNode(true);
+            soundClone.play().catch(e => console.warn("Başarı sesi engellendi:", e));
+            
+            // Çalan klon bittiğinde hafızadan temizle
+            soundClone.onended = function() {
+                this.remove();
+            };
         }
         
         // Titreşim (Sadece ürün bulunduğunda - 200 milisaniye)
@@ -52,8 +58,13 @@ function playErrorFeedback() {
     try {
         let errorSound = document.getElementById('audioError');
         if (errorSound) {
-            errorSound.currentTime = 0; // Sesi başa sar
-            errorSound.play().catch(e => console.warn("Hata sesi engellendi:", e));
+            // Hata sesini klonlayarak çal
+            let soundClone = errorSound.cloneNode(true);
+            soundClone.play().catch(e => console.warn("Hata sesi engellendi:", e));
+            
+            soundClone.onended = function() {
+                this.remove();
+            };
         }
     } catch (error) {
         console.error("Hata bildirimi hatası:", error);
@@ -326,7 +337,7 @@ async function searchProduct() {
             result.style.background = 'rgba(0, 230, 118, 0.1)';
         }
         
-        playSuccessFeedback(); // YENİ: Başarı sesi ve titreşim fonksiyonu eklendi
+        playSuccessFeedback(); // Polifonik Başarı Sesi ve Titreşim
         
         if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Arandı: ${barcode} (BULUNDU)`);
     } else {
@@ -337,7 +348,7 @@ async function searchProduct() {
             result.style.background = 'rgba(255, 51, 51, 0.1)';
         }
         
-        playErrorFeedback(); // YENİ: Hata sesi ve anında tekrar fonksiyonu eklendi
+        playErrorFeedback(); // Polifonik Hata Sesi
         
         if(appMode !== 'LOCAL') logAction(currentWorkspace, "ARAMA", `Arandı: ${barcode} (YOK)`);
     }
