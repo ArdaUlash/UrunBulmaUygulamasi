@@ -47,7 +47,7 @@ function playSuccessFeedback() {
         
         // Titreşim (Sadece ürün bulunduğunda - 200 milisaniye)
         if ("vibrate" in navigator) {
-            navigator.vibrate(200); 
+            navigator.vibrate(500); 
         }
     } catch (error) {
         console.error("Başarı bildirimi hatası:", error);
