@@ -12,6 +12,7 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const analytics = firebase.analytics(); // Analytics   
 
 let appMode = 'LOCAL'; 
 let currentWorkspace = 'LOCAL'; 
