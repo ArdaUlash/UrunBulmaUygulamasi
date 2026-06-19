@@ -4,27 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Barkod Yönetim Paneli - Dark Mode</title>
-    <!-- JsBarcode Kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
         /* SABİT KARANLIK MOD (DARK MODE) DEĞİŞKENLERİ */
         :root {
-            --bg-main: #0f172a;        /* Koyu lacivert arka plan */
-            --surface: #1e293b;        /* Panel içi yüzey rengi */
-            --panel-bg: #0f172a;       /* Sol menü arka planı */
-            --primary: #3b82f6;        /* Ana buton rengi (Mavi) */
-            --primary-hover: #60a5fa;  /* Ana buton hover (Açık Mavi) */
+            --bg-main: #0f172a;        
+            --surface: #1e293b;        
+            --panel-bg: #0f172a;       
+            --primary: #3b82f6;        
+            --primary-hover: #60a5fa;  
             --secondary: #3b82f6;      
             --secondary-hover: #2563eb;
-            --danger: #ef4444;         /* Durdur butonu (Kırmızı) */
+            --danger: #ef4444;         
             --danger-hover: #dc2626;
-            --text-main: #f8fafc;      /* Ana metinler (Parlak beyaz/gri) */
-            --text-muted: #94a3b8;     /* Alt metinler (Soluk gri) */
-            --border: #334155;         /* Çerçeve çizgileri */
+            --text-main: #f8fafc;      
+            --text-muted: #94a3b8;     
+            --border: #334155;         
             --radius-xl: 16px;
             --radius-lg: 12px;
             --radius-md: 8px;
-            --modal-overlay: rgba(0, 0, 0, 0.8); /* Popup arkası siyah blur */
+            --modal-overlay: rgba(0, 0, 0, 0.8); 
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -143,7 +142,15 @@
             min-height: 380px;
         }
 
-        /* Lazer okuyucular için barkod arka planı KESİNLİKLE BEYAZ bırakıldı */
+        /* Barkodun Üzerindeki Üst Bar (Rozet Taşıyıcı) */
+        .display-header {
+            width: 100%;
+            display: flex;
+            justify-content: flex-end; /* Rozeti sağa yaslar */
+            margin-bottom: 12px; /* Barkod ile arasındaki mesafe */
+        }
+
+        /* Barkod alanı arka planı BEYAZ bırakıldı */
         .barcode-card {
             width: 100%;
             flex: 1;
@@ -164,13 +171,11 @@
         .progress-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background-color: var(--border); }
         .progress-bar { height: 100%; width: 0%; background-color: var(--secondary); transition: width linear; }
 
+        /* Rozet artık "absolute" değil, yapısal akışın içinde */
         .status-badge {
-            position: absolute;
-            top: 16px;
-            right: 16px;
             background-color: var(--bg-main);
             color: var(--text-muted);
-            padding: 4px 12px;
+            padding: 6px 14px;
             border-radius: 999px;
             font-size: 0.75rem;
             font-weight: 700;
@@ -219,12 +224,7 @@
         
         .modal-body p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.6; }
         
-        /* Dosya Yükleme Alanı Düzeni */
-        .file-upload-wrapper {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 8px;
-        }
+        .file-upload-wrapper { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 
         .btn-upload {
             background-color: transparent;
@@ -261,7 +261,6 @@
 <body>
 
     <div class="container">
-        <!-- Kontrol Paneli -->
         <main class="panel-controls">
             <div>
                 <h1 class="panel-title">Barkod Yönetimi</h1>
@@ -290,20 +289,22 @@
             </div>
         </main>
 
-        <!-- Ekran / Gösterim Paneli -->
         <section class="panel-display">
-            <div class="status-badge" id="statusBadge">BEKLİYOR</div>
+            <div class="display-header">
+                <div class="status-badge" id="statusBadge">BEKLİYOR</div>
+            </div>
+
             <div class="barcode-card">
                 <svg id="barcodeSVG"></svg>
                 <div class="progress-container">
                     <div class="progress-bar" id="progressBar"></div>
                 </div>
             </div>
+            
             <div class="counter-text" id="statusText">Sistem hazır, veri girişi bekleniyor.</div>
         </section>
     </div>
 
-    <!-- KURUMSAL GRUP (GENERIC) FİLTRELEME PENCERESİ -->
     <div class="modal-overlay" id="genericModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -313,7 +314,6 @@
             <div class="modal-body">
                 <p>Aynı Grup (Generic) numarasına sahip varyantlardan (örn. numara/beden) sadece bir adet barkodu listeye dahil eder. Lütfen <b>"Barkod [Boşluk] GrupID"</b> formatında girin veya dosya yükleyin.</p>
                 
-                <!-- Dosya Yükleme Alanı -->
                 <div class="file-upload-wrapper">
                     <label for="fileUpload" class="btn-upload">
                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
@@ -331,7 +331,6 @@
         </div>
     </div>
 
-    <!-- Uygulama Mantığı -->
     <script>
         let isRunning = false;
         let animationId;
@@ -425,7 +424,7 @@
                 JsBarcode("#barcodeSVG", code, {
                     format: isEAN ? "EAN13" : "CODE128",
                     lineColor: "#0f172a",
-                    background: "#ffffff", /* Barkod çizgisinin arkasını sağlama alıyoruz */
+                    background: "#ffffff", 
                     width: 2, 
                     height: 110,
                     displayValue: true,
