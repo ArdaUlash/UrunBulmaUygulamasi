@@ -3,26 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Endüstriyel Barkod Konsolu</title>
+    <title>Barkod Yönetim Paneli</title>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
         :root {
             --bg-main: #f8fafc;
             --surface: #ffffff;
             --panel-bg: #f1f5f9;
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --secondary: #8b5cf6;
-            --secondary-hover: #7c3aed;
+            --primary: #0f172a; /* Kurumsal lacivert/siyah tonu */
+            --primary-hover: #1e293b;
+            --secondary: #3b82f6; /* Vurgu rengi (Mavi) */
+            --secondary-hover: #2563eb;
             --danger: #ef4444;
             --danger-hover: #dc2626;
             --text-main: #0f172a;
             --text-muted: #475569;
             --border: #cbd5e1;
-            --radius-xl: 20px;
+            --radius-xl: 16px;
             --radius-lg: 12px;
             --radius-md: 8px;
-            --modal-overlay: rgba(15, 23, 42, 0.6);
+            --modal-overlay: rgba(15, 23, 42, 0.5);
         }
 
         @media (prefers-color-scheme: dark) {
@@ -73,7 +73,8 @@
             gap: 20px;
         }
 
-        .panel-title { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
+        .panel-title { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.01em; color: var(--primary); }
+        .panel-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
 
         .input-group { display: flex; flex-direction: column; gap: 8px; }
         
@@ -92,15 +93,15 @@
             font-size: 0.8rem;
             font-weight: 600;
             cursor: pointer;
-            padding: 4px 8px;
+            padding: 6px 10px;
             border-radius: 4px;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             transition: background 0.2s;
         }
 
-        .btn-text:hover { background: rgba(139, 92, 246, 0.1); color: var(--secondary-hover); }
+        .btn-text:hover { background: rgba(59, 130, 246, 0.1); color: var(--secondary-hover); }
 
         textarea, input[type="number"] {
             width: 100%;
@@ -114,7 +115,7 @@
         }
 
         textarea { height: 140px; resize: none; font-family: monospace; }
-        textarea:focus, input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+        textarea:focus, input:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
 
         .btn-row { display: flex; gap: 10px; margin-top: auto; }
 
@@ -128,6 +129,10 @@
             cursor: pointer;
             transition: all 0.2s ease;
             color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
         }
 
         .btn-primary { background-color: var(--primary); }
@@ -166,7 +171,7 @@
         #barcodeSVG { max-width: 100%; height: auto !important; display: block; margin: 0 auto; }
 
         .progress-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background-color: #f1f5f9; }
-        .progress-bar { height: 100%; width: 0%; background-color: var(--primary); transition: width linear; }
+        .progress-bar { height: 100%; width: 0%; background-color: var(--secondary); transition: width linear; }
 
         .status-badge {
             position: absolute;
@@ -174,16 +179,17 @@
             right: 16px;
             background-color: #e2e8f0;
             color: #475569;
-            padding: 4px 10px;
+            padding: 4px 12px;
             border-radius: 999px;
             font-size: 0.75rem;
             font-weight: 700;
+            letter-spacing: 0.05em;
         }
         .status-badge.active { background-color: #10b981; color: white; }
 
-        .counter-text { margin-top: 16px; font-weight: 700; color: #1e293b; font-size: 1.1rem; text-align: center; }
+        .counter-text { margin-top: 16px; font-weight: 600; color: #1e293b; font-size: 1.05rem; text-align: center; }
 
-        /* --- MODAL (POPUP) TASARIMI --- */
+        /* --- KURUMSAL MODAL (POPUP) TASARIMI --- */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -203,9 +209,9 @@
         .modal-content {
             background-color: var(--surface);
             width: 90%;
-            max-width: 500px;
+            max-width: 550px;
             border-radius: var(--radius-lg);
-            padding: 24px;
+            padding: 28px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             transform: translateY(20px);
             transition: transform 0.3s ease;
@@ -213,23 +219,48 @@
 
         .modal-overlay.open .modal-content { transform: translateY(0); }
 
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-        .modal-header h3 { font-size: 1.2rem; margin: 0; color: var(--text-main); }
-        .close-btn { background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; line-height: 1; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+        .modal-header h3 { font-size: 1.15rem; margin: 0; color: var(--primary); font-weight: 700; }
+        .close-btn { background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; line-height: 1; transition: color 0.2s; }
+        .close-btn:hover { color: var(--danger); }
         
-        .modal-body p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; }
+        .modal-body p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.6; }
         
-        .modal-footer { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
-        .btn-modal { padding: 10px 16px; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; border: none; font-size: 0.9rem; }
+        /* Dosya Yükleme Alanı Düzeni */
+        .file-upload-wrapper {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 8px;
+        }
+
+        .btn-upload {
+            background-color: #f1f5f9;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: var(--radius-md);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn-upload:hover { background-color: #e2e8f0; border-color: var(--text-muted); }
+
+        .modal-footer { display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end; }
+        .btn-modal { padding: 12px 20px; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; border: none; font-size: 0.9rem; transition: all 0.2s; }
         .btn-cancel { background-color: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-cancel:hover { background-color: var(--bg-main); }
         .btn-apply { background-color: var(--secondary); color: white; }
         .btn-apply:hover { background-color: var(--secondary-hover); }
 
         /* Mobil Uyum */
         @media (max-width: 768px) {
             .container { grid-template-columns: 1fr; }
-            .panel-controls { border-right: none; border-bottom: 1px solid var(--border); padding: 20px; }
-            .panel-display { padding: 20px; min-height: 320px; }
+            .panel-controls { border-right: none; border-bottom: 1px solid var(--border); padding: 24px; }
+            .panel-display { padding: 24px; min-height: 320px; }
             .barcode-card { min-height: 200px; }
         }
     </style>
@@ -239,57 +270,66 @@
     <div class="container">
         <main class="panel-controls">
             <div>
-                <h1 class="panel-title">Endüstriyel Barkod Konsolu</h1>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Offline & Terminal Uyumlu</p>
+                <h1 class="panel-title">Kurumsal Barkod Yönetimi</h1>
+                <p class="panel-subtitle">Operasyonel seri tarama ve optik okuyucu arayüzü.</p>
             </div>
 
             <div class="input-group">
                 <div class="input-header">
-                    <label for="barcodeInput">Barkod Veri Havuzu</label>
-                    <button class="btn-text" onclick="openModal()">
-                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                        Generic Filtrele
+                    <label for="barcodeInput">İşlenecek Barkod Verileri</label>
+                    <button class="btn-text" onclick="openModal()" title="Varyant model numarasına göre filtreleme yapın">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                        Grup (Generic) Filtresi
                     </button>
                 </div>
-                <textarea id="barcodeInput" placeholder="Sadece barkodlar buraya yansır..." spellcheck="false"></textarea>
+                <textarea id="barcodeInput" placeholder="Örn: 8690123456789&#10;8699876543210" spellcheck="false"></textarea>
             </div>
 
             <div class="input-group">
-                <label for="timeInput">Görüntülenme Periyodu (Saniye)</label>
+                <label for="timeInput">Geçiş Süresi (Saniye)</label>
                 <input type="number" id="timeInput" value="3.0" min="0.3" step="0.1">
             </div>
 
             <div class="btn-row">
-                <button class="btn-main btn-primary" id="startBtn" onclick="startDisplay()">Başlat</button>
+                <button class="btn-main btn-primary" id="startBtn" onclick="startDisplay()">İşlemi Başlat</button>
                 <button class="btn-main btn-danger" id="stopBtn" onclick="stopDisplay()" disabled>Durdur</button>
             </div>
         </main>
 
         <section class="panel-display">
-            <div class="status-badge" id="statusBadge">HAZIR</div>
+            <div class="status-badge" id="statusBadge">BEKLİYOR</div>
             <div class="barcode-card">
                 <svg id="barcodeSVG"></svg>
                 <div class="progress-container">
                     <div class="progress-bar" id="progressBar"></div>
                 </div>
             </div>
-            <div class="counter-text" id="statusText">İşlem başlatılması bekleniyor...</div>
+            <div class="counter-text" id="statusText">Sistem hazır, veri girişi bekleniyor.</div>
         </section>
     </div>
 
     <div class="modal-overlay" id="genericModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Generic Modeline Göre Filtrele</h3>
+                <h3>Varyant & Grup (Generic) Filtreleme</h3>
                 <button class="close-btn" onclick="closeModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <p>Aynı generic ID'sine sahip varyantlardan (örn. numara/beden) sadece ilk barkodu seçer. <br><b>Format:</b> <i>Barkod [Boşluk] GenericID</i></p>
+                <p>Aynı Grup (Generic) numarasına sahip varyantlardan (örn. numara/beden) sadece bir adet barkodu listeye dahil eder. Lütfen <b>"Barkod [Boşluk] GrupID"</b> formatında girin veya dosya yükleyin.</p>
+                
+                <div class="file-upload-wrapper">
+                    <label for="fileUpload" class="btn-upload">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        .txt Dosyası Yükle
+                    </label>
+                    <input type="file" id="fileUpload" accept=".txt" style="display:none;" onchange="handleFileUpload(event)">
+                </div>
+
                 <textarea id="genericInput" placeholder="1111111111 321&#10;2222222222 321&#10;3333333333 321&#10;4444444444 123&#10;5555555555 123" spellcheck="false"></textarea>
             </div>
             <div class="modal-footer">
-                <button class="btn-modal btn-cancel" onclick="closeModal()">İptal</button>
-                <button class="btn-modal btn-apply" onclick="applyGenericFilter()">Ayrıştır ve Ekle</button>
+                <button class="btn-modal btn-cancel" onclick="closeModal()">İptal Et</button>
+                <button class="btn-modal btn-apply" onclick="applyGenericFilter()">Filtrele ve Aktar</button>
             </div>
         </div>
     </div>
@@ -298,7 +338,7 @@
         let isRunning = false;
         let animationId;
 
-        // --- POPUP (MODAL) YÖNETİMİ ---
+        // --- POPUP VE DOSYA YÖNETİMİ ---
         function openModal() {
             document.getElementById('genericModal').classList.add('open');
             document.getElementById('genericInput').focus();
@@ -306,9 +346,26 @@
 
         function closeModal() {
             document.getElementById('genericModal').classList.remove('open');
-            document.getElementById('genericInput').value = ''; // Kapatınca temizle
+            document.getElementById('genericInput').value = ''; 
+            document.getElementById('fileUpload').value = ''; // Dosya seçicisini sıfırla
         }
 
+        // TXT Dosyası Okuma Fonksiyonu
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('genericInput').value = e.target.result;
+            };
+            reader.readAsText(file);
+            
+            // Aynı dosyayı tekrar seçebilmek için input'u temizle
+            event.target.value = '';
+        }
+
+        // Generic ID Ayrıştırma Mantığı
         function applyGenericFilter() {
             const rawText = document.getElementById('genericInput').value;
             const lines = rawText.split('\n');
@@ -319,14 +376,12 @@
                 line = line.trim();
                 if (!line) continue;
                 
-                // Birden fazla boşluk veya tab olsa bile düzgün böler
                 const parts = line.split(/\s+/);
                 
                 if (parts.length >= 2) {
                     const barcode = parts[0];
-                    const generic = parts[parts.length - 1]; // Son sütunu generic kabul et
+                    const generic = parts[parts.length - 1]; // Son sütunu grup numarası kabul et
                     
-                    // Eğer bu generic daha önce eklenmemişse (Set içinde yoksa) barkodu listeye al
                     if (!seenGenerics.has(generic)) {
                         seenGenerics.add(generic);
                         filteredBarcodes.push(barcode);
@@ -335,35 +390,34 @@
             }
 
             if (filteredBarcodes.length > 0) {
-                // Filtrelenen barkodları ana ekrandaki havuza aktar
                 document.getElementById('barcodeInput').value = filteredBarcodes.join('\n');
                 closeModal();
-                alert(`${filteredBarcodes.length} adet benzersiz Generic ID bulundu ve listeye eklendi.`);
+                alert(`İşlem Başarılı: ${filteredBarcodes.length} adet benzersiz modele ait barkod listeye eklendi.`);
             } else {
-                alert("Geçerli formatta veri bulunamadı. Lütfen 'Barkod Generic' şeklinde aralarında boşluk bırakarak yapıştırın.");
+                alert("Uyarı: Geçerli formatta veri bulunamadı. Lütfen 'Barkod GrupID' formatında veri girdiğinizden veya dosyanızın doğru formatta olduğundan emin olun.");
             }
         }
 
-        // --- BARKOD GÖSTERİM YÖNETİMİ ---
+        // --- BARKOD OPERASYON YÖNETİMİ ---
         async function startDisplay() {
             const rawData = document.getElementById('barcodeInput').value;
             const barcodes = rawData.split(/[\n,\s]+/).map(c => c.trim()).filter(c => c !== "");
             const durationSec = parseFloat(document.getElementById('timeInput').value);
 
-            if (!barcodes.length) return alert("Lütfen geçerli barkod girişleri yapın.");
-            if (isNaN(durationSec) || durationSec < 0.2) return alert("Geçerli bir saniye aralığı girin.");
+            if (!barcodes.length) return alert("Lütfen işlenecek geçerli barkod verilerini girin.");
+            if (isNaN(durationSec) || durationSec < 0.2) return alert("Lütfen geçerli bir süre tanımlayın.");
 
             const durationMs = durationSec * 1000;
             isRunning = true;
             toggleControls(true);
 
             const badge = document.getElementById('statusBadge');
-            badge.textContent = "AKTİF";
+            badge.textContent = "İŞLEMDE";
             badge.classList.add('active');
 
             for (let i = 0; i < barcodes.length; i++) {
                 if (!isRunning) break;
-                document.getElementById('statusText').innerText = `Kayıt: ${i + 1} / ${barcodes.length}`;
+                document.getElementById('statusText').innerText = `Geçerli Barkod: ${i + 1} / ${barcodes.length}`;
                 renderEngine(barcodes[i]);
                 await runProgressBar(durationMs);
             }
@@ -388,7 +442,7 @@
                 });
             } catch (e) {
                 svg.innerHTML = "";
-                document.getElementById('statusText').innerText = `Hata: Format Uyumsuz [${code}]`;
+                document.getElementById('statusText').innerText = `Biçim Hatası: [${code}]`;
             }
         }
 
@@ -423,9 +477,9 @@
             document.getElementById('progressBar').style.width = '0%';
             
             const badge = document.getElementById('statusBadge');
-            badge.textContent = "DURDURULDU";
+            badge.textContent = "DURAKLATILDI";
             badge.classList.remove('active');
-            document.getElementById('statusText').innerText = "Akış durduruldu.";
+            document.getElementById('statusText').innerText = "Kullanıcı müdahalesi ile işlem durduruldu.";
             toggleControls(false);
         }
 
@@ -435,7 +489,7 @@
             const badge = document.getElementById('statusBadge');
             badge.textContent = "TAMAMLANDI";
             badge.classList.remove('active');
-            document.getElementById('statusText').innerText = "Tüm barkod serisi tamamlandı.";
+            document.getElementById('statusText').innerText = "Tanımlı tüm verilerin işlemi tamamlandı.";
             document.getElementById('barcodeSVG').innerHTML = "";
             toggleControls(false);
         }
@@ -446,7 +500,6 @@
             document.getElementById('barcodeInput').disabled = state;
             document.getElementById('timeInput').disabled = state;
             
-            // Çalışırken filtre butonunu da deaktif et
             const filterBtn = document.querySelector('.btn-text');
             if (state) {
                 filterBtn.style.opacity = '0.5';
