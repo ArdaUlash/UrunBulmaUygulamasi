@@ -12,6 +12,8 @@
             --panel-bg: #f1f5f9;
             --primary: #2563eb;
             --primary-hover: #1d4ed8;
+            --secondary: #8b5cf6;
+            --secondary-hover: #7c3aed;
             --danger: #ef4444;
             --danger-hover: #dc2626;
             --text-main: #0f172a;
@@ -20,25 +22,22 @@
             --radius-xl: 20px;
             --radius-lg: 12px;
             --radius-md: 8px;
+            --modal-overlay: rgba(15, 23, 42, 0.6);
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg-main: #0f172a;
                 --surface: #1e293b;
-                --panel-bg: #1e293b;
+                --panel-bg: #0f172a;
                 --text-main: #f8fafc;
                 --text-muted: #94a3b8;
                 --border: #334155;
+                --modal-overlay: rgba(0, 0, 0, 0.8);
             }
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            -webkit-tap-highlight-color: transparent;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -76,8 +75,32 @@
 
         .panel-title { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
 
-        .input-group { display: flex; flex-direction: column; gap: 6px; }
-        .input-group label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        
+        .input-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .input-header label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
+
+        .btn-text {
+            background: none;
+            border: none;
+            color: var(--secondary);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: background 0.2s;
+        }
+
+        .btn-text:hover { background: rgba(139, 92, 246, 0.1); color: var(--secondary-hover); }
 
         textarea, input[type="number"] {
             width: 100%;
@@ -95,7 +118,7 @@
 
         .btn-row { display: flex; gap: 10px; margin-top: auto; }
 
-        button {
+        button.btn-main {
             flex: 1;
             padding: 14px;
             border: none;
@@ -108,10 +131,10 @@
         }
 
         .btn-primary { background-color: var(--primary); }
-        .btn-primary:hover:not(:disabled) { background-color: var(--primary-hover); }
+        .btn-primary:hover:not(:disabled) { background-color: var(--primary-hover); transform: translateY(-1px); }
         .btn-danger { background-color: var(--danger); }
-        .btn-danger:hover:not(:disabled) { background-color: var(--danger-hover); }
-        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-danger:hover:not(:disabled) { background-color: var(--danger-hover); transform: translateY(-1px); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
         /* --- SAĞ PANEL (Barkod Alanı) --- */
         .panel-display {
@@ -120,18 +143,17 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background-color: #ffffff; /* Lazer okuyucular için kalıcı beyaz zemin */
+            background-color: #ffffff;
             position: relative;
             min-height: 380px;
         }
 
-        /* Barkodu Kusursuz Ortalayan Yapı */
         .barcode-card {
             width: 100%;
             flex: 1;
             display: flex;
-            justify-content: center; /* Yatay ortalama */
-            align-items: center;     /* Dikey ortalama */
+            justify-content: center;
+            align-items: center;
             position: relative;
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
@@ -141,29 +163,10 @@
             overflow: hidden;
         }
 
-        /* Mobil Taşmaları Engelleyen SVG Ayarı */
-        #barcodeSVG {
-            max-width: 100%;
-            height: auto !important;
-            display: block;
-            margin: 0 auto;
-        }
+        #barcodeSVG { max-width: 100%; height: auto !important; display: block; margin: 0 auto; }
 
-        .progress-container {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 5px;
-            background-color: #f1f5f9;
-        }
-
-        .progress-bar {
-            height: 100%;
-            width: 0%;
-            background-color: var(--primary);
-            transition: width linear;
-        }
+        .progress-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background-color: #f1f5f9; }
+        .progress-bar { height: 100%; width: 0%; background-color: var(--primary); transition: width linear; }
 
         .status-badge {
             position: absolute;
@@ -176,18 +179,53 @@
             font-size: 0.75rem;
             font-weight: 700;
         }
-
         .status-badge.active { background-color: #10b981; color: white; }
 
-        .counter-text {
-            margin-top: 16px;
-            font-weight: 700;
-            color: #1e293b;
-            font-size: 1.1rem;
-            text-align: center;
+        .counter-text { margin-top: 16px; font-weight: 700; color: #1e293b; font-size: 1.1rem; text-align: center; }
+
+        /* --- MODAL (POPUP) TASARIMI --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--modal-overlay);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            backdrop-filter: blur(4px);
         }
 
-        /* Mobil Uyum (Responsive) */
+        .modal-overlay.open { opacity: 1; visibility: visible; }
+
+        .modal-content {
+            background-color: var(--surface);
+            width: 90%;
+            max-width: 500px;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.open .modal-content { transform: translateY(0); }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .modal-header h3 { font-size: 1.2rem; margin: 0; color: var(--text-main); }
+        .close-btn { background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; line-height: 1; }
+        
+        .modal-body p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; }
+        
+        .modal-footer { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+        .btn-modal { padding: 10px 16px; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; border: none; font-size: 0.9rem; }
+        .btn-cancel { background-color: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-apply { background-color: var(--secondary); color: white; }
+        .btn-apply:hover { background-color: var(--secondary-hover); }
+
+        /* Mobil Uyum */
         @media (max-width: 768px) {
             .container { grid-template-columns: 1fr; }
             .panel-controls { border-right: none; border-bottom: 1px solid var(--border); padding: 20px; }
@@ -201,13 +239,19 @@
     <div class="container">
         <main class="panel-controls">
             <div>
-                <h1 class="panel-title">Hızlı Barkod Taraması</h1>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">El terminalleri ile %100 uyumlu</p>
+                <h1 class="panel-title">Endüstriyel Barkod Konsolu</h1>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Offline & Terminal Uyumlu</p>
             </div>
 
             <div class="input-group">
-                <label for="barcodeInput">Barkod Veri Havuzu</label>
-                <textarea id="barcodeInput" placeholder="8691234567890&#10;8690987654321" spellcheck="false"></textarea>
+                <div class="input-header">
+                    <label for="barcodeInput">Barkod Veri Havuzu</label>
+                    <button class="btn-text" onclick="openModal()">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                        Generic Filtrele
+                    </button>
+                </div>
+                <textarea id="barcodeInput" placeholder="Sadece barkodlar buraya yansır..." spellcheck="false"></textarea>
             </div>
 
             <div class="input-group">
@@ -216,29 +260,91 @@
             </div>
 
             <div class="btn-row">
-                <button class="btn-primary" id="startBtn" onclick="startDisplay()">Başlat</button>
-                <button class="btn-danger" id="stopBtn" onclick="stopDisplay()" disabled>Durdur</button>
+                <button class="btn-main btn-primary" id="startBtn" onclick="startDisplay()">Başlat</button>
+                <button class="btn-main btn-danger" id="stopBtn" onclick="stopDisplay()" disabled>Durdur</button>
             </div>
         </main>
 
         <section class="panel-display">
             <div class="status-badge" id="statusBadge">HAZIR</div>
-            
             <div class="barcode-card">
                 <svg id="barcodeSVG"></svg>
                 <div class="progress-container">
                     <div class="progress-bar" id="progressBar"></div>
                 </div>
             </div>
-
             <div class="counter-text" id="statusText">İşlem başlatılması bekleniyor...</div>
         </section>
+    </div>
+
+    <div class="modal-overlay" id="genericModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Generic Modeline Göre Filtrele</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Aynı generic ID'sine sahip varyantlardan (örn. numara/beden) sadece ilk barkodu seçer. <br><b>Format:</b> <i>Barkod [Boşluk] GenericID</i></p>
+                <textarea id="genericInput" placeholder="1111111111 321&#10;2222222222 321&#10;3333333333 321&#10;4444444444 123&#10;5555555555 123" spellcheck="false"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-cancel" onclick="closeModal()">İptal</button>
+                <button class="btn-modal btn-apply" onclick="applyGenericFilter()">Ayrıştır ve Ekle</button>
+            </div>
+        </div>
     </div>
 
     <script>
         let isRunning = false;
         let animationId;
 
+        // --- POPUP (MODAL) YÖNETİMİ ---
+        function openModal() {
+            document.getElementById('genericModal').classList.add('open');
+            document.getElementById('genericInput').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('genericModal').classList.remove('open');
+            document.getElementById('genericInput').value = ''; // Kapatınca temizle
+        }
+
+        function applyGenericFilter() {
+            const rawText = document.getElementById('genericInput').value;
+            const lines = rawText.split('\n');
+            const seenGenerics = new Set();
+            const filteredBarcodes = [];
+
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+                
+                // Birden fazla boşluk veya tab olsa bile düzgün böler
+                const parts = line.split(/\s+/);
+                
+                if (parts.length >= 2) {
+                    const barcode = parts[0];
+                    const generic = parts[parts.length - 1]; // Son sütunu generic kabul et
+                    
+                    // Eğer bu generic daha önce eklenmemişse (Set içinde yoksa) barkodu listeye al
+                    if (!seenGenerics.has(generic)) {
+                        seenGenerics.add(generic);
+                        filteredBarcodes.push(barcode);
+                    }
+                }
+            }
+
+            if (filteredBarcodes.length > 0) {
+                // Filtrelenen barkodları ana ekrandaki havuza aktar
+                document.getElementById('barcodeInput').value = filteredBarcodes.join('\n');
+                closeModal();
+                alert(`${filteredBarcodes.length} adet benzersiz Generic ID bulundu ve listeye eklendi.`);
+            } else {
+                alert("Geçerli formatta veri bulunamadı. Lütfen 'Barkod Generic' şeklinde aralarında boşluk bırakarak yapıştırın.");
+            }
+        }
+
+        // --- BARKOD GÖSTERİM YÖNETİMİ ---
         async function startDisplay() {
             const rawData = document.getElementById('barcodeInput').value;
             const barcodes = rawData.split(/[\n,\s]+/).map(c => c.trim()).filter(c => c !== "");
@@ -268,7 +374,6 @@
         function renderEngine(code) {
             const svg = document.getElementById('barcodeSVG');
             try {
-                // Kalınlık (width: 2) mobil ekranlarda taşmayı engeller
                 const isEAN = (code.length === 13 && /^\d+$/.test(code));
                 JsBarcode("#barcodeSVG", code, {
                     format: isEAN ? "EAN13" : "CODE128",
@@ -279,7 +384,7 @@
                     displayValue: true,
                     fontSize: 20,
                     fontOptions: "bold",
-                    margin: 0 // Tam ortalama için margin her zaman sıfır olmalı
+                    margin: 0
                 });
             } catch (e) {
                 svg.innerHTML = "";
@@ -340,6 +445,16 @@
             document.getElementById('stopBtn').disabled = !state;
             document.getElementById('barcodeInput').disabled = state;
             document.getElementById('timeInput').disabled = state;
+            
+            // Çalışırken filtre butonunu da deaktif et
+            const filterBtn = document.querySelector('.btn-text');
+            if (state) {
+                filterBtn.style.opacity = '0.5';
+                filterBtn.style.pointerEvents = 'none';
+            } else {
+                filterBtn.style.opacity = '1';
+                filterBtn.style.pointerEvents = 'auto';
+            }
         }
     </script>
 </body>
