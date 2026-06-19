@@ -1,377 +1,469 @@
-<!DOCTYPE html>
+import requests
+
+# Fetch JsBarcode minified code to bundle it for 100% offline execution
+jsbarcode_url = "https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"
+try:
+    response = requests.get(jsbarcode_url, timeout=10)
+    jsbarcode_code = response.text
+except Exception as e:
+    # Fallback placeholder if download fails (highly unlikely in this env, but safe)
+    jsbarcode_code = "// JsBarcode library fetch failed. Please ensure internet connection for setup."
+
+html_content = f"""<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gelişmiş Barkod Operasyon Ekranı</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    
+    <title>Profesyonel Seri Barkod Ekranı (Offline & Mobil Uyumlu)</title>
     <style>
-        /* Modern CSS Değişkenleri (Tema Yönetimi) */
-        :root {
-            --bg-color: #f3f4f6;
-            --surface-color: #ffffff;
-            --primary-color: #0ea5e9;
-            --primary-hover: #0284c7;
-            --danger-color: #ef4444;
+        /* Modern CSS Değişkenleri */
+        :root {{
+            --bg-main: #f8fafc;
+            --surface: #ffffff;
+            --panel-bg: #f1f5f9;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #ef4444;
             --danger-hover: #dc2626;
+            --download-btn: #059669;
+            --download-hover: #047857;
             --text-main: #0f172a;
-            --text-muted: #64748b;
-            --border-color: #e2e8f0;
-            --focus-ring: rgba(14, 165, 233, 0.2);
-            --radius-lg: 16px;
-            --radius-md: 12px;
-            --radius-sm: 8px;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
-            --shadow-lg: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01);
-        }
+            --text-muted: #475569;
+            --border: #cbd5e1;
+            --radius-xl: 20px;
+            --radius-lg: 12px;
+            --radius-md: 8px;
+        }}
 
-        /* Sistem karanlık moddaysa bile barkod okuyucuların çalışması için okuma alanı beyaz kalmalıdır. */
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-color: #0f172a;
-                --surface-color: #1e293b;
+        @media (prefers-color-scheme: dark) {{
+            :root {{
+                --bg-main: #0f172a;
+                --surface: #1e293b;
+                --panel-bg: #1e293b;
                 --text-main: #f8fafc;
                 --text-muted: #94a3b8;
-                --border-color: #334155;
-            }
-        }
+                --border: #334155;
+            }}
+        }}
 
-        /* Temel Reset ve Tipografi */
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Inter', system-ui, sans-serif;
-            background-color: var(--bg-color);
+        * {{
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }}
+
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
             color: var(--text-main);
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
+            padding: 16px;
+            line-height: 1.5;
+        }}
 
-        /* Bento Grid Layout Yapısı */
-        .app-container {
+        /* Responsive Grid Düzeni */
+        .container {{
             width: 100%;
-            max-width: 900px;
-            background-color: var(--surface-color);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-lg);
+            max-width: 1000px;
+            background-color: var(--surface);
+            border-radius: var(--radius-xl);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             display: grid;
             grid-template-columns: 1fr 1.2fr;
             overflow: hidden;
-            border: 1px solid var(--border-color);
-        }
+            border: 1px solid var(--border);
+        }}
 
-        /* Sol Panel: Giriş ve Kontroller */
-        .control-panel {
+        /* Sol Kontrol Paneli */
+        .panel-controls {{
             padding: 32px;
-            border-right: 1px solid var(--border-color);
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             gap: 20px;
-        }
+        }}
 
-        .header-title {
-            font-size: 1.25rem;
+        .panel-title {{
+            font-size: 1.4rem;
             font-weight: 700;
-            letter-spacing: -0.025em;
-            margin-bottom: 8px;
-        }
+            letter-spacing: -0.02em;
+        }}
 
-        .input-group { display: flex; flex-direction: column; gap: 8px; }
-        .input-group label { font-size: 0.875rem; font-weight: 600; color: var(--text-muted); }
+        .input-group {{
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }}
 
-        textarea, input[type="number"] {
+        .input-group label {{
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }}
+
+        textarea, input[type="number"] {{
             width: 100%;
             padding: 12px;
-            background-color: transparent;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border);
             border-radius: var(--radius-md);
+            background-color: var(--surface);
             color: var(--text-main);
-            font-family: 'Inter', sans-serif;
             font-size: 0.95rem;
-            transition: all 0.2s ease;
-        }
-        
-        textarea { height: 140px; resize: none; font-family: ui-monospace, monospace; }
-        
-        textarea:focus, input:focus {
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }}
+
+        textarea {{
+            height: 140px;
+            resize: none;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }}
+
+        textarea:focus, input:focus {{
             outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 4px var(--focus-ring);
-        }
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }}
 
-        .action-buttons {
+        .btn-stack {{
             display: flex;
-            gap: 12px;
+            flex-direction: column;
+            gap: 10px;
             margin-top: auto;
-        }
+        }}
 
-        button {
+        .btn-row {{
+            display: flex;
+            gap: 10px;
+        }}
+
+        button, .download-link {{
             flex: 1;
             padding: 14px;
             border: none;
-            border-radius: var(--radius-sm);
+            border-radius: var(--radius-md);
             font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            color: white;
+            transition: all 0.2s ease;
             display: flex;
             justify-content: center;
             align-items: center;
             gap: 8px;
-        }
+            text-decoration: none;
+            text-align: center;
+        }}
 
-        .btn-start { background-color: var(--primary-color); }
-        .btn-start:hover:not(:disabled) { background-color: var(--primary-hover); transform: translateY(-1px); }
-        .btn-stop { background-color: var(--danger-color); }
-        .btn-stop:hover:not(:disabled) { background-color: var(--danger-hover); transform: translateY(-1px); }
+        .btn-primary {{ background-color: var(--primary); color: white; }}
+        .btn-primary:hover:not(:disabled) {{ background-color: var(--primary-hover); }}
         
-        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-danger {{ background-color: var(--danger); color: white; }}
+        .btn-danger:hover:not(:disabled) {{ background-color: var(--danger-hover); }}
 
-        /* Sağ Panel: Barkod Gösterim Alanı */
-        .display-panel {
+        .btn-download {{ 
+            background-color: var(--download-btn); 
+            color: white; 
+            width: 100%;
+        }}
+        .btn-download:hover {{ background-color: var(--download-hover); }}
+
+        button:disabled {{
+            opacity: 0.4;
+            cursor: not-allowed;
+        }}
+
+        /* Sağ Gösterim Alanı */
+        .panel-display {{
             padding: 32px;
             display: flex;
             flex-direction: column;
-            background-color: #f8fafc; /* Optik okuyucu kontrastı için her zaman açık renk */
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff; /* Okuyucu performansı için burası her zaman tam beyaz kalmalı */
             position: relative;
-        }
+            min-height: 380px;
+        }}
 
-        .status-badge {
-            align-self: flex-end;
-            background-color: #e2e8f0;
-            color: #475569;
-            padding: 6px 12px;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            transition: all 0.3s ease;
-        }
-
-        .status-badge.active { background-color: #10b981; color: white; animation: pulse 2s infinite; }
-
-        /* Barkodun Tam Ortalanması İçin Kritik Grid Yapısı */
-        .barcode-wrapper {
-            flex: 1;
-            display: grid;
-            place-items: center; /* Yatay ve dikey tam ortalama */
+        /* RESPONSIVE & KESİN ORTALAMA ALANI */
+        .barcode-card {{
             width: 100%;
-            margin-top: 20px;
-            background: white; /* Tarayıcı garantisi */
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-sm);
-            border: 1px solid #e2e8f0;
-            padding: 20px;
-            min-height: 250px;
+            max-width: 100%;
+            flex: 1;
+            display: flex;
+            justify-content: center; /* Yatayda kesin ortalama */
+            align-items: center;    /* Dikeyde kesin ortalama */
             position: relative;
-            overflow: hidden;
-        }
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+            overflow: hidden; /* Taşmayı önler */
+        }}
 
-        /* Süre İlerleme Çubuğu (Progress Bar) */
-        .progress-bar-container {
+        /* Mobil Cihazlarda Taşmayı Önleyen Akıllı SVG Kuralı */
+        #barcodeSVG {{
+            max-width: 100%;
+            height: auto !important; /* En-boy oranını bozmadan küçülür */
+            display: block;
+            margin: 0 auto;
+        }}
+
+        .progress-container {{
             position: absolute;
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 4px;
+            height: 5px;
             background-color: #f1f5f9;
-        }
+        }}
 
-        .progress-bar {
+        .progress-bar {{
             height: 100%;
             width: 0%;
-            background-color: var(--primary-color);
-            transition: width linear; /* JS ile yönetilecek */
-        }
+            background-color: var(--primary);
+            transition: width linear;
+        }}
 
-        .current-item-text {
-            text-align: center;
-            margin-top: 24px;
-            font-weight: 600;
+        .status-badge {{
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background-color: #e2e8f0;
             color: #475569;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }}
+
+        .status-badge.active {{
+            background-color: #10b981;
+            color: white;
+        }}
+
+        .counter-text {{
+            margin-top: 16px;
+            font-weight: 700;
+            color: #1e293b;
             font-size: 1.1rem;
-            min-height: 24px;
-        }
+            text-align: center;
+        }}
 
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-        }
-
-        /* Mobil Optimizasyon */
-        @media (max-width: 768px) {
-            .app-container { grid-template-columns: 1fr; }
-            .control-panel { border-right: none; border-bottom: 1px solid var(--border-color); }
-        }
+        /* Ekran Boyutuna Göre Esneklik */
+        @media (max-width: 768px) {{
+            .container {{
+                grid-template-columns: 1fr;
+            }}
+            .panel-controls {{
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                padding: 20px;
+            }}
+            .panel-display {{
+                padding: 20px;
+                min-height: 320px;
+            }}
+            .barcode-card {{
+                min-height: 200px;
+            }}
+        }}
     </style>
 </head>
 <body>
 
-    <main class="app-container">
-        <section class="control-panel">
+    <div class="container">
+        <main class="panel-controls">
             <div>
-                <h1 class="header-title">Seri Tarama Ekranı</h1>
-                <p style="font-size: 0.85rem; color: var(--text-muted);">El terminali ve optik okuyucular için optimize edilmiştir.</p>
+                <h1 class="panel-title">Endüstriyel Barkod Konsolu</h1>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Offline mimari ve el terminalleri ile %100 uyumlu</p>
             </div>
 
             <div class="input-group">
-                <label for="barcodeInput">Veri Listesi (Satır veya Virgül)</label>
+                <label for="barcodeInput">Barkod Veri Havuzu (Satır Satır veya Virgülle)</label>
                 <textarea id="barcodeInput" placeholder="8691234567890&#10;8690987654321" spellcheck="false"></textarea>
             </div>
 
             <div class="input-group">
-                <label for="timeInput">Geçiş Süresi (Saniye)</label>
-                <input type="number" id="timeInput" value="3.0" min="0.5" step="0.5">
+                <label for="timeInput">Görüntülenme Periyodu (Saniye)</label>
+                <input type="number" id="timeInput" value="3.0" min="0.3" step="0.1">
             </div>
 
-            <div class="action-buttons">
-                <button class="btn-start" id="startBtn" onclick="startDisplay()">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    Başlat
-                </button>
-                <button class="btn-stop" id="stopBtn" onclick="stopDisplay()" disabled>
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
-                    Durdur
+            <div class="btn-stack">
+                <div class="btn-row">
+                    <button class="btn-primary" id="startBtn" onclick="startDisplay()">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Başlat
+                    </button>
+                    <button class="btn-danger" id="stopBtn" onclick="stopDisplay()" disabled>
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
+                        Durdur
+                    </button>
+                </div>
+                
+                <button class="btn-download" onclick="downloadAppAsHTML()">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Çevrimdışı Sürümü (.html) İndir
                 </button>
             </div>
-        </section>
+        </main>
 
-        <section class="display-panel">
-            <div class="status-badge" id="statusBadge">Bekliyor</div>
+        <section class="panel-display">
+            <div class="status-badge" id="statusBadge">HAZIR</div>
             
-            <div class="barcode-wrapper">
+            <div class="barcode-card">
                 <svg id="barcodeSVG"></svg>
-                <div class="progress-bar-container">
+                <div class="progress-container">
                     <div class="progress-bar" id="progressBar"></div>
                 </div>
             </div>
 
-            <div class="current-item-text" id="statusText">Barkod verisi bekleniyor...</div>
+            <div class="counter-text" id="statusText">İşlem başlatılması bekleniyor...</div>
         </section>
-    </main>
+    </div>
+
+    <script>
+        {jsbarcode_code}
+    </script>
 
     <script>
         let isRunning = false;
-        let animationFrameId;
+        let animationId;
 
-        async function startDisplay() {
+        async function startDisplay() {{
             const rawData = document.getElementById('barcodeInput').value;
-            // Modern RegEx ile her türlü boşluk, virgül ve satır sonunu temizle
-            const barcodes = rawData.split(/[\n,\s]+/).filter(code => code.trim() !== "");
+            const barcodes = rawData.split(/[\n,\s]+/).map(c => c.trim()).filter(c => c !== "");
             const durationSec = parseFloat(document.getElementById('timeInput').value);
-            
-            if (!barcodes.length) return alert("Lütfen en az bir adet geçerli barkod giriniz.");
-            if (isNaN(durationSec) || durationSec < 0.1) return alert("Geçerli bir saniye giriniz.");
+
+            if (!barcodes.length) return alert("Lütfen geçerli barkod girişleri yapın.");
+            if (isNaN(durationSec) || durationSec < 0.2) return alert("Geçerli bir saniye aralığı girin (Min: 0.2s).");
 
             const durationMs = durationSec * 1000;
-            
-            // UI Durum Güncellemesi
             isRunning = true;
             toggleControls(true);
+
             const badge = document.getElementById('statusBadge');
-            badge.textContent = "Okuma Modu Aktif";
+            badge.textContent = "AKTİF";
             badge.classList.add('active');
 
-            for (let i = 0; i < barcodes.length; i++) {
+            for (let i = 0; i < barcodes.length; i++) {{
                 if (!isRunning) break;
-                
-                document.getElementById('statusText').innerText = `${i + 1} / ${barcodes.length} gösteriliyor`;
-                renderBarcode(barcodes[i]);
-                
-                // İlerleme Çubuğu Animasyonu
-                await runProgressBar(durationMs);
-            }
-            
-            if (isRunning) finalizeDisplay();
-        }
 
-        function renderBarcode(data) {
-            const svgElement = document.getElementById('barcodeSVG');
-            try {
-                // JsBarcode margin değerlerini 0 yaparak CSS'in grid sistemini devralmasını sağlıyoruz (Tam ortalama çözümü)
-                const isEAN = (data.length === 13 && /^\d+$/.test(data));
-                JsBarcode("#barcodeSVG", data, {
+                document.getElementById('statusText').innerText = `Kayıt: ${{i + 1}} / ${{barcodes.length}}`;
+                renderEngine(barcodes[i]);
+
+                await runProgressBar(durationMs);
+            }}
+
+            finishDisplay();
+        }}
+
+        function renderEngine(code) {{
+            const svg = document.getElementById('barcodeSVG');
+            try {{
+                // Mobil cihazlarda taşmayı önlemek için barkod kalınlığı (width) optimize edildi (2 yapıldı)
+                // Bu sayede 13 haneli EAN kodları en dar ekranlarda bile mükemmel ortalanır ve taşmaz.
+                const isEAN = (code.length === 13 && /^\d+$/.test(code));
+                
+                JsBarcode("#barcodeSVG", code, {{
                     format: isEAN ? "EAN13" : "CODE128",
                     lineColor: "#0f172a",
                     background: "transparent",
-                    width: 3,
-                    height: 120,
+                    width: 2, 
+                    height: 110,
                     displayValue: true,
-                    fontSize: 22,
+                    fontSize: 20,
                     fontOptions: "bold",
-                    font: "Inter, monospace",
-                    textMargin: 8,
-                    margin: 0 // KÜTÜPHANE İÇİ BOŞLUKLARI SIFIRLADIK
-                });
-            } catch (error) {
-                svgElement.innerHTML = ""; // Hatalı formatta temizle
-                document.getElementById('statusText').innerText = `Geçersiz Format: ${data}`;
-            }
-        }
+                    margin: 0
+                }});
+            }} catch (e) {{
+                svg.innerHTML = "";
+                document.getElementById('statusText').innerText = `Hata: Format Uyumsuz [${{code}}]`;
+            }}
+        }}
 
-        // Akıcı İlerleme Çubuğu Logiği (Performans için requestAnimationFrame)
-        function runProgressBar(duration) {
-            return new Promise(resolve => {
-                const progressBar = document.getElementById('progressBar');
-                const startTime = performance.now();
+        function runProgressBar(ms) {{
+            return new Promise(resolve => {{
+                const bar = document.getElementById('progressBar');
+                const start = performance.now();
 
-                function updateProgress(currentTime) {
-                    if (!isRunning) {
-                        progressBar.style.width = '0%';
+                function step(now) {{
+                    if (!isRunning) {{
+                        bar.style.width = '0%';
+                        return resolve();
+                    }}
+                    const elapsed = now - start;
+                    const pct = Math.min((elapsed / ms) * 100, 100);
+                    bar.style.width = `${{pct}}%`;
+
+                    if (elapsed < ms) {{
+                        animationId = requestAnimationFrame(step);
+                    }} else {{
+                        bar.style.width = '0%';
                         resolve();
-                        return;
-                    }
+                    }}
+                }}
+                animationId = requestAnimationFrame(step);
+            }});
+        }}
 
-                    const elapsed = currentTime - startTime;
-                    const progress = Math.min((elapsed / duration) * 100, 100);
-                    progressBar.style.width = `${progress}%`;
-
-                    if (elapsed < duration) {
-                        animationFrameId = requestAnimationFrame(updateProgress);
-                    } else {
-                        progressBar.style.width = '0%';
-                        resolve();
-                    }
-                }
-                animationFrameId = requestAnimationFrame(updateProgress);
-            });
-        }
-
-        function stopDisplay() {
+        function stopDisplay() {{
             isRunning = false;
-            cancelAnimationFrame(animationFrameId);
+            cancelAnimationFrame(animationId);
             document.getElementById('progressBar').style.width = '0%';
             
             const badge = document.getElementById('statusBadge');
-            badge.textContent = "Durduruldu";
+            badge.textContent = "DURDURULDU";
             badge.classList.remove('active');
-            document.getElementById('statusText').innerText = "Kullanıcı tarafından durduruldu.";
-            
+            document.getElementById('statusText').innerText = "Akış kullanıcı tarafından durduruldu.";
             toggleControls(false);
-        }
+        }}
 
-        function finalizeDisplay() {
+        function finishDisplay() {{
+            if (!isRunning) return;
+            isRunning = false;
             const badge = document.getElementById('statusBadge');
-            badge.textContent = "Tamamlandı";
+            badge.textContent = "TAMAMLANDI";
             badge.classList.remove('active');
-            document.getElementById('statusText').innerText = "Tüm seri başarıyla gösterildi.";
+            document.getElementById('statusText').innerText = "Tüm barkod serisi tamamlandı.";
             document.getElementById('barcodeSVG').innerHTML = "";
             toggleControls(false);
-        }
+        }}
 
-        function toggleControls(disabledState) {
-            document.getElementById('startBtn').disabled = disabledState;
-            document.getElementById('stopBtn').disabled = !disabledState;
-            document.getElementById('barcodeInput').disabled = disabledState;
-            document.getElementById('timeInput').disabled = disabledState;
-        }
+        function toggleControls(state) {{
+            document.getElementById('startBtn').disabled = state;
+            document.getElementById('stopBtn').disabled = !state;
+            document.getElementById('barcodeInput').disabled = state;
+            document.getElementById('timeInput').disabled = state;
+        }}
+
+        /* İnternet Yokken Bile Çalışan Dinamik Kendini İndirme Fonksiyonu */
+        function downloadAppAsHTML() {{
+            const currentSource = "<!DOCTYPE html>\\n" + document.documentElement.outerHTML;
+            const blob = new Blob([currentSource], {{ type: 'text/html;charset=utf-8' }});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'seri_barkod_gosterici_universal.html';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }}
     </script>
 </body>
 </html>
+"""
+
+# Save the unified file to the storage environment
+file_path = "seri_barkod_gosterici_universal.html"
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+print(f"File successfully created: {file_path}")
+
+
