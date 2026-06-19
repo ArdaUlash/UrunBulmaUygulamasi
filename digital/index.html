@@ -3,38 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Kurumsal Barkod Yönetim Paneli</title>
+    <title>Barkod Yönetim Paneli - Dark Mode</title>
+    <!-- JsBarcode Kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
+        /* SABİT KARANLIK MOD (DARK MODE) DEĞİŞKENLERİ */
         :root {
-            --bg-main: #f8fafc;
-            --surface: #ffffff;
-            --panel-bg: #f1f5f9;
-            --primary: #0f172a; /* Kurumsal lacivert/siyah tonu */
-            --primary-hover: #1e293b;
-            --secondary: #3b82f6; /* Vurgu rengi (Mavi) */
+            --bg-main: #0f172a;        /* Koyu lacivert arka plan */
+            --surface: #1e293b;        /* Panel içi yüzey rengi */
+            --panel-bg: #0f172a;       /* Sol menü arka planı */
+            --primary: #3b82f6;        /* Ana buton rengi (Mavi) */
+            --primary-hover: #60a5fa;  /* Ana buton hover (Açık Mavi) */
+            --secondary: #3b82f6;      
             --secondary-hover: #2563eb;
-            --danger: #ef4444;
+            --danger: #ef4444;         /* Durdur butonu (Kırmızı) */
             --danger-hover: #dc2626;
-            --text-main: #0f172a;
-            --text-muted: #475569;
-            --border: #cbd5e1;
+            --text-main: #f8fafc;      /* Ana metinler (Parlak beyaz/gri) */
+            --text-muted: #94a3b8;     /* Alt metinler (Soluk gri) */
+            --border: #334155;         /* Çerçeve çizgileri */
             --radius-xl: 16px;
             --radius-lg: 12px;
             --radius-md: 8px;
-            --modal-overlay: rgba(15, 23, 42, 0.5);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-main: #0f172a;
-                --surface: #1e293b;
-                --panel-bg: #0f172a;
-                --text-main: #f8fafc;
-                --text-muted: #94a3b8;
-                --border: #334155;
-                --modal-overlay: rgba(0, 0, 0, 0.8);
-            }
+            --modal-overlay: rgba(0, 0, 0, 0.8); /* Popup arkası siyah blur */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -56,7 +46,7 @@
             max-width: 1000px;
             background-color: var(--surface);
             border-radius: var(--radius-xl);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             display: grid;
             grid-template-columns: 1fr 1.2fr;
             overflow: hidden;
@@ -73,7 +63,7 @@
             gap: 20px;
         }
 
-        .panel-title { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.01em; color: var(--primary); }
+        .panel-title { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.01em; color: var(--text-main); }
         .panel-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
 
         .input-group { display: flex; flex-direction: column; gap: 8px; }
@@ -101,7 +91,7 @@
             transition: background 0.2s;
         }
 
-        .btn-text:hover { background: rgba(59, 130, 246, 0.1); color: var(--secondary-hover); }
+        .btn-text:hover { background: rgba(59, 130, 246, 0.15); color: var(--primary-hover); }
 
         textarea, input[type="number"] {
             width: 100%;
@@ -115,7 +105,7 @@
         }
 
         textarea { height: 140px; resize: none; font-family: monospace; }
-        textarea:focus, input:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+        textarea:focus, input:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
 
         .btn-row { display: flex; gap: 10px; margin-top: auto; }
 
@@ -135,9 +125,9 @@
             gap: 8px;
         }
 
-        .btn-primary { background-color: var(--primary); }
+        .btn-primary { background-color: var(--primary); color: #ffffff; }
         .btn-primary:hover:not(:disabled) { background-color: var(--primary-hover); transform: translateY(-1px); }
-        .btn-danger { background-color: var(--danger); }
+        .btn-danger { background-color: var(--danger); color: #ffffff; }
         .btn-danger:hover:not(:disabled) { background-color: var(--danger-hover); transform: translateY(-1px); }
         button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
@@ -148,11 +138,12 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background-color: #ffffff;
+            background-color: var(--surface);
             position: relative;
             min-height: 380px;
         }
 
+        /* Lazer okuyucular için barkod arka planı KESİNLİKLE BEYAZ bırakıldı */
         .barcode-card {
             width: 100%;
             flex: 1;
@@ -160,34 +151,35 @@
             justify-content: center;
             align-items: center;
             position: relative;
-            background-color: #ffffff;
-            border: 1px solid #e2e8f0;
+            background-color: #ffffff; 
+            border: 2px solid var(--border);
             border-radius: var(--radius-lg);
             padding: 16px;
-            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
             overflow: hidden;
         }
 
         #barcodeSVG { max-width: 100%; height: auto !important; display: block; margin: 0 auto; }
 
-        .progress-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background-color: #f1f5f9; }
+        .progress-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background-color: var(--border); }
         .progress-bar { height: 100%; width: 0%; background-color: var(--secondary); transition: width linear; }
 
         .status-badge {
             position: absolute;
             top: 16px;
             right: 16px;
-            background-color: #e2e8f0;
-            color: #475569;
+            background-color: var(--bg-main);
+            color: var(--text-muted);
             padding: 4px 12px;
             border-radius: 999px;
             font-size: 0.75rem;
             font-weight: 700;
             letter-spacing: 0.05em;
+            border: 1px solid var(--border);
         }
-        .status-badge.active { background-color: #10b981; color: white; }
+        .status-badge.active { background-color: #10b981; color: white; border-color: #10b981; }
 
-        .counter-text { margin-top: 16px; font-weight: 600; color: #1e293b; font-size: 1.05rem; text-align: center; }
+        .counter-text { margin-top: 16px; font-weight: 600; color: var(--text-main); font-size: 1.05rem; text-align: center; }
 
         /* --- KURUMSAL MODAL (POPUP) TASARIMI --- */
         .modal-overlay {
@@ -212,15 +204,16 @@
             max-width: 550px;
             border-radius: var(--radius-lg);
             padding: 28px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             transform: translateY(20px);
             transition: transform 0.3s ease;
+            border: 1px solid var(--border);
         }
 
         .modal-overlay.open .modal-content { transform: translateY(0); }
 
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
-        .modal-header h3 { font-size: 1.15rem; margin: 0; color: var(--primary); font-weight: 700; }
+        .modal-header h3 { font-size: 1.15rem; margin: 0; color: var(--text-main); font-weight: 700; }
         .close-btn { background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; line-height: 1; transition: color 0.2s; }
         .close-btn:hover { color: var(--danger); }
         
@@ -234,7 +227,7 @@
         }
 
         .btn-upload {
-            background-color: #f1f5f9;
+            background-color: transparent;
             border: 1px solid var(--border);
             color: var(--text-main);
             padding: 6px 12px;
@@ -247,7 +240,7 @@
             gap: 6px;
             transition: all 0.2s;
         }
-        .btn-upload:hover { background-color: #e2e8f0; border-color: var(--text-muted); }
+        .btn-upload:hover { background-color: var(--bg-main); border-color: var(--text-muted); }
 
         .modal-footer { display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end; }
         .btn-modal { padding: 12px 20px; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; border: none; font-size: 0.9rem; transition: all 0.2s; }
@@ -268,9 +261,10 @@
 <body>
 
     <div class="container">
+        <!-- Kontrol Paneli -->
         <main class="panel-controls">
             <div>
-                <h1 class="panel-title">Kurumsal Barkod Yönetimi</h1>
+                <h1 class="panel-title">Barkod Yönetimi</h1>
                 <p class="panel-subtitle">Operasyonel seri tarama ve optik okuyucu arayüzü.</p>
             </div>
 
@@ -296,6 +290,7 @@
             </div>
         </main>
 
+        <!-- Ekran / Gösterim Paneli -->
         <section class="panel-display">
             <div class="status-badge" id="statusBadge">BEKLİYOR</div>
             <div class="barcode-card">
@@ -308,6 +303,7 @@
         </section>
     </div>
 
+    <!-- KURUMSAL GRUP (GENERIC) FİLTRELEME PENCERESİ -->
     <div class="modal-overlay" id="genericModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -317,6 +313,7 @@
             <div class="modal-body">
                 <p>Aynı Grup (Generic) numarasına sahip varyantlardan (örn. numara/beden) sadece bir adet barkodu listeye dahil eder. Lütfen <b>"Barkod [Boşluk] GrupID"</b> formatında girin veya dosya yükleyin.</p>
                 
+                <!-- Dosya Yükleme Alanı -->
                 <div class="file-upload-wrapper">
                     <label for="fileUpload" class="btn-upload">
                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
@@ -334,11 +331,11 @@
         </div>
     </div>
 
+    <!-- Uygulama Mantığı -->
     <script>
         let isRunning = false;
         let animationId;
 
-        // --- POPUP VE DOSYA YÖNETİMİ ---
         function openModal() {
             document.getElementById('genericModal').classList.add('open');
             document.getElementById('genericInput').focus();
@@ -347,10 +344,9 @@
         function closeModal() {
             document.getElementById('genericModal').classList.remove('open');
             document.getElementById('genericInput').value = ''; 
-            document.getElementById('fileUpload').value = ''; // Dosya seçicisini sıfırla
+            document.getElementById('fileUpload').value = ''; 
         }
 
-        // TXT Dosyası Okuma Fonksiyonu
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -361,11 +357,9 @@
             };
             reader.readAsText(file);
             
-            // Aynı dosyayı tekrar seçebilmek için input'u temizle
             event.target.value = '';
         }
 
-        // Generic ID Ayrıştırma Mantığı
         function applyGenericFilter() {
             const rawText = document.getElementById('genericInput').value;
             const lines = rawText.split('\n');
@@ -380,7 +374,7 @@
                 
                 if (parts.length >= 2) {
                     const barcode = parts[0];
-                    const generic = parts[parts.length - 1]; // Son sütunu grup numarası kabul et
+                    const generic = parts[parts.length - 1]; 
                     
                     if (!seenGenerics.has(generic)) {
                         seenGenerics.add(generic);
@@ -394,11 +388,10 @@
                 closeModal();
                 alert(`İşlem Başarılı: ${filteredBarcodes.length} adet benzersiz modele ait barkod listeye eklendi.`);
             } else {
-                alert("Uyarı: Geçerli formatta veri bulunamadı. Lütfen 'Barkod GrupID' formatında veri girdiğinizden veya dosyanızın doğru formatta olduğundan emin olun.");
+                alert("Uyarı: Geçerli formatta veri bulunamadı. Lütfen 'Barkod GrupID' formatında veri girdiğinizden emin olun.");
             }
         }
 
-        // --- BARKOD OPERASYON YÖNETİMİ ---
         async function startDisplay() {
             const rawData = document.getElementById('barcodeInput').value;
             const barcodes = rawData.split(/[\n,\s]+/).map(c => c.trim()).filter(c => c !== "");
@@ -432,7 +425,7 @@
                 JsBarcode("#barcodeSVG", code, {
                     format: isEAN ? "EAN13" : "CODE128",
                     lineColor: "#0f172a",
-                    background: "transparent",
+                    background: "#ffffff", /* Barkod çizgisinin arkasını sağlama alıyoruz */
                     width: 2, 
                     height: 110,
                     displayValue: true,
