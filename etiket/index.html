@@ -15,6 +15,12 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        /* Numara giriş kutusundaki okları gizleyip temiz bir arayüz sağlar */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
     </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8 max-w-md mx-auto bg-gray-50 min-h-screen">
@@ -43,12 +49,6 @@
                 </div>
         </div>
 
-        <div class="mb-6">
-            <button onclick="sendNPS()" class="w-full bg-indigo-500 text-white py-3 rounded-xl font-medium shadow hover:bg-indigo-600 transition">
-                NPS Etiketi Yazdır
-            </button>
-        </div>
-
         <div>
             <button onclick="switchPage('page2')" class="w-full bg-gray-200 text-gray-800 py-3 rounded-xl font-medium shadow-sm border border-gray-300 hover:bg-gray-300 transition flex justify-center items-center gap-2">
                 Diğer İşlemler <span>&rarr;</span>
@@ -65,19 +65,23 @@
         </div>
 
         <div class="space-y-3 mb-6">
-            <button onclick="printWithQuantity('tedarikci')" class="w-full bg-orange-500 text-white py-3 rounded-xl font-medium shadow hover:bg-orange-600 transition">
+            <button onclick="printWithQuantity('nps')" class="w-full bg-indigo-500 text-white py-3 rounded-xl font-medium shadow hover:bg-indigo-600 transition uppercase">
+                NPS ETİKETİ
+            </button>
+            
+            <button onclick="printWithQuantity('tedarikci')" class="w-full bg-orange-500 text-white py-3 rounded-xl font-medium shadow hover:bg-orange-600 transition uppercase">
                 TEDARİKÇİ İADE
             </button>
             
-            <button onclick="printWithQuantity('imha')" class="w-full bg-red-600 text-white py-3 rounded-xl font-medium shadow hover:bg-red-700 transition">
+            <button onclick="printWithQuantity('imha')" class="w-full bg-red-600 text-white py-3 rounded-xl font-medium shadow hover:bg-red-700 transition uppercase">
                 İMHA
             </button>
 
-            <button onclick="printWithQuantity('sdi')" class="w-full bg-teal-500 text-white py-3 rounded-xl font-medium shadow hover:bg-teal-600 transition">
+            <button onclick="printWithQuantity('sdi')" class="w-full bg-teal-500 text-white py-3 rounded-xl font-medium shadow hover:bg-teal-600 transition uppercase">
                 SDİ
             </button>
 
-            <button onclick="printBarcodeLabel()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-medium shadow hover:bg-purple-700 transition">
+            <button onclick="printBarcodeLabel()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-medium shadow hover:bg-purple-700 transition uppercase">
                 Barkodlu Etiket
             </button>
         </div>
@@ -94,13 +98,11 @@
         let bluetoothDevice;
         let writeCharacteristic;
         
-        // Zebra BLE Standart UUID'leri
         const ZEBRA_SERVICE_UUID = '38eb4a80-c570-11e3-9507-0002a5d5c51b';
         const ZEBRA_WRITE_UUID = '38eb4a82-c570-11e3-9507-0002a5d5c51b';
 
         async function connectBluetooth() {
             try {
-                // Chrome arayüzünde tüm cihazları listeleyip, Zebra servisine erişim izni alıyoruz.
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
                     optionalServices: [ZEBRA_SERVICE_UUID]
@@ -149,13 +151,11 @@
                 const encoder = new TextEncoder();
                 const data = encoder.encode(zplString);
                 
-                // Chunk işlemi (BLE paket sınırlarını aşmamak için)
                 const chunkSize = 512;
                 for (let i = 0; i < data.length; i += chunkSize) {
                     await writeCharacteristic.writeValue(data.slice(i, i + chunkSize));
                 }
                 
-                // Başarılı toast bildirimi
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Yazdırılıyor...', showConfirmButton: false, timer: 1000 });
             } catch (error) {
                 console.error("Yazdırma Hatası:", error);
@@ -201,12 +201,59 @@
             printZPL(zpl);
         }
 
-        // 3. NPS
-        function sendNPS() {
-            const zpl = `^XA
+        // 3. Adet İsteyen Özel Etiketler (NPS, Tedarikçi, İmha, SDİ)
+        async function printWithQuantity(type) {
+            // İlgili etiketin başlığını belirle
+            let baslik = '';
+            let btnColor = '';
+            if(type === 'nps') { baslik = 'NPS'; btnColor = '#6366f1'; }
+            else if(type === 'tedarikci') { baslik = 'Tedarikçi İade'; btnColor = '#f97316'; }
+            else if(type === 'imha') { baslik = 'İmha'; btnColor = '#dc2626'; }
+            else if(type === 'sdi') { baslik = 'SDİ'; btnColor = '#14b8a6'; }
+
+            // Profesyonel ve hizalı SweetAlert2 Miktar Seçici Arayüzü
+            const { value: qty } = await Swal.fire({
+                title: `<span class="text-xl font-bold text-gray-800">${baslik} Etiketi</span>`,
+                html: `
+                    <div class="flex flex-col items-center justify-center mt-4 mb-2">
+                        <p class="text-sm text-gray-500 mb-5 font-medium">Kaç adet yazdırmak istiyorsunuz?</p>
+                        <div class="flex items-center gap-4">
+                            <button type="button" onclick="document.getElementById('swal-qty').stepDown()" class="w-14 h-14 flex items-center justify-center bg-gray-100 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-200 active:bg-gray-300 text-3xl font-medium transition-colors shadow-sm select-none">-</button>
+                            
+                            <input id="swal-qty" type="number" min="1" value="1" class="w-24 h-14 text-center text-3xl font-bold bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all m-0 shadow-inner">
+                            
+                            <button type="button" onclick="document.getElementById('swal-qty').stepUp()" class="w-14 h-14 flex items-center justify-center text-white rounded-xl active:opacity-80 text-3xl font-medium transition-colors shadow-sm select-none" style="background-color: ${btnColor};">+</button>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Yazdır',
+                cancelButtonText: 'İptal',
+                confirmButtonColor: btnColor,
+                cancelButtonColor: '#9ca3af',
+                customClass: {
+                    popup: 'rounded-3xl',
+                    confirmButton: 'rounded-xl px-8 py-3 font-semibold text-sm tracking-wide',
+                    cancelButton: 'rounded-xl px-8 py-3 font-semibold text-sm tracking-wide'
+                },
+                preConfirm: () => {
+                    const value = document.getElementById('swal-qty').value;
+                    if (!value || value <= 0) {
+                        Swal.showValidationMessage('Geçerli bir adet girmelisiniz!');
+                        return false;
+                    }
+                    return value;
+                }
+            });
+
+            if (qty) {
+                let zpl = "";
+                
+                if (type === 'nps') {
+                    zpl = `^XA
 ^PW400
 ^LL240
-^PQ1
+^PQ${qty}
 ^FO20,30
 ^A0N,30,30
 ^FB360,5,10,C,0
@@ -216,27 +263,7 @@ SMS ile gelecek ankete 10 puan vermek ister misiniz?
 \\& Tesekkurler
 ^FS
 ^XZ`;
-            printZPL(zpl);
-        }
-
-        // 4. Adet İsteyen Diğer Etiketler
-        async function printWithQuantity(type) {
-            const { value: qty } = await Swal.fire({
-                title: 'Etiket Adedi',
-                input: 'number',
-                inputLabel: 'Kaç adet yazdırılsın?',
-                inputValue: 1,
-                showCancelButton: true,
-                confirmButtonText: 'Yazdır',
-                cancelButtonText: 'İptal',
-                inputValidator: (value) => {
-                    if (!value || value <= 0) return 'Geçerli bir adet girmelisiniz!';
-                }
-            });
-
-            if (qty) {
-                let zpl = "";
-                if (type === 'tedarikci') {
+                } else if (type === 'tedarikci') {
                     zpl = `^XA
 ^PW400
 ^LL240
@@ -295,18 +322,25 @@ SMS ile gelecek ankete 10 puan vermek ister misiniz?
             }
         }
 
-        // 5. Barkodlu Etiket (Alt Metin + Barkod + Adet)
+        // 4. Barkodlu Etiket (Alt Metin + Barkod + Adet)
         async function printBarcodeLabel() {
             const { value: formValues } = await Swal.fire({
-                title: 'Barkod Bilgileri',
+                title: '<span class="text-xl font-bold text-gray-800">Barkod Bilgileri</span>',
                 html:
-                    '<input id="swal-input1" class="swal2-input" placeholder="Alt Metin (Örn: Model vs.)">' +
-                    '<input id="swal-input2" type="number" class="swal2-input" placeholder="Barkod Numarası">' +
-                    '<input id="swal-input3" type="number" class="swal2-input" placeholder="Adet" value="1">',
+                    '<input id="swal-input1" class="swal2-input !w-[80%] !rounded-xl !border-gray-300 focus:!border-purple-500 focus:!ring-purple-500" placeholder="Alt Metin (Örn: Model vs.)">' +
+                    '<input id="swal-input2" type="number" class="swal2-input !w-[80%] !rounded-xl !border-gray-300 focus:!border-purple-500 focus:!ring-purple-500" placeholder="Barkod Numarası">' +
+                    '<input id="swal-input3" type="number" class="swal2-input !w-[80%] !rounded-xl !border-gray-300 focus:!border-purple-500 focus:!ring-purple-500" placeholder="Adet" value="1">',
                 focusConfirm: false,
                 showCancelButton: true,
                 confirmButtonText: 'Oluştur ve Yazdır',
                 cancelButtonText: 'İptal',
+                confirmButtonColor: '#9333ea',
+                cancelButtonColor: '#9ca3af',
+                customClass: {
+                    popup: 'rounded-3xl',
+                    confirmButton: 'rounded-xl px-6 py-2.5 font-semibold text-sm',
+                    cancelButton: 'rounded-xl px-6 py-2.5 font-semibold text-sm'
+                },
                 preConfirm: () => {
                     const altMetin = document.getElementById('swal-input1').value;
                     const barkod = document.getElementById('swal-input2').value;
