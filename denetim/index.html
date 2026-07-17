@@ -21,11 +21,11 @@
             font-family: 'Inter', sans-serif;
             background-color: #f1f5f9;
             color: #334155;
-            overscroll-behavior-y: none; /* Mobilde sekmeyi önler */
+            overscroll-behavior-y: none;
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Responsive Takvim Izgarası */
+        /* Ekran Takvimi */
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -55,7 +55,6 @@
         .calendar-cell.is-empty { background-color: #f8fafc; cursor: default; }
         .calendar-cell.is-empty:active { transform: none; }
 
-        /* Custom Scrollbar for Badges */
         .badges-container {
             flex: 1;
             overflow-y: auto;
@@ -66,7 +65,7 @@
         .badges-container::-webkit-scrollbar { width: 4px; }
         .badges-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
-        /* Aktif Personel Barı (Paint Mode) */
+        /* Alt Bar */
         .emp-avatar {
             width: 40px; height: 40px;
             border-radius: 50%;
@@ -79,31 +78,44 @@
         }
         .emp-avatar.active {
             transform: translateY(-4px) scale(1.1);
-            border-color: #10b981; /* Yeşil Çerçeve */
+            border-color: #10b981;
             box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
         }
 
-        /* PDF Özel Alanı (Ekranda Gizli, Sadece Render için) */
-        #pdf-render-canvas {
+        /* 
+         BEYAZ SAYFA KESİN ÇÖZÜMÜ V4: 
+         Mobilde html2canvas offscreen (ekran dışı) veya gizli alanları çizerken beyaz bırakır.
+         Bu yüzden PDF div'i aslında sayfanın en üstünde görünür bir şekilde bekler, 
+         fakat Z-INDEX ile kullanıcının ekranının ARKASINDA saklanır.
+         */
+        #pdf-container-wrapper {
             position: absolute;
-            top: 0; left: 0;
-            width: 1122px; height: 793px; /* A4 Landscape at 96dpi */
+            top: 0;
+            left: 0;
+            width: 100%;
+            /* Ekranın arkasına itiyoruz */
+            z-index: -100; 
+            overflow: visible;
+        }
+
+        /* Asıl resmini çekeceğimiz div (A4 Pixel Boyutlarında) */
+        #pdf-render-canvas {
+            width: 1122px; 
             background-color: white;
-            z-index: -9999;
-            opacity: 0;
-            pointer-events: none;
             padding: 40px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
+            /* Yüksekliği auto bırakıyoruz, çok satırlı aylarda aşağıya uzasın */
+            min-height: 793px; 
         }
         
+        /* PDF İçin Özel Grid Stilleri */
         .pdf-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             border-top: 1px solid #cbd5e1;
             border-left: 1px solid #cbd5e1;
-            flex: 1;
         }
         .pdf-cell {
             border-right: 1px solid #cbd5e1;
@@ -112,7 +124,7 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
-            overflow: hidden;
+            min-height: 80px; /* Her hücre için minimum alan */
         }
         .pdf-header {
             background-color: #f1f5f9;
@@ -124,164 +136,149 @@
             border-right: 1px solid #cbd5e1;
             border-bottom: 1px solid #cbd5e1;
         }
+
+        /* Ana içerik UI'ının arkaplanını z-index ile pdf'in önüne alıyoruz */
+        .app-ui-layer {
+            position: relative;
+            z-index: 10;
+            background-color: #f1f5f9;
+            min-height: 100vh;
+        }
     </style>
 </head>
-<body class="flex flex-col h-screen overflow-hidden">
+<body class="overflow-x-hidden">
 
-    <!-- Üst Menü -->
-    <header class="bg-white shadow-sm z-40 shrink-0">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold">
-                    <i class="fa-solid fa-layer-group"></i>
-                </div>
+    <!-- ARKADA GİZLİ PDF RENDER ALANI -->
+    <div id="pdf-container-wrapper">
+        <div id="pdf-render-canvas">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #1e293b; padding-bottom: 15px; margin-bottom: 20px;">
                 <div>
-                    <h1 class="text-sm sm:text-base font-bold text-slate-800 leading-tight">İzin Planlayıcı</h1>
-                    <p class="text-[10px] text-slate-500 font-medium">Hızlı Atama Modu</p>
+                    <h2 id="pdf-store-title" style="font-size: 24px; font-weight: 800; color: #0f172a; margin: 0;">Mağaza Adı</h2>
+                    <p style="font-size: 14px; color: #64748b; margin: 4px 0 0 0; font-weight: 500;">Personel Yıllık İzin ve Çalışma Planı</p>
+                </div>
+                <div id="pdf-date-title" style="font-size: 18px; font-weight: 800; color: #4338ca; background: #e0e7ff; padding: 6px 16px; border-radius: 8px;">Ağustos 2026</div>
+            </div>
+
+            <div id="pdf-grid-container" style="display: flex; flex-direction: column;">
+                <!-- JS dolduracak -->
+            </div>
+
+            <div style="margin-top: 20px; border-top: 1px solid #cbd5e1; padding-top: 15px;">
+                <h4 style="font-size: 12px; font-weight: 700; color: #475569; margin: 0 0 10px 0; text-transform: uppercase;">Dönem Özeti</h4>
+                <div id="pdf-notes-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 11px;">
                 </div>
             </div>
-            <div class="flex items-center gap-2 sm:gap-3">
-                <button onclick="toggleSettings()" class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center transition">
-                    <i class="fa-solid fa-gear"></i>
-                </button>
-                <button onclick="triggerPDF()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold rounded-full shadow-md shadow-indigo-200 transition flex items-center gap-2">
-                    <i class="fa-solid fa-file-pdf"></i> <span class="hidden sm:inline">PDF İndir</span>
-                </button>
-            </div>
-        </div>
-    </header>
 
-    <!-- Ana Çalışma Alanı (Scrollable) -->
-    <main class="flex-1 overflow-y-auto p-3 sm:p-6 pb-32"> <!-- Alt bar için ekstra padding-bottom -->
-        <div class="max-w-5xl mx-auto">
-            
-            <!-- Tarih Seçici -->
-            <div class="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-slate-100 mb-4">
-                <button onclick="changeMonth(-1)" class="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center transition"><i class="fa-solid fa-chevron-left"></i></button>
-                <div class="flex gap-2 items-center">
-                    <select id="ui-month" class="bg-transparent text-sm sm:text-base font-bold text-slate-800 outline-none cursor-pointer text-center" onchange="renderApp()"></select>
-                    <input type="number" id="ui-year" class="bg-transparent text-sm sm:text-base font-bold text-slate-800 w-16 text-center outline-none" onchange="renderApp()">
+            <div style="margin-top: 30px; display: flex; justify-content: space-between; font-size: 12px; padding-bottom: 20px;">
+                <div style="display: flex; gap: 40px;">
+                    <div><strong style="color: #475569;">Düzenleyen:</strong> <span id="pdf-manager-label" style="font-weight: 700; text-transform: uppercase; color: #0f172a; margin-left: 5px;">Arda Ulaş</span></div>
+                    <div><strong style="color: #475569;">Tarih:</strong> <span style="color: #94a3b8; margin-left: 5px;">..... / ..... / 20...</span></div>
                 </div>
-                <button onclick="changeMonth(1)" class="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center transition"><i class="fa-solid fa-chevron-right"></i></button>
+                <div style="font-weight: 700; color: #475569;">İmza: ________________________</div>
             </div>
-
-            <!-- Ekrana Duyarlı Takvim Izgarası -->
-            <div class="calendar-grid shadow-sm" id="ui-calendar">
-                <!-- JS tarafından doldurulacak -->
-            </div>
-
-            <!-- Yardımcı Metin -->
-            <div class="mt-4 text-center">
-                <p class="text-xs text-slate-400"><i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> Alttaki menüden personel seçin ve takvimdeki günlere dokunarak izin atayın.</p>
-            </div>
-
-        </div>
-    </main>
-
-    <!-- SAKLI PDF ŞABLONU (Ekranda gözükmez, html2pdf burayı yakalar) -->
-    <div id="pdf-render-canvas">
-        <!-- PDF Başlık -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #1e293b; padding-bottom: 15px; margin-bottom: 20px;">
-            <div>
-                <h2 id="pdf-store-title" style="font-size: 24px; font-weight: 800; color: #0f172a; margin: 0;">Mağaza Adı</h2>
-                <p style="font-size: 14px; color: #64748b; margin: 4px 0 0 0; font-weight: 500;">Personel Yıllık İzin ve Çalışma Planı[span_0](start_span)[span_0](end_span)</p>
-            </div>
-            <div id="pdf-date-title" style="font-size: 18px; font-weight: 800; color: #4338ca; background: #e0e7ff; padding: 6px 16px; border-radius: 8px;">Ağustos 2026</div>
-        </div>
-
-        <!-- PDF Takvim Izgarası -->
-        <div id="pdf-grid-container" style="display: flex; flex-direction: column; flex: 1;">
-            <!-- JS ile doldurulacak grid -->
-        </div>
-
-        <!-- PDF Özet Kısmı -->
-        <div style="margin-top: 20px; border-top: 1px solid #cbd5e1; padding-top: 15px;">
-            <h4 style="font-size: 12px; font-weight: 700; color: #475569; margin: 0 0 10px 0; text-transform: uppercase;">Dönem Özeti</h4>
-            <div id="pdf-notes-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 11px;">
-                <!-- JS ile doldurulacak -->
-            </div>
-        </div>
-
-        <!-- PDF İmza -->
-        <div style="margin-top: 30px; display: flex; justify-content: space-between; font-size: 12px;">
-            <div style="display: flex; gap: 40px;">
-                <div><strong style="color: #475569;">Düzenleyen:</strong> <span id="pdf-manager-label" style="font-weight: 700; text-transform: uppercase; color: #0f172a; margin-left: 5px;">Arda Ulaş</span></div>
-                <div><strong style="color: #475569;">Tarih:</strong> <span style="color: #94a3b8; margin-left: 5px;">..... / ..... / 20...</span></div>
-            </div>
-            <div style="font-weight: 700; color: #475569;">İmza: ________________________</div>
         </div>
     </div>
 
-    <!-- ALT YAPIŞKAN BAR (Hızlı Atama / Paint Mode) -->
-    <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40 px-2 py-3 pb-safe">
-        <div class="max-w-5xl mx-auto flex items-center gap-4">
-            
-            <!-- İzin Türü Seçici -->
-            <div class="flex flex-col gap-1 shrink-0 bg-slate-100 p-1 rounded-xl">
-                <button onclick="setPaintType('YI')" id="btn-type-yi" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition bg-white shadow-sm text-indigo-600">Yİ</button>
-                <button onclick="setPaintType('HT')" id="btn-type-ht" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition text-slate-500 hover:text-orange-500">HT</button>
-            </div>
-
-            <div class="w-px h-10 bg-slate-200 shrink-0"></div>
-
-            <!-- Personeller (Yatay Kaydırmalı) -->
-            <div class="flex-1 overflow-x-auto flex items-center gap-3 no-scrollbar py-2 px-1" id="paint-employees-container">
-                <!-- JS Dolduracak -->
-            </div>
-
-            <!-- Seçimi Temizle -->
-            <button onclick="setActiveEmp(null)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-red-500 shrink-0 flex items-center justify-center transition">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-    </div>
-
-    <!-- AYARLAR & PERSONEL MODALI -->
-    <div id="settings-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 invisible transition-all duration-200 p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-transform duration-200" id="settings-content">
-            <div class="bg-slate-800 px-5 py-4 flex justify-between items-center">
-                <h3 class="text-white font-bold"><i class="fa-solid fa-gear mr-2"></i> Yönetim Paneli</h3>
-                <button onclick="toggleSettings()" class="text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
-            </div>
-            
-            <div class="max-h-[70vh] overflow-y-auto p-5 space-y-6">
-                <!-- Kurum Ayarları -->
-                <div>
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Belge Başlık Bilgileri</h4>
-                    <div class="space-y-3">
-                        <input type="text" id="inp-store" placeholder="Kurum/Mağaza Adı" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition" oninput="saveSettings()">
-                        <input type="text" id="inp-manager" placeholder="Yönetici Adı" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition" oninput="saveSettings()">
+    <!-- ANA KULLANICI ARAYÜZÜ (PDF'İ ÖRTER) -->
+    <div class="app-ui-layer flex flex-col h-screen">
+        <!-- Üst Menü -->
+        <header class="bg-white shadow-sm shrink-0">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-sm sm:text-base font-bold text-slate-800 leading-tight">İzin Planlayıcı</h1>
+                        <p class="text-[10px] text-slate-500 font-medium">Hızlı Atama Modu</p>
                     </div>
                 </div>
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button onclick="toggleSettings()" class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center transition">
+                        <i class="fa-solid fa-gear"></i>
+                    </button>
+                    <button onclick="triggerPDF()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold rounded-full shadow-md shadow-indigo-200 transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-pdf"></i> <span class="hidden sm:inline">PDF İndir</span>
+                    </button>
+                </div>
+            </div>
+        </header>
 
-                <!-- Personel Ekleme -->
-                <div class="pt-4 border-t border-slate-100">
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Yeni Personel Ekle</h4>
-                    <div class="flex gap-2">
-                        <input type="text" id="inp-new-emp" placeholder="Ad Soyad" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500">
-                        <input type="color" id="inp-new-color" class="w-10 h-10 rounded-xl border border-slate-200 cursor-pointer p-0.5 bg-white shrink-0">
-                        <button onclick="addEmployee()" class="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center shrink-0 transition">
-                            <i class="fa-solid fa-plus"></i>
+        <!-- Takvim Alanı -->
+        <main class="flex-1 overflow-y-auto p-3 sm:p-6 pb-32">
+            <div class="max-w-5xl mx-auto">
+                <div class="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-slate-100 mb-4">
+                    <button onclick="changeMonth(-1)" class="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center transition"><i class="fa-solid fa-chevron-left"></i></button>
+                    <div class="flex gap-2 items-center">
+                        <select id="ui-month" class="bg-transparent text-sm sm:text-base font-bold text-slate-800 outline-none cursor-pointer text-center" onchange="renderApp()"></select>
+                        <input type="number" id="ui-year" class="bg-transparent text-sm sm:text-base font-bold text-slate-800 w-16 text-center outline-none" onchange="renderApp()">
+                    </div>
+                    <button onclick="changeMonth(1)" class="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center transition"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+
+                <div class="calendar-grid shadow-sm" id="ui-calendar"></div>
+
+                <div class="mt-4 text-center">
+                    <p class="text-xs text-slate-400"><i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> Alttaki menüden personel seçin ve takvimdeki günlere dokunarak izin atayın.</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Alt Bar -->
+        <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40 px-2 py-3 pb-safe">
+            <div class="max-w-5xl mx-auto flex items-center gap-4">
+                <div class="flex flex-col gap-1 shrink-0 bg-slate-100 p-1 rounded-xl">
+                    <button onclick="setPaintType('YI')" id="btn-type-yi" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition bg-white shadow-sm text-indigo-600">Yİ</button>
+                    <button onclick="setPaintType('HT')" id="btn-type-ht" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition text-slate-500 hover:text-orange-500">HT</button>
+                </div>
+                <div class="w-px h-10 bg-slate-200 shrink-0"></div>
+                <div class="flex-1 overflow-x-auto flex items-center gap-3 no-scrollbar py-2 px-1" id="paint-employees-container"></div>
+                <button onclick="setActiveEmp(null)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-red-500 shrink-0 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Ayarlar Modalı -->
+        <div id="settings-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 invisible transition-all duration-200 p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-transform duration-200" id="settings-content">
+                <div class="bg-slate-800 px-5 py-4 flex justify-between items-center">
+                    <h3 class="text-white font-bold"><i class="fa-solid fa-gear mr-2"></i> Yönetim Paneli</h3>
+                    <button onclick="toggleSettings()" class="text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+                </div>
+                
+                <div class="max-h-[70vh] overflow-y-auto p-5 space-y-6">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Belge Başlık Bilgileri</h4>
+                        <div class="space-y-3">
+                            <input type="text" id="inp-store" placeholder="Kurum/Mağaza Adı" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition" oninput="saveSettings()">
+                            <input type="text" id="inp-manager" placeholder="Yönetici Adı" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition" oninput="saveSettings()">
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-slate-100">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Yeni Personel Ekle</h4>
+                        <div class="flex gap-2">
+                            <input type="text" id="inp-new-emp" placeholder="Ad Soyad" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500">
+                            <input type="color" id="inp-new-color" class="w-10 h-10 rounded-xl border border-slate-200 cursor-pointer p-0.5 bg-white shrink-0">
+                            <button onclick="addEmployee()" class="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center shrink-0 transition">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Kayıtlı Ekip</h4>
+                        <div id="settings-emp-list" class="space-y-2"></div>
+                    </div>
+                    <div class="pt-4 border-t border-slate-100 grid grid-cols-2 gap-2">
+                        <button onclick="document.getElementById('file-upload-2').click()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-upload"></i> İçe Aktar
+                        </button>
+                        <input type="file" id="file-upload-2" class="hidden" accept=".json" onchange="importData(event)">
+                        
+                        <button onclick="exportData()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-download"></i> Dışa Aktar
                         </button>
                     </div>
-                </div>
-
-                <!-- Personel Listesi -->
-                <div>
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Kayıtlı Ekip</h4>
-                    <div id="settings-emp-list" class="space-y-2"></div>
-                </div>
-
-                <!-- Veri Araçları -->
-                <div class="pt-4 border-t border-slate-100 grid grid-cols-2 gap-2">
-                    <button onclick="document.getElementById('file-upload-2').click()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-upload"></i> İçe Aktar
-                    </button>
-                    <input type="file" id="file-upload-2" class="hidden" accept=".json" onchange="importData(event)">
-                    
-                    <button onclick="exportData()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-download"></i> Dışa Aktar (Yedek)
-                    </button>
                 </div>
             </div>
         </div>
@@ -289,7 +286,6 @@
 
     <!-- SCRIPT -->
     <script>
-        // --- VERİ MODELİ ---
         const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
         const dayNamesShort = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
@@ -299,7 +295,6 @@
                 { id: 2, name: "Ayşe Demir", color: "#8b5cf6" },   
                 { id: 3, name: "Mehmet Kaya", color: "#10b981" }    
             ],
-            // Optimizasyon: Artık her izin aralık yerine tek gün olarak kaydedilir ("Dokun & Boya" modu için)
             leaves: [
                 { id: 101, empId: 1, date: "2026-08-12", type: "YI" },
                 { id: 102, empId: 1, date: "2026-08-13", type: "YI" },
@@ -313,24 +308,18 @@
             }
         };
 
-        // --- UYGULAMA DURUMU (STATE) ---
         let state = {
             year: 2026,
-            month: 7, // 0 tabanlı (Ağustos = 7)
+            month: 7, 
             activeEmpId: null,
-            paintType: 'YI' // 'YI' veya 'HT'
+            paintType: 'YI' 
         };
 
-        // --- YARDIMCI FONKSİYONLAR ---
-        function getInitials(name) {
-            return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
-        }
-        
+        function getInitials(name) { return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase(); }
         function parseDate(dateStr) { const [y,m,d] = dateStr.split('-'); return new Date(y, m-1, d); }
         function formatDate(y, m, d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
         function getRandomColor() { const c = ['#ef4444','#f97316','#f59e0b','#84cc16','#10b981','#06b6d4','#3b82f6','#6366f1','#8b5cf6','#d946ef']; return c[Math.floor(Math.random()*c.length)]; }
 
-        // Migration (Eski start-end formatını gün bazlı formata çevir)
         function checkAndMigrateData() {
             let migrated = false;
             let newLeaves = [];
@@ -350,13 +339,11 @@
             if (migrated) { appData.leaves = newLeaves; saveData(); }
         }
 
-        // --- BAŞLATMA ---
         function initApp() {
-            const stored = localStorage.getItem('leavePlannerPro');
+            const stored = localStorage.getItem('leavePlannerPro_v10');
             if (stored) { appData = JSON.parse(stored); checkAndMigrateData(); } 
             else { saveData(); }
 
-            // Arayüzü doldur
             const monthSel = document.getElementById('ui-month');
             monthSel.innerHTML = monthNames.map((m, i) => `<option value="${i}">${m}</option>`).join('');
             
@@ -367,11 +354,14 @@
             document.getElementById('inp-new-color').value = getRandomColor();
 
             renderApp();
+            buildPDFDOM(); // İlk açılışta arkadaki PDF dom'u hazırla
         }
 
-        function saveData() { localStorage.setItem('leavePlannerPro', JSON.stringify(appData)); }
+        function saveData() { 
+            localStorage.setItem('leavePlannerPro_v10', JSON.stringify(appData)); 
+            buildPDFDOM(); // Her kayıtta PDF DOM'unu tazele
+        }
 
-        // --- ETKİLEŞİMLER (PAINT MODE) ---
         function setPaintType(type) {
             state.paintType = type;
             const btnYI = document.getElementById('btn-type-yi');
@@ -388,17 +378,12 @@
 
         function setActiveEmp(id) {
             state.activeEmpId = id;
-            renderPaintBar(); // Alt barı güncelle
+            renderPaintBar(); 
         }
 
         function handleCellClick(day) {
             if(!state.activeEmpId) {
-                // Eğer personel seçili değilse, alttan seçmesini söyle
-                Swal.fire({
-                    toast: true, position: 'bottom', icon: 'info', 
-                    title: 'Önce alttaki menüden personel seçin!', 
-                    showConfirmButton: false, timer: 2000
-                });
+                Swal.fire({ toast: true, position: 'bottom', icon: 'info', title: 'Önce alttaki menüden personel seçin!', showConfirmButton: false, timer: 2000 });
                 return;
             }
 
@@ -406,25 +391,20 @@
             const empId = state.activeEmpId;
             const type = state.paintType;
 
-            // Bu personelin bu günde kaydı var mı?
             const existingIdx = appData.leaves.findIndex(l => l.empId === empId && l.date === dateStr);
 
             if (existingIdx > -1) {
-                const currentType = appData.leaves[existingIdx].type;
-                if (currentType === type) {
-                    // Aynı tipteyse Sil (Kaldır)
+                if (appData.leaves[existingIdx].type === type) {
                     appData.leaves.splice(existingIdx, 1);
                 } else {
-                    // Farklı tipteyse Değiştir
                     appData.leaves[existingIdx].type = type;
                 }
             } else {
-                // Yoksa Ekle
                 appData.leaves.push({ id: Math.random(), empId: empId, date: dateStr, type: type });
             }
 
             saveData();
-            renderCalendarUI(); // Sadece takvimi yenile (Performans)
+            renderCalendarUI(); 
         }
 
         function changeMonth(delta) {
@@ -436,7 +416,6 @@
             renderApp();
         }
 
-        // --- RENDER (GÖRÜNÜM) ---
         function renderApp() {
             state.month = parseInt(document.getElementById('ui-month').value);
             state.year = parseInt(document.getElementById('ui-year').value);
@@ -444,6 +423,7 @@
             renderPaintBar();
             renderSettingsList();
             renderCalendarUI();
+            buildPDFDOM();
         }
 
         function renderPaintBar() {
@@ -453,13 +433,11 @@
             appData.employees.forEach(emp => {
                 const isActive = state.activeEmpId === emp.id;
                 const activeClass = isActive ? 'active' : '';
-                const style = isActive ? `background-color: ${emp.color};` : `background-color: ${emp.color}dd;`; // Aktif değilse hafif saydam
+                const style = isActive ? `background-color: ${emp.color};` : `background-color: ${emp.color}dd;`; 
                 
                 container.innerHTML += `
                     <div onclick="setActiveEmp(${emp.id})" class="flex flex-col items-center gap-1 cursor-pointer" title="${emp.name}">
-                        <div class="emp-avatar ${activeClass}" style="${style}">
-                            ${getInitials(emp.name)}
-                        </div>
+                        <div class="emp-avatar ${activeClass}" style="${style}">${getInitials(emp.name)}</div>
                         <span class="text-[9px] font-semibold ${isActive ? 'text-slate-800' : 'text-slate-400'} truncate max-w-[50px] text-center">${emp.name.split(' ')[0]}</span>
                     </div>
                 `;
@@ -474,29 +452,21 @@
             const totalDays = lastDay.getDate();
 
             let html = '';
-            // Başlıklar
             dayNamesShort.forEach(day => {
                 html += `<div class="bg-slate-100 text-center py-2 text-[10px] font-bold text-slate-500">${day}</div>`;
             });
 
-            // Boş Hücreler
-            for (let i = 0; i < startDay; i++) {
-                html += `<div class="calendar-cell is-empty"></div>`;
-            }
+            for (let i = 0; i < startDay; i++) { html += `<div class="calendar-cell is-empty"></div>`; }
 
-            // Günler
             for (let d = 1; d <= totalDays; d++) {
                 const dateStr = formatDate(state.year, state.month, d);
-                
-                // O günkü izinleri bul
                 const dayLeaves = appData.leaves.filter(l => l.date === dateStr);
                 
                 let badges = '';
                 dayLeaves.forEach(l => {
                     const emp = appData.employees.find(e => e.id === l.empId);
                     if(emp) {
-                        const isHT = l.type === 'HT';
-                        const bg = isHT ? '#f97316' : emp.color;
+                        const bg = l.type === 'HT' ? '#f97316' : emp.color;
                         badges += `
                             <div class="rounded px-1.5 py-0.5 text-[9px] font-semibold text-white truncate w-full shadow-sm" style="background-color: ${bg}">
                                 ${emp.name.split(' ')[0]} <span class="opacity-75">${l.type}</span>
@@ -516,16 +486,11 @@
                 `;
             }
 
-            // Tamamlama (Kareleri eşitlemek için)
             const remaining = (7 - ((startDay + totalDays) % 7)) % 7;
-            for (let i = 0; i < remaining; i++) {
-                html += `<div class="calendar-cell is-empty"></div>`;
-            }
-
+            for (let i = 0; i < remaining; i++) { html += `<div class="calendar-cell is-empty"></div>`; }
             area.innerHTML = html;
         }
 
-        // --- AYARLAR MODALI ---
         function toggleSettings() {
             const modal = document.getElementById('settings-modal');
             const content = document.getElementById('settings-content');
@@ -578,7 +543,7 @@
             document.getElementById('inp-new-color').value = getRandomColor();
             saveData();
             renderSettingsList();
-            renderPaintBar(); // Çubuğu da güncelle
+            renderPaintBar(); 
         }
 
         function removeEmployee(id) {
@@ -591,7 +556,6 @@
             renderCalendarUI();
         }
 
-        // --- VERİ ARAÇLARI ---
         function exportData() {
             const blob = new Blob([JSON.stringify(appData, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
@@ -614,14 +578,12 @@
             reader.readAsText(file);
         }
 
-        // --- PDF OLUŞTURUCU (GİZLİ KUSURSUZ CANVAS) ---
-        // UI ne kadar dar olursa olsun, bu foksiyon arka plandaki özel 1122px DOM'u doldurur ve basar.
+        // --- PDF DOM (Arkaplanda Ekranda Zaten Var) ---
         function buildPDFDOM() {
             document.getElementById('pdf-store-title').innerText = appData.settings.storeName || 'Kurum Adı';
             document.getElementById('pdf-manager-label').innerText = appData.settings.managerName || 'Yönetici';
             document.getElementById('pdf-date-title').innerText = `${monthNames[state.month]} ${state.year}`;
 
-            // Takvim
             const firstDay = new Date(state.year, state.month, 1);
             const lastDay = new Date(state.year, state.month + 1, 0);
             let startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; 
@@ -666,7 +628,6 @@
             html += '</div>';
             document.getElementById('pdf-grid-container').innerHTML = html;
 
-            // Özet Notları
             const notesContainer = document.getElementById('pdf-notes-container');
             const grouped = {};
             appData.leaves.forEach(l => {
@@ -680,16 +641,52 @@
             let notesHtml = '';
             appData.employees.forEach(emp => {
                 if(grouped[emp.id]) {
-                    // Günleri sıraya diz ve metne çevir
                     const leaves = grouped[emp.id].sort((a,b) => parseDate(a.date) - parseDate(b.date));
-                    const textArr = leaves.map(l => `${parseDate(l.date).getDate()} ${monthNames[state.month]} (${l.type})`);
+                    // Peş peşe gelen tarihleri aralık olarak gösterme algoritması
+                    let periods = [];
+                    let tempStart = null;
+                    let tempEnd = null;
+                    let tempType = null;
+
+                    for(let i=0; i<leaves.length; i++) {
+                        const current = leaves[i];
+                        const currDate = parseDate(current.date);
+
+                        if(!tempStart) {
+                            tempStart = currDate; tempEnd = currDate; tempType = current.type;
+                        } else {
+                            const expectedNext = new Date(tempEnd);
+                            expectedNext.setDate(expectedNext.getDate() + 1);
+
+                            if(currDate.getTime() === expectedNext.getTime() && current.type === tempType) {
+                                tempEnd = currDate; // Aralığı uzat
+                            } else {
+                                // Aralığı kapat ve kaydet
+                                if(tempStart.getTime() === tempEnd.getTime()) {
+                                    periods.push(`${tempStart.getDate()} ${monthNames[state.month]} (${tempType})`);
+                                } else {
+                                    periods.push(`${tempStart.getDate()}-${tempEnd.getDate()} ${monthNames[state.month]} (${tempType})`);
+                                }
+                                tempStart = currDate; tempEnd = currDate; tempType = current.type;
+                            }
+                        }
+                    }
+                    // Son kalanı ekle
+                    if(tempStart) {
+                        if(tempStart.getTime() === tempEnd.getTime()) {
+                            periods.push(`${tempStart.getDate()} ${monthNames[state.month]} (${tempType})`);
+                        } else {
+                            periods.push(`${tempStart.getDate()}-${tempEnd.getDate()} ${monthNames[state.month]} (${tempType})`);
+                        }
+                    }
+
                     notesHtml += `
                         <div style="background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
                             <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
                                 <div style="width:10px; height:10px; border-radius:50%; background:${emp.color};"></div>
                                 <strong style="color:#0f172a;">${emp.name}</strong>
                             </div>
-                            <div style="color:#475569; line-height: 1.4;">${textArr.join(', ')}</div>
+                            <div style="color:#475569; line-height: 1.4;">${periods.join(', ')}</div>
                         </div>
                     `;
                 }
@@ -698,32 +695,37 @@
         }
 
         function triggerPDF() {
-            Swal.fire({ title: 'PDF Hazırlanıyor...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'PDF Hazırlanıyor...', text: 'Lütfen bekleyin', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             
-            // 1. Gizli DOM'u inşa et
-            buildPDFDOM();
+            // Render edilecek hedefi seç
+            const target = document.getElementById('pdf-render-canvas');
             
-            // 2. DOM'u ekranda görünür ama arkada kalacak şekilde aktif et (html2canvas yakalayabilsin diye)
-            const canvasDiv = document.getElementById('pdf-render-canvas');
-            canvasDiv.style.opacity = '1';
-            canvasDiv.style.zIndex = '1';
+            // Ekranın scroll pozisyonunu sıfırla (Mobilde clipping/kesilme engeli)
+            window.scrollTo(0,0);
 
             const opt = {
                 margin:       0,
                 filename:     `Izin_Plani_${monthNames[state.month]}_${state.year}.pdf`,
                 image:        { type: 'jpeg', quality: 1.0 },
-                html2canvas:  { scale: 2, useCORS: true, windowWidth: 1122 },
+                html2canvas:  { 
+                    scale: 2, 
+                    useCORS: true,
+                    windowWidth: 1122,
+                    // scrollX ve scrollY'yi 0 yaparak ekranın dışındaki gizli divin tam çekilmesini sağlarız
+                    scrollX: 0,
+                    scrollY: 0
+                },
                 jsPDF:        { unit: 'px', format: [1122, 793], orientation: 'landscape' }
             };
 
-            // Kısa bir süre CSS render beklemesi
             setTimeout(() => {
-                html2pdf().set(opt).from(canvasDiv).save().then(() => {
-                    canvasDiv.style.opacity = '0';
-                    canvasDiv.style.zIndex = '-9999';
+                html2pdf().set(opt).from(target).save().then(() => {
                     Swal.close();
+                }).catch(err => {
+                    Swal.close();
+                    Swal.fire('Hata','PDF indirilemedi. Lütfen Chrome tarayıcısı kullanın.','error');
                 });
-            }, 300);
+            }, 500);
         }
 
         window.onload = initApp;
