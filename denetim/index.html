@@ -17,14 +17,17 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         
-        /* TEMEL AYARLAR & MOBİL KİLİT */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f1f5f9;
             color: #334155;
             -webkit-tap-highlight-color: transparent;
             margin: 0; padding: 0;
-            overflow: hidden; /* Ana kaydırma engellenir, sadece içerik kayar */
+            overflow: hidden !important; 
+            width: 100vw !important;
+            height: 100vh !important;
+            position: fixed !important;
+            top: 0; left: 0;
         }
 
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -32,12 +35,12 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        /* UYGULAMA İSKELETİ (Flexbox 100dvh) */
+        /* UYGULAMA İSKELETİ */
         #app-wrapper {
             display: flex;
             flex-direction: column;
             height: 100vh;
-            height: 100dvh; /* iOS Safari için hayati önem taşır */
+            height: 100dvh; 
             width: 100vw;
         }
 
@@ -52,7 +55,7 @@
             flex-shrink: 0;
             background-color: #ffffff;
             border-top: 1px solid #e2e8f0;
-            padding-bottom: env(safe-area-inset-bottom, 0px); /* iOS Çentik boşluğu */
+            padding-bottom: env(safe-area-inset-bottom, 0px);
             box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
             z-index: 20;
         }
@@ -65,6 +68,7 @@
             background-color: #e2e8f0;
             border: 1px solid #e2e8f0;
             border-radius: 0.75rem;
+            overflow: hidden;
         }
 
         .calendar-cell {
@@ -76,7 +80,7 @@
             cursor: pointer;
             transition: background-color 0.15s ease;
             user-select: none;
-            overflow: visible; /* Şeritlerin (Stripes) hücre dışına taşarak birleşmesi için ŞART */
+            overflow: visible; 
         }
 
         @media (min-width: 768px) {
@@ -112,7 +116,7 @@
 
         /* PDF BASKI ÖNİZLEME KATMANI */
         #pdf-overlay {
-            display: none; /* Varsayılan Gizli */
+            display: none; 
             position: fixed;
             top: 0; left: 0;
             width: 100vw; height: 100vh;
@@ -149,7 +153,7 @@
             flex-direction: column;
             gap: 3px;
             min-height: 85px;
-            overflow: visible; /* Şerit birleşimi için */
+            overflow: visible; 
         }
         .pdf-header {
             background-color: #f1f5f9;
@@ -217,7 +221,7 @@
                 </div>
 
                 <!-- Bilgi Notu -->
-                <div class="mt-5 text-center px-4">
+                <div class="mt-5 text-center px-4 pb-4">
                     <p class="text-[11px] sm:text-xs text-slate-400 font-medium bg-slate-200/50 inline-block px-4 py-2 rounded-full">
                         <i class="fa-solid fa-hand-pointer text-amber-500 mr-1.5"></i> Alttan personeli seçip takvimdeki günlere dokunarak izin atayabilirsiniz.
                     </p>
@@ -293,13 +297,14 @@
          3. AYARLAR MODALI
          ============================================== -->
     <div id="settings-modal" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 invisible transition-all duration-200 p-4">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-transform duration-200" id="settings-content">
-            <div class="bg-slate-800 px-6 py-4 flex justify-between items-center">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-transform duration-200 flex flex-col" id="settings-content" style="max-height: 90vh;">
+            <div class="bg-slate-800 px-6 py-4 flex justify-between items-center shrink-0">
                 <h3 class="text-white font-bold tracking-wide"><i class="fa-solid fa-gear mr-2"></i> Yönetim Paneli</h3>
                 <button onclick="toggleSettings()" class="text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             
-            <div class="max-h-[70vh] overflow-y-auto p-6 space-y-6">
+            <div class="overflow-y-auto p-6 space-y-6 flex-1">
+                <!-- Başlık Bilgileri -->
                 <div>
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Belge Başlık Bilgileri</h4>
                     <div class="space-y-3">
@@ -308,6 +313,25 @@
                     </div>
                 </div>
                 
+                <!-- Özel Gün / Resmi Tatil Ekleme -->
+                <div class="pt-5 border-t border-slate-100">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Özel Gün / Resmi Tatil Ekle</h4>
+                    <div class="flex gap-2">
+                        <div class="flex-1 flex flex-col gap-2">
+                            <input type="text" id="inp-hol-name" placeholder="Tatil Adı (Örn: Zafer Bayramı)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500">
+                            <input type="date" id="inp-hol-date" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500">
+                        </div>
+                        <div class="flex flex-col shrink-0 justify-end">
+                            <button onclick="addSpecialDay()" class="w-12 h-12 rounded-xl bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center transition shadow-sm mb-1">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Tatil Listesi -->
+                    <div id="settings-hol-list" class="space-y-2 mt-3 empty:hidden"></div>
+                </div>
+
+                <!-- Personel Ekleme -->
                 <div class="pt-5 border-t border-slate-100">
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Yeni Personel Ekle</h4>
                     <div class="flex gap-2">
@@ -316,19 +340,21 @@
                             <input type="number" id="inp-new-quota" placeholder="Yıllık İzin Hakkı (Gün)" value="14" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500">
                         </div>
                         <div class="flex flex-col gap-2 shrink-0">
-                            <input type="color" id="inp-new-color" class="w-11 h-11 rounded-xl border border-slate-200 cursor-pointer p-0.5 bg-white">
-                            <button onclick="addEmployee()" class="w-11 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center transition shadow-sm">
+                            <input type="color" id="inp-new-color" class="w-12 h-12 rounded-xl border border-slate-200 cursor-pointer p-1 bg-white">
+                            <button onclick="addEmployee()" class="w-12 h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center transition shadow-sm">
                                 <i class="fa-solid fa-plus"></i>
                             </button>
                         </div>
                     </div>
                 </div>
 
+                <!-- Personel Listesi -->
                 <div>
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Kayıtlı Ekip</h4>
                     <div id="settings-emp-list" class="space-y-2"></div>
                 </div>
 
+                <!-- Dosya İşlemleri -->
                 <div class="pt-5 border-t border-slate-100 grid grid-cols-2 gap-3">
                     <button onclick="document.getElementById('file-upload-2').click()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-upload"></i> İçe Aktar
@@ -361,6 +387,10 @@
                 { id: 102, empId: 1, date: "2026-08-13", type: "YI" },
                 { id: 104, empId: 1, date: "2026-08-15", type: "HT" }
             ],
+            specialDays: [
+                // Yeni Eklenen Özellik
+                { id: 1, name: "Bayram", date: "2026-08-21" }
+            ],
             settings: {
                 storeName: "Mağaza 4254 - Park Bornova AVM",
                 managerName: "Arda Ulaş"
@@ -388,10 +418,12 @@
             return (emp.quota || 0) - usedYI;
         }
 
+        // Veri formatı güncelleme
         function checkAndMigrateData() {
             let migrated = false;
             let newLeaves = [];
             
+            // Tarih geçişi
             appData.leaves.forEach(l => {
                 if (l.start && l.end) {
                     migrated = true;
@@ -406,15 +438,22 @@
                 }
             });
 
+            // Kota özelliği geçişi
             appData.employees.forEach(e => {
                 if (e.quota === undefined) { e.quota = 14; migrated = true; }
             });
+
+            // Özel gün migration
+            if (!appData.specialDays) {
+                appData.specialDays = [];
+                migrated = true;
+            }
 
             if (migrated) { appData.leaves = newLeaves; saveData(); }
         }
 
         function initApp() {
-            const stored = localStorage.getItem('leavePlannerPro_v15');
+            const stored = localStorage.getItem('leavePlannerPro_v16');
             if (stored) { appData = JSON.parse(stored); checkAndMigrateData(); } 
             else { saveData(); }
 
@@ -431,7 +470,8 @@
         }
 
         function saveData() { 
-            localStorage.setItem('leavePlannerPro_v15', JSON.stringify(appData)); 
+            localStorage.setItem('leavePlannerPro_v16', JSON.stringify(appData)); 
+            buildPDFDOM(); 
         }
 
         function setPaintType(type) {
@@ -508,10 +548,7 @@
             renderApp();
         }
 
-        // ==============================================
         // ŞERİT (STRIP) GÖRÜNÜM ALGORİTMASI
-        // Birbirini takip eden izin günlerini CSS ile bağlar
-        // ==============================================
         function getStripStyles(d, empId, type, startDay) {
             const prevDateStr = formatDate(state.year, state.month, d - 1);
             const nextDateStr = formatDate(state.year, state.month, d + 1);
@@ -519,14 +556,12 @@
             const isPrevConnected = appData.leaves.some(l => l.empId === empId && l.type === type && l.date === prevDateStr);
             const isNextConnected = appData.leaves.some(l => l.empId === empId && l.type === type && l.date === nextDateStr);
             
-            // Satır başı veya sonu kontrolleri (Pazartesi veya Pazar mı?)
             const isRowStart = (startDay + d - 1) % 7 === 0 || d === 1;
             const isRowEnd = (startDay + d) % 7 === 0 || d === new Date(state.year, state.month + 1, 0).getDate();
 
             let styles = "";
             let showText = !isPrevConnected || isRowStart;
 
-            // padding:4px hücre, gap:1px tablo -> Birleşmek için margin -5px olmalı
             if (isPrevConnected && !isRowStart) {
                 styles += "margin-left: -5px; padding-left: 5px; border-top-left-radius: 0; border-bottom-left-radius: 0; ";
             } else {
@@ -549,6 +584,7 @@
             renderPaintBar();
             renderSettingsList();
             renderCalendarUI();
+            buildPDFDOM();
         }
 
         function renderPaintBar() {
@@ -588,10 +624,17 @@
 
             for (let d = 1; d <= totalDays; d++) {
                 const dateStr = formatDate(state.year, state.month, d);
+                
+                // Özel Gün Kontrolü
+                const specialDay = appData.specialDays.find(s => s.date === dateStr);
+                let specialHtml = '';
+                if (specialDay) {
+                    specialHtml = `<div class="bg-rose-100 text-rose-600 text-[8px] sm:text-[9px] font-bold px-1 py-0.5 rounded truncate text-center mb-1 w-full" title="${specialDay.name}">${specialDay.name}</div>`;
+                }
+
                 const dayLeaves = appData.leaves.filter(l => l.date === dateStr);
                 
                 let badges = '';
-                // Aynı personelin izinleri hep aynı hizada görünsün diye empId'ye göre sıralıyoruz
                 dayLeaves.sort((a,b) => a.empId - b.empId).forEach(l => {
                     const emp = appData.employees.find(e => e.id === l.empId);
                     if(emp) {
@@ -613,7 +656,10 @@
 
                 html += `
                     <div class="calendar-cell ${todayClass}" onclick="handleCellClick(${d})">
-                        <div class="text-right text-xs font-extrabold text-slate-400 mb-1">${d}</div>
+                        <div class="flex justify-between items-start mb-1 w-full">
+                            <div class="flex-1 overflow-hidden pr-1">${specialHtml}</div>
+                            <div class="text-right text-xs font-extrabold text-slate-400 shrink-0">${d}</div>
+                        </div>
                         <div class="badges-container">${badges}</div>
                     </div>
                 `;
@@ -624,7 +670,7 @@
             area.innerHTML = html;
         }
 
-        // --- AYARLAR ---
+        // --- AYARLAR & ÖZEL GÜNLER ---
         function toggleSettings() {
             const modal = document.getElementById('settings-modal');
             const content = document.getElementById('settings-content');
@@ -646,20 +692,64 @@
             saveData();
         }
 
+        // Özel Gün Fonksiyonları
+        function addSpecialDay() {
+            const name = document.getElementById('inp-hol-name').value.trim();
+            const dateStr = document.getElementById('inp-hol-date').value;
+            if(!name || !dateStr) {
+                return Swal.fire('Hata', 'Lütfen tatil adı ve tarihi seçin.', 'warning');
+            }
+            
+            const newId = appData.specialDays.length ? Math.max(...appData.specialDays.map(e => e.id)) + 1 : 1;
+            appData.specialDays.push({ id: newId, name: name, date: dateStr });
+            
+            document.getElementById('inp-hol-name').value = '';
+            document.getElementById('inp-hol-date').value = '';
+            saveData();
+            renderSettingsList();
+            renderApp();
+        }
+
+        function removeSpecialDay(id) {
+            appData.specialDays = appData.specialDays.filter(e => e.id !== id);
+            saveData();
+            renderSettingsList();
+            renderApp();
+        }
+
         function renderSettingsList() {
-            const list = document.getElementById('settings-emp-list');
-            list.innerHTML = '';
-            if(appData.employees.length === 0) list.innerHTML = '<div class="text-xs text-slate-400 italic">Personel yok.</div>';
+            const empList = document.getElementById('settings-emp-list');
+            empList.innerHTML = '';
+            if(appData.employees.length === 0) empList.innerHTML = '<div class="text-xs text-slate-400 italic">Personel yok.</div>';
             
             appData.employees.forEach(emp => {
                 const rem = getRemainingQuota(emp.id);
-                list.innerHTML += `
+                empList.innerHTML += `
                     <div class="flex justify-between items-center bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl">
                         <div class="flex items-center gap-3">
                             <div class="w-4 h-4 rounded-full shadow-sm" style="background-color: ${emp.color}"></div>
                             <span class="text-sm font-bold text-slate-700">${emp.name} <span class="text-[10px] text-slate-400 font-normal ml-1">(Kota: ${emp.quota} / Kalan: ${rem})</span></span>
                         </div>
                         <button onclick="removeEmployee(${emp.id})" class="w-8 h-8 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 flex items-center justify-center transition">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+            });
+
+            // Özel gün listesi render
+            const holList = document.getElementById('settings-hol-list');
+            holList.innerHTML = '';
+            appData.specialDays.forEach(hol => {
+                const dObj = parseDate(hol.date);
+                const formatD = `${dObj.getDate()} ${monthNames[dObj.getMonth()]} ${dObj.getFullYear()}`;
+                holList.innerHTML += `
+                    <div class="flex justify-between items-center bg-rose-50 border border-rose-100 px-3 py-2 rounded-xl">
+                        <div class="flex items-center gap-3">
+                            <div class="w-2 h-2 rounded-full bg-rose-500"></div>
+                            <span class="text-xs font-bold text-rose-700">${hol.name} <span class="text-[10px] font-medium text-rose-500 ml-1">(${formatD})</span></span>
+                        </div>
+                        <button onclick="removeSpecialDay(${hol.id})" class="w-8 h-8 rounded-lg hover:bg-white text-rose-400 hover:text-red-500 flex items-center justify-center transition">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </div>
@@ -717,7 +807,7 @@
         }
 
         // ==============================================
-        // BÜYÜLÜ PDF ÇÖZÜMÜ: Ekrana Çıkar, Çek, Kapat
+        // PDF RENDER İŞLEMLERİ
         // ==============================================
         function buildPDFDOM() {
             document.getElementById('pdf-store-title').innerText = appData.settings.storeName || 'Kurum Adı';
@@ -745,6 +835,14 @@
                         html += `<div class="pdf-cell" style="background-color: #f8fafc;"></div>`;
                     } else {
                         const dateStr = formatDate(state.year, state.month, day);
+                        
+                        // Özel gün
+                        const specialDay = appData.specialDays.find(s => s.date === dateStr);
+                        let specialHtml = '';
+                        if(specialDay) {
+                            specialHtml = `<div style="color:#e11d48; font-size:10px; font-weight:800; background:#ffe4e6; padding:2px 4px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${specialDay.name}</div>`;
+                        }
+
                         const dayLeaves = appData.leaves.filter(l => l.date === dateStr);
                         
                         let badges = '';
@@ -765,7 +863,10 @@
 
                         html += `
                             <div class="pdf-cell" style="background-color: white;">
-                                <div style="text-align: right; font-size: 13px; font-weight: 800; color: #94a3b8; margin-bottom: 6px;">${day}</div>
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 6px;">
+                                    <div style="flex:1; padding-right:4px;">${specialHtml}</div>
+                                    <div style="text-align: right; font-size: 13px; font-weight: 800; color: #94a3b8;">${day}</div>
+                                </div>
                                 <div style="display:flex; flex-direction:column;">${badges}</div>
                             </div>
                         `;
@@ -775,7 +876,7 @@
             html += '</div>';
             document.getElementById('pdf-grid-container').innerHTML = html;
 
-            // Özet Notları (Aralıkları Birleştirme Algoritması)
+            // Özet Notları
             const notesContainer = document.getElementById('pdf-notes-container');
             const grouped = {};
             appData.leaves.forEach(l => {
@@ -827,7 +928,6 @@
 
                     const remYI = getRemainingQuota(emp.id);
 
-                    // .avoid-page-break kesilmeleri engeller
                     notesHtml += `
                         <div class="avoid-page-break" style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; break-inside: avoid;">
                             <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
@@ -850,13 +950,11 @@
             const overlay = document.getElementById('pdf-overlay');
             const target = document.getElementById('pdf-render-canvas');
             
-            // 1. Ekrana Getir (iOS Sadece Görebildiğini Çeker)
             overlay.style.display = 'flex';
             overlay.scrollTo(0,0);
 
-            // 2. HTML2PDF Ayarları (pagebreak avoid destekli)
             const opt = {
-                margin:       [10, 0, 10, 0], // Üst ve alt margin sayfa kesilmelerinde nefes aldırır
+                margin:       [10, 0, 10, 0], 
                 filename:     `Izin_Plani_${monthNames[state.month]}_${state.year}.pdf`,
                 image:        { type: 'jpeg', quality: 1.0 },
                 html2canvas:  { 
@@ -870,10 +968,9 @@
                 pagebreak:    { mode: ['css', 'legacy'] }
             };
 
-            // 3. 800ms bekle ki cihaz HTML'i tamamen çizip belleğe alsın
             setTimeout(() => {
                 html2pdf().set(opt).from(target).save().then(() => {
-                    overlay.style.display = 'none'; // İş bitince gizle
+                    overlay.style.display = 'none'; 
                     Swal.close();
                     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'PDF İndirildi', showConfirmButton: false, timer: 1500 });
                 }).catch(err => {
