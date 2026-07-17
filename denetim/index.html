@@ -1,4 +1,4 @@
-html_content = """<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
@@ -62,55 +62,93 @@ html_content = """<!DOCTYPE html>
             display: flex;
             flex-direction: column;
             gap: 4px;
-        }
-
-        /* --- PDF MODU (BEYAZ SAYFA ÇÖZÜMÜ) --- */
-        /* html2canvas görünmez elementleri (-9999px) beyaza boyar.
-           Bu class eklendiğinde tablo 1 saniyeliğine ekranda en üste 
-           Tam A4 boyutlarında (Mutlak Konum) yerleşir, fotoğrafı çekilir 
-           ve eski haline döner. */
-        .pdf-export-mode {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 297mm !important;
-            height: 210mm !important;
-            max-width: 297mm !important;
-            min-width: 297mm !important;
-            padding: 10mm 15mm !important;
-            background-color: #ffffff !important;
-            z-index: 9999 !important; /* SweetAlert'in hemen altında ama sitenin üstünde */
-            border-radius: 0 !important;
-            border: none !important;
-            box-shadow: none !important;
+            position: relative;
+            cursor: pointer; /* Makes cells look clickable */
+            transition: background-color 0.2s;
         }
         
+        .cal-cell:hover {
+            background-color: #f8fafc;
+        }
+
+        .cal-cell.disabled-cell {
+            background-color: #f1f5f9;
+            cursor: default;
+        }
+        .cal-cell.disabled-cell:hover {
+            background-color: #f1f5f9;
+        }
+
+        /* Hover Add Button on Cell */
+        .add-leave-btn-overlay {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            color: #3b82f6;
+            font-size: 14px;
+            background: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        
+        /* Only show overlay on hover if it's not disabled */
+        .cal-cell:not(.disabled-cell):hover .add-leave-btn-overlay {
+            opacity: 1;
+        }
+
+        /* --- PDF MODU (BEYAZ SAYFA ÇÖZÜMÜ V2 - KESİN YÖNTEM) --- */
+        /* html2pdf'i iframe içinde izole ederek parent sayfa scrollundan etkilenmesini engelliyoruz */
+        
+        /* A4 yatay ölçüleri (mm cinsinden html2pdf ayarları için) */
+        #print-source {
+            background: white;
+            width: 100%;
+        }
+
+        .pdf-export-mode {
+            /* Forced to pixel dimensions for A4 Landscape at 96 DPI to ensure html2canvas captures exactly this box */
+            width: 1122px !important;
+            height: 793px !important;
+            padding: 40px !important; /* Fixed pixel padding instead of mm for consistent canvas capture */
+            background-color: #ffffff !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            z-index: -9999 !important; /* Hide behind everything but keep in viewport */
+            margin: 0 !important;
+            box-sizing: border-box !important;
+        }
+
         .pdf-export-mode .cal-grid {
-            flex: 1 !important;
             min-width: 100% !important;
             height: 100% !important;
-            display: flex !important;
-            flex-direction: column !important;
-        }
-
-        .pdf-export-mode .cal-row {
-            flex: 1 !important;
-            display: flex !important;
-        }
-
-        .pdf-export-mode .cal-cell {
-            height: 100% !important;
-            min-height: 0 !important;
-            overflow: hidden !important;
         }
 
         .pdf-export-mode .no-print {
             display: none !important;
         }
+        
+        /* Reset min-width overrides during print to allow downscaling */
+        .pdf-export-mode .min-w-[700px] {
+             min-width: 0 !important;
+        }
 
         .pdf-export-mode #notes-render-area {
-            max-height: 35mm !important; 
+            max-height: 150px !important; 
             overflow: hidden !important;
+        }
+        
+        /* Modal styling */
+        .modal-overlay {
+            background-color: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
         }
     </style>
 </head>
@@ -176,37 +214,6 @@ html_content = """<!DOCTYPE html>
                     </div>
                 </div>
 
-                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
-                    <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
-                    <label class="block text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-3 mt-1">İzin / Tatil Ekle</label>
-                    <div class="space-y-3">
-                        <select id="leave-emp" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none"></select>
-                        <div class="flex gap-2">
-                            <div class="flex-1">
-                                <span class="text-[10px] text-slate-500 mb-1 block">Başlangıç</span>
-                                <input type="date" id="leave-start" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none">
-                            </div>
-                            <div class="flex-1">
-                                <span class="text-[10px] text-slate-500 mb-1 block">Bitiş</span>
-                                <input type="date" id="leave-end" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none">
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 mt-1">
-                            <label class="flex items-center justify-center gap-1 border border-slate-200 rounded-lg py-2 cursor-pointer hover:bg-blue-50">
-                                <input type="radio" name="leave-type" value="YI" checked class="w-3.5 h-3.5 text-blue-600">
-                                <span class="text-xs font-semibold text-slate-700">Yıllık (Yİ)</span>
-                            </label>
-                            <label class="flex items-center justify-center gap-1 border border-slate-200 rounded-lg py-2 cursor-pointer hover:bg-orange-50">
-                                <input type="radio" name="leave-type" value="HT" class="w-3.5 h-3.5 text-orange-500">
-                                <span class="text-xs font-semibold text-orange-600">Tatil (HT)</span>
-                            </label>
-                        </div>
-                        <button onclick="addLeave()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-2.5 rounded-lg text-sm mt-2">
-                            Takvime İşle
-                        </button>
-                    </div>
-                </div>
-
                 <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Personel Yönetimi</label>
                     <div class="flex gap-2 mb-3">
@@ -223,6 +230,11 @@ html_content = """<!DOCTYPE html>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">PDF Belge Ayarları</label>
                     <input type="text" id="store-name" placeholder="Kurum/Mağaza Adı" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-2 text-xs outline-none" value="Mağaza 4254 - Park Bornova AVM" oninput="updateSettings()">
                     <input type="text" id="manager-name" placeholder="Yönetici Adı" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none" value="Arda Ulaş" oninput="updateSettings()">
+                </div>
+
+                <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 flex gap-3 items-start">
+                    <i class="fa-solid fa-circle-info text-blue-500 mt-0.5"></i>
+                    <p class="text-[11px] text-blue-800 leading-relaxed">İzin veya tatil atamak için doğrudan <strong>takvimdeki günlerin üzerine</strong> tıklayabilirsiniz.</p>
                 </div>
             </aside>
 
@@ -249,7 +261,7 @@ html_content = """<!DOCTYPE html>
                         <div id="notes-render-area" class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs"></div>
                     </div>
 
-                    <div class="mt-6 pt-4 border-t border-slate-200 flex justify-between items-center text-xs min-w-[700px]">
+                    <div class="mt-6 pt-4 border-t border-slate-200 flex justify-between items-center text-xs min-w-[700px] print-footer-sig">
                         <div class="flex gap-4">
                             <div><span class="font-bold">Onaylayan:</span> <span id="pdf-manager-name" class="text-slate-700 uppercase">Arda Ulaş</span></div>
                             <div><span class="font-bold">Tarih:</span> <span class="text-slate-400">.../.../20..</span></div>
@@ -260,6 +272,58 @@ html_content = """<!DOCTYPE html>
             </section>
         </div>
     </main>
+
+    <!-- Hızlı Ekleme Modalı (Popup) -->
+    <div id="add-leave-modal" class="fixed inset-0 modal-overlay z-[100] flex items-center justify-center opacity-0 invisible transition-all duration-200">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-transform duration-200" id="modal-content">
+            <!-- Modal Header -->
+            <div class="bg-blue-600 px-5 py-4 flex justify-between items-center">
+                <h3 class="text-white font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-plus"></i> İzin / Tatil Ekle
+                </h3>
+                <button onclick="closeModal()" class="text-blue-100 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-5 space-y-4">
+                <div class="bg-blue-50 text-blue-800 text-sm font-semibold px-3 py-2 rounded-lg text-center" id="modal-date-display">
+                    15 Ağustos 2026
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Personel Seçin</label>
+                    <select id="modal-emp" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"></select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">İzin Türü</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center justify-center gap-1 border border-slate-300 rounded-lg py-2.5 cursor-pointer hover:bg-blue-50">
+                            <input type="radio" name="modal-leave-type" value="YI" checked class="w-4 h-4 text-blue-600">
+                            <span class="text-sm font-semibold text-slate-700">Yıllık (Yİ)</span>
+                        </label>
+                        <label class="flex items-center justify-center gap-1 border border-slate-300 rounded-lg py-2.5 cursor-pointer hover:bg-orange-50">
+                            <input type="radio" name="modal-leave-type" value="HT" class="w-4 h-4 text-orange-500">
+                            <span class="text-sm font-semibold text-orange-600">Tatil (HT)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Hidden inputs for logic -->
+                <input type="hidden" id="modal-start-date">
+                <input type="hidden" id="modal-end-date">
+
+                <button onclick="submitModalLeave()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl text-sm transition mt-2 shadow-md">
+                    Kaydet ve Takvime İşle
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gizli İframe PDF Render Yeri (Beyaz Sayfa Çözümü V2) -->
+    <div id="hidden-iframe-container" class="fixed top-[-9999px] left-[-9999px] w-[1px] h-[1px] overflow-hidden opacity-0 pointer-events-none"></div>
 
     <script>
         const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
@@ -287,8 +351,15 @@ html_content = """<!DOCTYPE html>
             return new Date(y, m - 1, d);
         }
 
+        function formatDateForInput(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
         function initApp() {
-            const stored = localStorage.getItem('leavePlannerData_v6');
+            const stored = localStorage.getItem('leavePlannerData_v7');
             if (stored) {
                 appData = JSON.parse(stored);
             } else {
@@ -303,7 +374,7 @@ html_content = """<!DOCTYPE html>
         }
 
         function saveData() {
-            localStorage.setItem('leavePlannerData_v6', JSON.stringify(appData));
+            localStorage.setItem('leavePlannerData_v7', JSON.stringify(appData));
         }
 
         function updateSettings() {
@@ -361,9 +432,10 @@ html_content = """<!DOCTYPE html>
 
         function renderEmployees() {
             const list = document.getElementById('employee-list');
-            const select = document.getElementById('leave-emp');
+            const modalSelect = document.getElementById('modal-emp');
+            
             list.innerHTML = '';
-            select.innerHTML = '<option value="">Personel Seçiniz...</option>';
+            modalSelect.innerHTML = '<option value="">Lütfen Personel Seçin...</option>';
 
             appData.employees.forEach(emp => {
                 list.innerHTML += `
@@ -375,23 +447,56 @@ html_content = """<!DOCTYPE html>
                         <button onclick="deleteEmployee(${emp.id})" class="text-slate-400 hover:text-red-500 transition"><i class="fa-solid fa-trash-can text-sm"></i></button>
                     </div>
                 `;
-                select.innerHTML += `<option value="${emp.id}">${emp.name}</option>`;
+                modalSelect.innerHTML += `<option value="${emp.id}">${emp.name}</option>`;
             });
         }
 
-        function addLeave() {
-            const empId = document.getElementById('leave-emp').value;
-            const start = document.getElementById('leave-start').value;
-            const end = document.getElementById('leave-end').value;
-            const type = document.querySelector('input[name="leave-type"]:checked').value;
-
-            if (!empId || !start || !end) {
-                return Swal.fire('Eksik Bilgi', 'Lütfen personel ve tarih aralığını eksiksiz girin.', 'warning');
-            }
-            if (new Date(start) > new Date(end)) {
-                return Swal.fire('Hatalı Tarih', 'Bitiş tarihi başlangıçtan önce olamaz.', 'error');
+        // Modal (Popup) Logic
+        function openModalForDate(year, monthIdx, day) {
+            if(appData.employees.length === 0) {
+                return Swal.fire('Dikkat', 'İzin atamadan önce lütfen sol menüden personel ekleyin.', 'info');
             }
 
+            const dateObj = new Date(year, monthIdx, day);
+            const dateStr = formatDateForInput(dateObj);
+            
+            document.getElementById('modal-date-display').innerText = `${day} ${monthNames[monthIdx]} ${year}`;
+            document.getElementById('modal-start-date').value = dateStr;
+            document.getElementById('modal-end-date').value = dateStr;
+            document.getElementById('modal-emp').value = ''; // Reset
+            
+            const modal = document.getElementById('add-leave-modal');
+            const modalContent = document.getElementById('modal-content');
+            
+            modal.classList.remove('invisible', 'opacity-0');
+            modalContent.classList.remove('scale-95');
+            modalContent.classList.add('scale-100');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('add-leave-modal');
+            const modalContent = document.getElementById('modal-content');
+            
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            modal.classList.add('opacity-0');
+            
+            setTimeout(() => {
+                modal.classList.add('invisible');
+            }, 200);
+        }
+
+        function submitModalLeave() {
+            const empId = document.getElementById('modal-emp').value;
+            const start = document.getElementById('modal-start-date').value;
+            const end = document.getElementById('modal-end-date').value;
+            const type = document.querySelector('input[name="modal-leave-type"]:checked').value;
+
+            if (!empId) {
+                return Swal.fire('Eksik Bilgi', 'Lütfen personel seçimi yapınız.', 'warning');
+            }
+
+            // Conflict Check
             const hasConflict = appData.leaves.some(l => 
                 l.empId === parseInt(empId) &&
                 ((start >= l.start && start <= l.end) || (end >= l.start && end <= l.end) || (start <= l.start && end >= l.end))
@@ -400,7 +505,7 @@ html_content = """<!DOCTYPE html>
             if (hasConflict) {
                 Swal.fire({
                     title: 'Tarih Çakışması',
-                    text: 'Personelin bu tarihlerde zaten izni var. Yine de eklemek ister misiniz?',
+                    text: 'Personelin bu tarihlerde zaten izni var. Üzerine yazılsın mı?',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#3b82f6',
@@ -408,27 +513,28 @@ html_content = """<!DOCTYPE html>
                     confirmButtonText: 'Evet, Ekle',
                     cancelButtonText: 'İptal'
                 }).then((result) => {
-                    if (result.isConfirmed) saveNewLeave(empId, start, end, type);
+                    if (result.isConfirmed) {
+                        saveNewLeave(empId, start, end, type);
+                        closeModal();
+                    }
                 });
             } else {
                 saveNewLeave(empId, start, end, type);
+                closeModal();
             }
         }
 
         function saveNewLeave(empId, start, end, type) {
             const newId = appData.leaves.length ? Math.max(...appData.leaves.map(l => l.id)) + 1 : 1;
             appData.leaves.push({ id: newId, empId: parseInt(empId), start, end, type });
-            
-            document.getElementById('leave-start').value = '';
-            document.getElementById('leave-end').value = '';
-            
             saveData();
             renderApp();
             const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
             Toast.fire({ icon: 'success', title: 'İzin Takvime İşlendi' });
         }
 
-        function deleteLeave(id) {
+        function deleteLeave(event, id) {
+            event.stopPropagation(); // Prevent opening modal when clicking delete
             appData.leaves = appData.leaves.filter(l => l.id !== id);
             saveData();
             renderApp();
@@ -478,7 +584,7 @@ html_content = """<!DOCTYPE html>
                     const cell = cellsArray[idx];
 
                     if (cell.empty) {
-                        html += `<div class="cal-cell bg-slate-50/40"></div>`;
+                        html += `<div class="cal-cell disabled-cell"></div>`;
                     } else {
                         const currentDateObj = new Date(year, monthIdx, cell.day);
                         
@@ -499,7 +605,7 @@ html_content = """<!DOCTYPE html>
                                 badgesHtml += `
                                     <div class="text-[9px] font-semibold rounded px-1.5 py-0.5 flex items-center justify-between" style="${badgeStyle}">
                                         <span class="truncate pr-1">${emp.name} <span class="opacity-80 font-normal">(${typeText})</span></span>
-                                        <i class="fa-solid fa-xmark cursor-pointer hover:text-black/50 transition no-print" onclick="deleteLeave(${l.id})"></i>
+                                        <i class="fa-solid fa-xmark cursor-pointer hover:text-black/50 transition no-print" onclick="deleteLeave(event, ${l.id})"></i>
                                     </div>
                                 `;
                             }
@@ -508,8 +614,10 @@ html_content = """<!DOCTYPE html>
                         const isToday = cell.day === new Date().getDate() && monthIdx === new Date().getMonth() && year === new Date().getFullYear();
                         const todayStyle = isToday ? 'background-color: #eff6ff; box-shadow: inset 0 2px 0 0 #3b82f6;' : '';
 
+                        // Added onclick event to open modal
                         html += `
-                            <div class="cal-cell" style="${todayStyle}">
+                            <div class="cal-cell" style="${todayStyle}" onclick="openModalForDate(${year}, ${monthIdx}, ${cell.day})">
+                                <div class="add-leave-btn-overlay no-print"><i class="fa-solid fa-plus"></i></div>
                                 <div class="text-right text-[11px] font-bold text-slate-500 mb-1">${cell.day}</div>
                                 <div class="flex flex-col gap-1 overflow-y-auto custom-scrollbar flex-1">
                                     ${badgesHtml}
@@ -615,51 +723,83 @@ html_content = """<!DOCTYPE html>
             reader.readAsText(file);
         }
 
-        // BEYAZ SAYFA VE KESİLME KESİN ÇÖZÜMÜ (Doğrudan Render & Mutlak Konumlama)
+        // BEYAZ SAYFA KESİN ÇÖZÜMÜ V2 - IFRAME CLONING
         function generatePDF() {
             Swal.fire({
                 title: 'PDF Hazırlanıyor...',
-                text: 'Lütfen bekleyin, belge A4 boyutuna optimize ediliyor.',
+                text: 'Lütfen bekleyin, belge A4 boyutuna render ediliyor.',
                 allowOutsideClick: false,
                 didOpen: () => { Swal.showLoading() }
             });
 
-            // 1. Ekranın scroll durumunu sıfırla (Kesilmeleri önler)
-            window.scrollTo(0, 0);
-            const mainScroll = document.getElementById('main-scroll-area');
-            if(mainScroll) mainScroll.scrollTop = 0;
-
-            const element = document.getElementById('print-source');
+            // 1. Yazdırılacak asıl içeriği seç
+            const printContent = document.getElementById('print-source');
             
-            // 2. Elemente PDF format sınıfını ekle (Tam 297x210mm olacak şekilde sayfanın en üstüne sabitlenir)
-            element.classList.add('pdf-export-mode');
+            // 2. Gizli iFrame'in içine tam klonu gönder (Bu, parent sayfanın scroll'undan etkilenmeyi sıfırlar)
+            const iframeContainer = document.getElementById('hidden-iframe-container');
+            iframeContainer.innerHTML = ''; // Temizle
+            
+            // CSS kopyalama (Mevcut sayfanın stillerini al)
+            let stylesHtml = '';
+            document.querySelectorAll('style, link[rel="stylesheet"]').forEach(el => {
+                stylesHtml += el.outerHTML;
+            });
 
-            const monthStr = monthNames[parseInt(document.getElementById('month-select').value)];
-            const yearStr = document.getElementById('year-select').value;
-            const fileName = `Izin_Plani_${monthStr}_${yearStr}.pdf`;
+            const iframe = document.createElement('iframe');
+            iframe.width = "1122px"; // A4 Landscape pixel width
+            iframe.height = "793px"; // A4 Landscape pixel height
+            iframeContainer.appendChild(iframe);
 
-            const opt = {
-                margin:       0,
-                filename:     fileName,
-                image:        { type: 'jpeg', quality: 1 },
-                // windowWidth ve windowHeight parametreleri, mobilde render motorunun dar ekrana göre kesmesini engeller
-                html2canvas:  { scale: 2, useCORS: true, windowWidth: 1200, windowHeight: 900, scrollX: 0, scrollY: 0 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
-            };
+            const iframeDoc = iframe.contentWindow.document;
+            iframeDoc.open();
+            iframeDoc.write(`
+                <html>
+                <head>
+                    ${stylesHtml}
+                    <!-- Tailwind CDN -->
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                </head>
+                <body style="background:white; margin:0; padding:0;">
+                    <div class="pdf-export-mode">
+                        ${printContent.innerHTML}
+                    </div>
+                </body>
+                </html>
+            `);
+            iframeDoc.close();
 
-            // 3. Tarayıcının CSS'i işlemesi için çok kısa bir süre bekleyip fotoğrafı çek
+            // 3. İframe'in içindeki fontlar ve tailwind'in yüklenmesi için bekle
             setTimeout(() => {
-                html2pdf().set(opt).from(element).save().then(() => {
-                    // İşlem bitince sınıfı kaldır, arayüz normale dönsün
-                    element.classList.remove('pdf-export-mode');
+                const iframeElementToPrint = iframeDoc.querySelector('.pdf-export-mode');
+                
+                const monthStr = monthNames[parseInt(document.getElementById('month-select').value)];
+                const yearStr = document.getElementById('year-select').value;
+                const fileName = `Izin_Plani_${monthStr}_${yearStr}.pdf`;
+
+                const opt = {
+                    margin:       0,
+                    filename:     fileName,
+                    image:        { type: 'jpeg', quality: 1.0 },
+                    html2canvas:  { 
+                        scale: 2, 
+                        useCORS: true, 
+                        windowWidth: 1122, 
+                        windowHeight: 793,
+                        scrollX: 0, 
+                        scrollY: 0,
+                        backgroundColor: '#ffffff'
+                    },
+                    jsPDF:        { unit: 'px', format: [1122, 793], orientation: 'landscape' }
+                };
+
+                html2pdf().set(opt).from(iframeElementToPrint).save().then(() => {
                     Swal.close();
                     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'PDF İndirildi', showConfirmButton: false, timer: 1500 });
                 }).catch(err => {
-                    element.classList.remove('pdf-export-mode');
                     Swal.close();
                     Swal.fire('Hata', 'PDF oluşturulamadı.', 'error');
                 });
-            }, 200);
+            }, 1000); // 1 saniye bekleme süresi, render hatalarını tamamen çözer
         }
 
         window.onload = initApp;
