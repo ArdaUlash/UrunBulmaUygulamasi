@@ -1,17 +1,17 @@
-<!DOCTYPE html>
+html_content = """<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Yıllık İzin Planlama Programı</title>
     
-    <!-- Tailwind CSS (CDN) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome (CDN) -->
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- html2pdf.js (CDN) -->
+    <!-- html2pdf.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- SweetAlert2 (CDN) -->
+    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
@@ -24,7 +24,6 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Özel Scrollbar (Masaüstü için, mobilde gizli) */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -36,7 +35,7 @@
             flex-direction: column;
             border-left: 1px solid #e2e8f0;
             border-top: 1px solid #e2e8f0;
-            min-width: 700px; /* Mobilde yatay kaydırmayı tetikler */
+            min-width: 700px;
         }
         .cal-row {
             display: flex;
@@ -65,46 +64,50 @@
             gap: 4px;
         }
 
-        /* --- MUCİZEVİ PDF MODU (Görünmez Klon) --- */
-        /* PDF alırken arka planda oluşturulan elementin css kuralları.
-           Sayfaya tam oturmayı ve taşmamayı garanti eder. */
+        /* --- PDF MODU (BEYAZ SAYFA ÇÖZÜMÜ) --- */
+        /* html2canvas görünmez elementleri (-9999px) beyaza boyar.
+           Bu class eklendiğinde tablo 1 saniyeliğine ekranda en üste 
+           Tam A4 boyutlarında (Mutlak Konum) yerleşir, fotoğrafı çekilir 
+           ve eski haline döner. */
         .pdf-export-mode {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
             width: 297mm !important;
             height: 210mm !important;
+            max-width: 297mm !important;
+            min-width: 297mm !important;
             padding: 10mm 15mm !important;
-            background: white !important;
-            position: fixed !important;
-            top: -9999px !important;
-            left: -9999px !important;
-            display: flex !important;
-            flex-direction: column !important;
-            box-sizing: border-box !important;
-            margin: 0 !important;
+            background-color: #ffffff !important;
+            z-index: 9999 !important; /* SweetAlert'in hemen altında ama sitenin üstünde */
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
         }
         
         .pdf-export-mode .cal-grid {
-            flex: 1 !important; /* Takvim kalan tüm alanı kaplar */
-            min-width: 100% !important; /* Genişliği sıfırlar */
+            flex: 1 !important;
+            min-width: 100% !important;
             height: 100% !important;
             display: flex !important;
             flex-direction: column !important;
         }
 
         .pdf-export-mode .cal-row {
-            flex: 1 !important; /* Satırlar eşit esner, TAŞMAYI ELLER */
+            flex: 1 !important;
             display: flex !important;
         }
 
         .pdf-export-mode .cal-cell {
-            height: 100% !important; /* Hücreler satıra tam oturur */
+            height: 100% !important;
             min-height: 0 !important;
-            overflow: hidden !important; /* Olası iç taşmaları gizler */
+            overflow: hidden !important;
         }
 
         .pdf-export-mode .no-print {
-            display: none !important; /* Çarpı işaretlerini gizler */
+            display: none !important;
         }
-        /* İzin özet kısmı PDF'te sabit yükseklikte kalır */
+
         .pdf-export-mode #notes-render-area {
             max-height: 35mm !important; 
             overflow: hidden !important;
@@ -124,7 +127,6 @@
                 <h1 class="text-base font-bold text-slate-800 sm:hidden">İzin Planı</h1>
             </div>
             <div class="flex items-center gap-2">
-                <!-- Dropdown Menü (Yedekler için mobilde yer kaplamasın) -->
                 <div class="relative group">
                     <button class="px-3 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition">
                         <i class="fa-solid fa-server mr-1"></i> <span class="hidden sm:inline">Veri İşlemleri</span>
@@ -148,17 +150,15 @@
     </header>
 
     <!-- Ana Çalışma Alanı -->
-    <main class="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6">
+    <main class="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6" id="main-scroll-area">
         <div class="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
             
-            <!-- SOL PANEL: Kontroller -->
-            <aside class="w-full lg:w-80 flex flex-col gap-5 shrink-0">
-                
-                <!-- Tarih Seçici -->
+            <!-- SOL PANEL -->
+            <aside class="w-full lg:w-80 flex flex-col gap-5 shrink-0 no-print">
                 <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Dönem Seçimi</label>
                     <div class="flex gap-2">
-                        <select id="month-select" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition" onchange="renderApp()">
+                        <select id="month-select" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none" onchange="renderApp()">
                             <option value="0">Ocak</option>
                             <option value="1">Şubat</option>
                             <option value="2">Mart</option>
@@ -172,75 +172,64 @@
                             <option value="10">Kasım</option>
                             <option value="11">Aralık</option>
                         </select>
-                        <input type="number" id="year-select" class="w-20 bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-sm text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition" value="2026" onchange="renderApp()">
+                        <input type="number" id="year-select" class="w-20 bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-sm text-center focus:border-blue-500 outline-none" value="2026" onchange="renderApp()">
                     </div>
                 </div>
 
-                <!-- İzin Atama Formu -->
                 <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
                     <label class="block text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-3 mt-1">İzin / Tatil Ekle</label>
-                    
                     <div class="space-y-3">
-                        <select id="leave-emp" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"></select>
-                        
+                        <select id="leave-emp" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none"></select>
                         <div class="flex gap-2">
                             <div class="flex-1">
                                 <span class="text-[10px] text-slate-500 mb-1 block">Başlangıç</span>
-                                <input type="date" id="leave-start" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                                <input type="date" id="leave-start" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none">
                             </div>
                             <div class="flex-1">
                                 <span class="text-[10px] text-slate-500 mb-1 block">Bitiş</span>
-                                <input type="date" id="leave-end" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                                <input type="date" id="leave-end" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none">
                             </div>
                         </div>
-
                         <div class="grid grid-cols-2 gap-2 mt-1">
-                            <label class="flex items-center justify-center gap-1 border border-slate-200 rounded-lg py-2 cursor-pointer hover:bg-blue-50 transition">
-                                <input type="radio" name="leave-type" value="YI" checked class="w-3.5 h-3.5 text-blue-600 focus:ring-blue-500">
+                            <label class="flex items-center justify-center gap-1 border border-slate-200 rounded-lg py-2 cursor-pointer hover:bg-blue-50">
+                                <input type="radio" name="leave-type" value="YI" checked class="w-3.5 h-3.5 text-blue-600">
                                 <span class="text-xs font-semibold text-slate-700">Yıllık (Yİ)</span>
                             </label>
-                            <label class="flex items-center justify-center gap-1 border border-slate-200 rounded-lg py-2 cursor-pointer hover:bg-orange-50 transition">
-                                <input type="radio" name="leave-type" value="HT" class="w-3.5 h-3.5 text-orange-500 focus:ring-orange-500">
+                            <label class="flex items-center justify-center gap-1 border border-slate-200 rounded-lg py-2 cursor-pointer hover:bg-orange-50">
+                                <input type="radio" name="leave-type" value="HT" class="w-3.5 h-3.5 text-orange-500">
                                 <span class="text-xs font-semibold text-orange-600">Tatil (HT)</span>
                             </label>
                         </div>
-                        
-                        <button onclick="addLeave()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-2.5 rounded-lg text-sm transition mt-2">
-                            Kaydet ve Takvime Ekle
+                        <button onclick="addLeave()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-2.5 rounded-lg text-sm mt-2">
+                            Takvime İşle
                         </button>
                     </div>
                 </div>
 
-                <!-- Personel Listesi ve Ekleme -->
                 <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Personel Yönetimi</label>
                     <div class="flex gap-2 mb-3">
-                        <input type="text" id="new-emp-name" placeholder="Yeni Ad Soyad" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
-                        <input type="color" id="new-emp-color" class="w-9 h-9 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white shrink-0">
-                        <button onclick="addEmployee()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 w-9 h-9 rounded-lg transition flex items-center justify-center shrink-0">
+                        <input type="text" id="new-emp-name" placeholder="Yeni Ad Soyad" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none">
+                        <input type="color" id="new-emp-color" class="w-9 h-9 rounded-lg border border-slate-200 cursor-pointer p-0.5 shrink-0">
+                        <button onclick="addEmployee()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 w-9 h-9 rounded-lg shrink-0">
                             <i class="fa-solid fa-plus"></i>
                         </button>
                     </div>
-                    <!-- Maksimum yükseklik mobilde kaydırma kolaylığı sağlar -->
                     <div id="employee-list" class="space-y-1.5 max-h-40 overflow-y-auto pr-1"></div>
                 </div>
                 
-                <!-- Belge Başlığı Ayarları (Gizlenebilir / Akordeon tarzı sadeleştirildi) -->
                 <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Çıktı Belge Ayarları</label>
-                    <input type="text" id="store-name" placeholder="Kurum/Mağaza Adı" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-2 text-xs focus:border-blue-500 outline-none" value="Mağaza 4254 - Park Bornova AVM" oninput="updateSettings()">
-                    <input type="text" id="manager-name" placeholder="Yönetici Adı" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-blue-500 outline-none" value="Arda Ulaş" oninput="updateSettings()">
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">PDF Belge Ayarları</label>
+                    <input type="text" id="store-name" placeholder="Kurum/Mağaza Adı" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-2 text-xs outline-none" value="Mağaza 4254 - Park Bornova AVM" oninput="updateSettings()">
+                    <input type="text" id="manager-name" placeholder="Yönetici Adı" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none" value="Arda Ulaş" oninput="updateSettings()">
                 </div>
-
             </aside>
 
-            <!-- SAĞ PANEL: Dinamik İçerik (Ekranda esnek, PDF'te katı boyutlu) -->
+            <!-- SAĞ PANEL -->
             <section class="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                <!-- Ekranda yatay kaydırmaya izin veren sarmalayıcı -->
                 <div class="p-4 sm:p-6 flex-1 overflow-x-auto flex flex-col" id="print-source">
                     
-                    <!-- Dinamik Belge Başlığı -->
                     <div class="flex justify-between items-end border-b-2 border-slate-800 pb-3 mb-4 min-w-[700px]">
                         <div>
                             <h2 id="pdf-store-name" class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Mağaza 4254 - Park Bornova AVM</h2>
@@ -251,22 +240,15 @@
                         </div>
                     </div>
 
-                    <!-- Takvim Alanı -->
-                    <div class="flex-1 w-full min-w-[700px] flex flex-col mb-4" id="calendar-render-area">
-                        <!-- JS ile oluşturulacak -->
-                    </div>
+                    <div class="flex-1 w-full min-w-[700px] flex flex-col mb-4" id="calendar-render-area"></div>
 
-                    <!-- Notlar / Özet Alanı -->
                     <div class="border-t border-slate-200 pt-3 min-w-[700px]">
                         <h4 class="text-[11px] font-bold text-slate-600 uppercase mb-2 flex items-center gap-1.5">
                             <i class="fa-solid fa-list-check text-blue-500"></i> Dönem Özetleri
                         </h4>
-                        <div id="notes-render-area" class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                            <!-- JS ile oluşturulacak -->
-                        </div>
+                        <div id="notes-render-area" class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs"></div>
                     </div>
 
-                    <!-- Belge Altbilgisi (Sadece PDF'te anlamlı olması için alt kısma konumlandırıldı) -->
                     <div class="mt-6 pt-4 border-t border-slate-200 flex justify-between items-center text-xs min-w-[700px]">
                         <div class="flex gap-4">
                             <div><span class="font-bold">Onaylayan:</span> <span id="pdf-manager-name" class="text-slate-700 uppercase">Arda Ulaş</span></div>
@@ -274,17 +256,14 @@
                         </div>
                         <div class="font-bold">İmza: ____________________</div>
                     </div>
-                    
                 </div>
             </section>
         </div>
     </main>
 
-    <!-- Uygulama Scripti -->
     <script>
         const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-        const dayNamesShort = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
-        const dayNamesMobile = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]; // Daha dar görünüm için
+        const dayNamesMobile = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
         let appData = {
             employees: [
@@ -309,7 +288,7 @@
         }
 
         function initApp() {
-            const stored = localStorage.getItem('leavePlannerData_v5');
+            const stored = localStorage.getItem('leavePlannerData_v6');
             if (stored) {
                 appData = JSON.parse(stored);
             } else {
@@ -324,7 +303,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('leavePlannerData_v5', JSON.stringify(appData));
+            localStorage.setItem('leavePlannerData_v6', JSON.stringify(appData));
         }
 
         function updateSettings() {
@@ -467,7 +446,6 @@
             renderNotes();
         }
 
-        // ESNEK TAKVİM OLUŞTURUCU (Hem Ekran hem PDF için mükemmel uyum)
         function renderCalendar() {
             const monthIdx = parseInt(document.getElementById('month-select').value);
             const year = parseInt(document.getElementById('year-select').value);
@@ -482,7 +460,6 @@
 
             let html = '<div class="cal-grid h-full w-full">';
             
-            // Başlıklar
             html += '<div class="cal-row bg-slate-50">';
             dayNamesMobile.forEach(day => {
                 html += `<div class="cal-header-cell">${day}</div>`;
@@ -495,7 +472,7 @@
             while (cellsArray.length % 7 !== 0) cellsArray.push({ empty: true });
 
             for (let r = 0; r < rowsCount; r++) {
-                html += `<div class="cal-row flex-1">`; // flex-1 satırların eşit yükseklik almasını sağlar
+                html += `<div class="cal-row flex-1">`;
                 for (let c = 0; c < 7; c++) {
                     const idx = r * 7 + c;
                     const cell = cellsArray[idx];
@@ -638,27 +615,24 @@
             reader.readAsText(file);
         }
 
-        // KUSURSUZ PDF ÜRETİMİ (Arka plan klonlama tekniği)
+        // BEYAZ SAYFA VE KESİLME KESİN ÇÖZÜMÜ (Doğrudan Render & Mutlak Konumlama)
         function generatePDF() {
             Swal.fire({
                 title: 'PDF Hazırlanıyor...',
-                text: 'Belge A4 formatına optmize ediliyor.',
+                text: 'Lütfen bekleyin, belge A4 boyutuna optimize ediliyor.',
                 allowOutsideClick: false,
                 didOpen: () => { Swal.showLoading() }
             });
 
-            // 1. Yazdırılacak alanı bul
-            const sourceElement = document.getElementById('print-source');
+            // 1. Ekranın scroll durumunu sıfırla (Kesilmeleri önler)
+            window.scrollTo(0, 0);
+            const mainScroll = document.getElementById('main-scroll-area');
+            if(mainScroll) mainScroll.scrollTop = 0;
+
+            const element = document.getElementById('print-source');
             
-            // 2. DOM'u klonla
-            const clone = sourceElement.cloneNode(true);
-            clone.id = 'pdf-clone';
-            
-            // 3. Ekranda değil, CSS ile tam A4 formatına uyan özel class'ı ekle
-            clone.classList.add('pdf-export-mode');
-            
-            // Klonu body'e ekle (Kullanıcı görmez çünkü top/left -9999px)
-            document.body.appendChild(clone);
+            // 2. Elemente PDF format sınıfını ekle (Tam 297x210mm olacak şekilde sayfanın en üstüne sabitlenir)
+            element.classList.add('pdf-export-mode');
 
             const monthStr = monthNames[parseInt(document.getElementById('month-select').value)];
             const yearStr = document.getElementById('year-select').value;
@@ -668,23 +642,33 @@
                 margin:       0,
                 filename:     fileName,
                 image:        { type: 'jpeg', quality: 1 },
-                // windowWidth: 1122 -> html2canvas'ı 96DPI A4 Yatay çözünürlüğünde çalışmaya zorlar
-                html2canvas:  { scale: 2, useCORS: true, windowWidth: 1122 },
+                // windowWidth ve windowHeight parametreleri, mobilde render motorunun dar ekrana göre kesmesini engeller
+                html2canvas:  { scale: 2, useCORS: true, windowWidth: 1200, windowHeight: 900, scrollX: 0, scrollY: 0 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
 
-            // Klonlanmış ve boyutları CSS ile zorlanmış elementten PDF üret
-            html2pdf().set(opt).from(clone).save().then(() => {
-                document.body.removeChild(clone); // İş bitince klonu sil
-                Swal.close();
-            }).catch(err => {
-                document.body.removeChild(clone);
-                Swal.close();
-                Swal.fire('Hata', 'İşlem başarısız.', 'error');
-            });
+            // 3. Tarayıcının CSS'i işlemesi için çok kısa bir süre bekleyip fotoğrafı çek
+            setTimeout(() => {
+                html2pdf().set(opt).from(element).save().then(() => {
+                    // İşlem bitince sınıfı kaldır, arayüz normale dönsün
+                    element.classList.remove('pdf-export-mode');
+                    Swal.close();
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'PDF İndirildi', showConfirmButton: false, timer: 1500 });
+                }).catch(err => {
+                    element.classList.remove('pdf-export-mode');
+                    Swal.close();
+                    Swal.fire('Hata', 'PDF oluşturulamadı.', 'error');
+                });
+            }, 200);
         }
 
         window.onload = initApp;
     </script>
 </body>
 </html>
+"""
+
+with open("yillik_izin_planlama_programi_v6.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+print("[file-tag: yillik_izin_planlama_programi_v6.html]")
