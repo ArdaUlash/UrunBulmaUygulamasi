@@ -3,143 +3,166 @@ html_content = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yıllık İzin Planlama Programı</title>
-    <!-- Tailwind CSS -->
+    <title>Profesyonel Yıllık İzin Planlayıcı (A4 Yatay)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- html2pdf.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-        }
-
-        /* A4 Paper styling for screen preview */
-        .a4-container {
-            width: 210mm;
-            min-height: 297mm;
-            background: white;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            margin: 0 auto;
-            padding: 15mm;
-            position: relative;
-        }
-
-        /* Calendar Grid Styles */
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            border-top: 1px solid #e5e7eb;
-            border-left: 1px solid #e5e7eb;
-        }
-        
-        .calendar-header-cell {
+            font-family: 'Plus Jakarta Sans', sans-serif;
             background-color: #f8fafc;
-            font-weight: 600;
-            text-align: center;
-            padding: 8px;
-            border-right: 1px solid #e5e7eb;
-            border-bottom: 1px solid #e5e7eb;
-            font-size: 0.875rem;
-            color: #334155;
+        }
+
+        /* Perfect A4 Landscape Container */
+        .a4-landscape-container {
+            width: 297mm;
+            height: 210mm;
+            background: white;
+            box-shadow: 0 15px 35px rgba(15, 23, 42, 0.08);
+            border: 1px solid #e2e8f0;
+            padding: 12mm 14mm;
+            position: relative;
+            box-sizing: border-box;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Calendar grid flex setup */
+        .calendar-row {
+            display: flex;
+            width: 100%;
         }
 
         .calendar-cell {
-            min-height: 100px;
-            border-right: 1px solid #e5e7eb;
-            border-bottom: 1px solid #e5e7eb;
-            padding: 4px;
+            width: calc(100% / 7);
+            border-right: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            box-sizing: border-box;
+            padding: 4px 6px;
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            justify-content: flex-start;
+            background-color: #ffffff;
+            transition: background-color 0.15s ease;
         }
 
-        .calendar-day-number {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: #64748b;
-            margin-bottom: 4px;
-            text-align: right;
+        .calendar-cell:hover {
+            background-color: #f8fafc;
         }
 
-        .leave-badge {
-            font-size: 0.7rem;
-            padding: 2px 4px;
+        /* Custom scrollbar for control panel */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
             border-radius: 4px;
-            color: white;
-            font-weight: 600;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Matrix/Timeline grid styles */
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .matrix-table th, .matrix-table td {
+            border: 1px solid #e2e8f0;
             text-align: center;
+            font-size: 10px;
+            padding: 4px 2px;
+            box-sizing: border-box;
+        }
+        .matrix-table th {
+            background-color: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+        }
+        .matrix-name-col {
+            width: 120px;
+            text-align: left !important;
+            padding-left: 8px !important;
+            font-weight: 500;
+            font-size: 11px !important;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
 
-        .ht-badge {
-            background-color: #f97316 !important; /* Fixed Orange for Hafta Tatili */
-            color: white;
-        }
-
-        /* Hide elements during print */
+        /* Print overrides */
         @media print {
             .no-print { display: none !important; }
-            .a4-container {
-                box-shadow: none;
-                margin: 0;
-                padding: 0;
-                width: 100%;
+            body { background: white; padding: 0; margin: 0; }
+            .a4-landscape-container {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 12mm 14mm !important;
+                margin: 0 !important;
+                width: 297mm !important;
+                height: 210mm !important;
             }
-            body { background-color: white; }
-        }
-        
-        /* Print layout adjustments for html2pdf */
-        #pdf-content {
-            background-color: white;
         }
     </style>
 </head>
-<body class="text-gray-800 pb-12">
+<body class="text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Top Navigation / Header -->
-    <nav class="bg-slate-800 text-white p-4 shadow-md no-print sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
+    <nav class="bg-slate-900 text-white px-6 py-4 shadow-md no-print sticky top-0 z-50">
+        <div class="max-w-[1600px] mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <i class="fa-solid fa-calendar-days text-2xl text-blue-400"></i>
-                <h1 class="text-xl font-bold">Profesyonel Yıllık İzin Planlama</h1>
+                <div class="bg-indigo-600 p-2 rounded-lg text-white">
+                    <i class="fa-solid fa-calendar-check text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">Yıllık İzin Planlama Programı</h1>
+                    <p class="text-xs text-slate-400">Yatay A4 Baskı Uyumlu Profesyonel Yönetim Paneli</p>
+                </div>
             </div>
-            <div class="flex gap-3">
-                <button onclick="document.getElementById('file-upload').click()" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded transition flex items-center gap-2 text-sm">
-                    <i class="fa-solid fa-upload"></i> Yedeği Yükle
+            
+            <div class="flex items-center gap-3">
+                <div class="bg-slate-800 p-1 rounded-lg border border-slate-700 flex gap-1 mr-3">
+                    <button id="btn-view-cal" onclick="setViewMode('calendar')" class="px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm">
+                        <i class="fa-solid fa-calendar-days"></i> Klasik Takvim
+                    </button>
+                    <button id="btn-view-mat" onclick="setViewMode('matrix')" class="px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-table-cells"></i> İzin Matrisi (Gantt)
+                    </button>
+                </div>
+
+                <button onclick="document.getElementById('file-upload').click()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-2 rounded-lg transition flex items-center gap-2 text-xs font-medium">
+                    <i class="fa-solid fa-upload text-slate-400"></i> Yedeği Yükle
                 </button>
                 <input type="file" id="file-upload" class="hidden" accept=".json" onchange="importData(event)">
                 
-                <button onclick="exportData()" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded transition flex items-center gap-2 text-sm">
-                    <i class="fa-solid fa-download"></i> Yedek Al
+                <button onclick="exportData()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-2 rounded-lg transition flex items-center gap-2 text-xs font-medium">
+                    <i class="fa-solid fa-download text-slate-400"></i> Yedek Al
                 </button>
                 
-                <button onclick="generatePDF()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-semibold transition flex items-center gap-2 text-sm">
-                    <i class="fa-solid fa-file-pdf"></i> PDF İndir / Yazdır
+                <button onclick="generatePDF()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 text-xs shadow-lg shadow-indigo-900/20">
+                    <i class="fa-solid fa-file-pdf"></i> Tek Sayfa PDF İndir
                 </button>
             </div>
         </div>
     </nav>
 
-    <div class="max-w-7xl mx-auto mt-6 flex flex-col lg:flex-row gap-6 px-4 no-print">
-        <!-- Controls Sidebar -->
-        <div class="w-full lg:w-1/3 flex flex-col gap-6">
+    <div class="max-w-[1600px] mx-auto w-full px-6 py-6 flex flex-col xl:flex-row gap-6 flex-1 no-print">
+        
+        <div class="w-full xl:w-[380px] flex flex-col gap-5 shrink-0 custom-scrollbar overflow-y-auto max-h-[calc(100vh-120px)]">
             
-            <!-- Calendar Navigation -->
-            <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
-                <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Ay ve Yıl Seçimi</h2>
+            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Planlama Dönemi</h3>
                 <div class="flex gap-2">
-                    <select id="month-select" class="flex-1 border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" onchange="renderApp()">
+                    <select id="month-select" class="flex-1 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition" onchange="renderApp()">
                         <option value="0">Ocak</option>
                         <option value="1">Şubat</option>
                         <option value="2">Mart</option>
@@ -153,143 +176,152 @@ html_content = """<!DOCTYPE html>
                         <option value="10">Kasım</option>
                         <option value="11">Aralık</option>
                     </select>
-                    <input type="number" id="year-select" class="w-24 border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" value="2026" onchange="renderApp()">
+                    <input type="number" id="year-select" class="w-24 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition text-center font-semibold" value="2026" onchange="renderApp()">
                 </div>
             </div>
 
-            <!-- Settings / Context -->
-            <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
-                <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Belge Ayarları</h2>
+            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Belge Başlığı ve Detaylar</h3>
                 <div class="space-y-3">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase">Kurum / Mağaza Adı</label>
-                        <input type="text" id="store-name" class="w-full border border-gray-300 rounded p-2 mt-1 text-sm" value="Mağaza 4254 - Park Bornova AVM" oninput="updateSettings()">
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Kurum / Departman / Mağaza</label>
+                        <input type="text" id="store-name" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20" value="Mağaza 4254 - Park Bornova AVM" oninput="updateSettings()">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase">Yönetici Adı</label>
-                        <input type="text" id="manager-name" class="w-full border border-gray-300 rounded p-2 mt-1 text-sm" value="Arda Ulaş" oninput="updateSettings()">
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Yönetici / Onay Makamı</label>
+                        <input type="text" id="manager-name" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20" value="Arda Ulaş" oninput="updateSettings()">
                     </div>
                 </div>
             </div>
 
-            <!-- Add Employee -->
-            <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
-                <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Personel Yönetimi</h2>
-                <div class="flex gap-2 mb-3">
-                    <input type="text" id="new-emp-name" placeholder="Ad Soyad" class="flex-1 border border-gray-300 rounded p-2 text-sm">
-                    <input type="color" id="new-emp-color" class="w-10 h-10 rounded border border-gray-300 cursor-pointer p-1">
-                    <button onclick="addEmployee()" class="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700"><i class="fa-solid fa-plus"></i></button>
+            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Personel Yönetimi</h3>
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="new-emp-name" placeholder="Ad Soyad" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20">
+                    <input type="color" id="new-emp-color" class="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-1 shrink-0 bg-transparent" value="#3b82f6">
+                    <button onclick="addEmployee()" class="bg-indigo-600 text-white px-3.5 rounded-lg hover:bg-indigo-700 transition flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
                 </div>
-                <div id="employee-list" class="space-y-2 max-h-40 overflow-y-auto">
-                    <!-- Employees dynamically rendered here -->
-                </div>
+                <div id="employee-list" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1"></div>
             </div>
 
-            <!-- Add Leave Form -->
-            <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
-                <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2 text-blue-600"><i class="fa-solid fa-calendar-plus mr-2"></i>Yeni İzin / HT Ekle</h2>
+            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+                    <h3 class="text-xs font-bold text-indigo-600 uppercase tracking-wider">İzin / HT Tanımlama</h3>
+                    <span class="text-[10px] bg-indigo-50 text-indigo-600 font-semibold px-2 py-0.5 rounded-full">Yeni Atama</span>
+                </div>
                 <div class="space-y-3">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase">Personel</label>
-                        <select id="leave-emp" class="w-full border border-gray-300 rounded p-2 mt-1 text-sm"></select>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Personel</label>
+                        <select id="leave-emp" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"></select>
                     </div>
-                    <div class="flex gap-3">
+                    <div class="flex gap-2">
                         <div class="flex-1">
-                            <label class="block text-xs font-semibold text-gray-500 uppercase">Başlangıç</label>
-                            <input type="date" id="leave-start" class="w-full border border-gray-300 rounded p-2 mt-1 text-sm">
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Başlangıç</label>
+                            <input type="date" id="leave-start" class="w-full border border-slate-200 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-indigo-500/20">
                         </div>
                         <div class="flex-1">
-                            <label class="block text-xs font-semibold text-gray-500 uppercase">Bitiş</label>
-                            <input type="date" id="leave-end" class="w-full border border-gray-300 rounded p-2 mt-1 text-sm">
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Bitiş</label>
+                            <input type="date" id="leave-end" class="w-full border border-slate-200 rounded-lg p-2 text-xs outline-none focus:ring-2 focus:ring-indigo-500/20">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase">İzin Türü</label>
-                        <div class="flex gap-4 mt-2">
-                            <label class="flex items-center gap-1 text-sm cursor-pointer">
-                                <input type="radio" name="leave-type" value="YI" checked class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                        <label class="block text-xs font-semibold text-slate-500 mb-1.5">Kategori / Tür</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="flex items-center justify-center gap-1.5 border border-slate-200 rounded-lg py-2 cursor-pointer hover:bg-slate-50 transition text-xs font-medium">
+                                <input type="radio" name="leave-type" value="YI" checked class="text-indigo-600 focus:ring-indigo-500">
                                 <span>Yıllık İzin (Yİ)</span>
                             </label>
-                            <label class="flex items-center gap-1 text-sm cursor-pointer">
-                                <input type="radio" name="leave-type" value="HT" class="w-4 h-4 text-orange-500 focus:ring-orange-500">
+                            <label class="flex items-center justify-center gap-1.5 border border-slate-200 rounded-lg py-2 cursor-pointer hover:bg-slate-50 transition text-xs font-medium">
+                                <input type="radio" name="leave-type" value="HT" class="text-orange-500 focus:ring-orange-500">
                                 <span class="text-orange-600 font-semibold">Hafta Tatili (HT)</span>
                             </label>
                         </div>
                     </div>
-                    <button onclick="addLeave()" class="w-full bg-blue-600 text-white font-semibold py-2 rounded mt-2 hover:bg-blue-700 transition">İzni Kaydet</button>
+                    <button onclick="addLeave()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-lg text-sm transition shadow-sm mt-1">
+                        Takvime İzin Ekle
+                    </button>
                 </div>
             </div>
 
         </div>
 
-        <!-- A4 Preview Area -->
-        <div class="w-full lg:w-2/3 overflow-x-auto pb-8">
-            <div id="pdf-content" class="a4-container">
+        <div class="flex-1 flex justify-center items-start overflow-x-auto">
+            <div id="pdf-content" class="a4-landscape-container">
                 
-                <!-- PDF Header -->
-                <div class="flex justify-between items-end border-b-2 border-slate-800 pb-4 mb-6">
+                <div class="flex justify-between items-start border-b border-slate-200 pb-3 mb-2">
                     <div>
-                        <h1 id="pdf-store-name" class="text-2xl font-bold text-slate-800">Mağaza 4254 - Park Bornova AVM</h1>
-                        <h2 class="text-lg text-slate-600 font-medium mt-1">Personel Yıllık İzin ve Çalışma Planı</h2>
+                        <h2 id="pdf-store-name" class="text-lg font-extrabold text-slate-900 tracking-tight leading-none">Mağaza 4254 - Park Bornova AVM</h2>
+                        <p class="text-slate-500 text-xs mt-1 font-medium tracking-wide uppercase">Yıllık İzin &amp; Çalışma Planı Programı</p>
                     </div>
                     <div class="text-right">
-                        <div id="pdf-month-year" class="text-xl font-bold text-blue-700 bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">Ağustos 2026</div>
+                        <div id="pdf-month-year" class="text-base font-bold text-indigo-600 bg-indigo-50/80 px-4 py-1.5 rounded-lg border border-indigo-100 leading-none">Ağustos 2026</div>
                     </div>
                 </div>
 
-                <!-- Calendar Area -->
-                <div id="calendar-render-area" class="mb-8">
-                    <!-- Calendar Grid Generated via JS -->
+                <div id="calendar-view-container" class="flex-1 overflow-hidden">
+                    <div id="calendar-render-area" class="h-full w-full flex flex-col border-t border-l border-slate-200 rounded-lg overflow-hidden">
+                        </div>
                 </div>
 
-                <!-- Notes / Summaries Area -->
-                <div class="mt-8 border-t border-gray-300 pt-6">
-                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-clipboard-list text-blue-600"></i> İzin ve Tatil Notları (Özet)
-                    </h3>
-                    <div id="notes-render-area" class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-                        <!-- Notes Generated via JS -->
+                <div id="matrix-view-container" class="flex-1 overflow-hidden hidden">
+                    <div class="border border-slate-200 rounded-lg overflow-hidden h-full bg-white">
+                        <table class="matrix-table">
+                            <thead id="matrix-header"></thead>
+                            <tbody id="matrix-body"></tbody>
+                        </table>
                     </div>
                 </div>
 
-                <!-- Footer Signatures -->
-                <div class="mt-16 flex justify-between px-10">
-                    <div class="text-center">
-                        <div class="font-semibold text-slate-700 border-b border-gray-400 pb-1 px-4 mb-8 w-48">Onaylayan</div>
-                        <div id="pdf-manager-name" class="font-bold text-slate-800 uppercase">Arda Ulaş</div>
-                        <div class="text-xs text-gray-500 mt-1">Mağaza Yöneticisi</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="font-semibold text-slate-700 border-b border-gray-400 pb-1 px-4 mb-8 w-48">Tarih / İmza</div>
-                        <div class="text-gray-400">.... / .... / 20...</div>
+                <div class="border-t border-slate-200 pt-3 mt-2 h-[34mm] flex flex-col justify-between overflow-hidden">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-700 tracking-wider uppercase mb-1.5 flex items-center gap-1.5">
+                            <i class="fa-solid fa-clipboard-list text-indigo-600"></i> Aktif İzin ve Tatil Notları (Özet Listesi)
+                        </h4>
+                        <div id="notes-render-area" class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1.5 text-[10px] overflow-y-auto max-h-[24mm] pr-1">
+                            </div>
                     </div>
                 </div>
-                
-                <!-- Watermark / Footer text -->
-                <div class="absolute bottom-4 right-8 text-xs text-gray-400 italic">
-                    Otomatik oluşturuldu. Yİ: Yıllık İzin | HT: Hafta Tatili
+
+                <div class="border-t border-slate-100 pt-3 flex justify-between items-center text-xs text-slate-500">
+                    <div class="flex items-center gap-6">
+                        <div>
+                            <span class="font-bold text-slate-700">Düzenleyen/Onaylayan:</span>
+                            <span id="pdf-manager-name" class="font-semibold text-indigo-600 ml-1 uppercase">Arda Ulaş</span>
+                        </div>
+                        <div class="w-[1px] h-3 bg-slate-200"></div>
+                        <div>
+                            <span class="font-bold text-slate-700">Onay Tarihi:</span>
+                            <span class="text-slate-500 ml-1">.... / .... / 20...</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="italic text-[10px] text-slate-400">Açıklama: Yİ = Yıllık İzin | HT = Hafta Tatili (Turuncu)</span>
+                        <div class="w-[1px] h-3 bg-slate-200"></div>
+                        <span class="font-bold text-slate-700">İmza: _______________________</span>
+                    </div>
                 </div>
 
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
     <script>
         const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-        const dayNames = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+        const dayNamesShort = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
-        // Default Data State
-        let defaultData = {
+        // State Store
+        let appData = {
             employees: [
-                { id: 1, name: "Ahmet Yılmaz", color: "#3b82f6" },
-                { id: 2, name: "Ayşe Demir", color: "#8b5cf6" },
-                { id: 3, name: "Mehmet Kaya", color: "#10b981" }
+                { id: 1, name: "Ahmet Yılmaz", color: "#4f46e5" }, 
+                { id: 2, name: "Ayşe Demir", color: "#0891b2" },   
+                { id: 3, name: "Mehmet Kaya", color: "#0d9488" }    
             ],
             leaves: [
-                { id: 1, empId: 1, start: "2026-08-13", end: "2026-08-15", type: "YI" },
-                { id: 2, empId: 1, start: "2026-08-16", end: "2026-08-16", type: "HT" },
-                { id: 3, empId: 1, start: "2026-08-17", end: "2026-08-17", type: "YI" }
+                { id: 1, empId: 1, start: "2026-08-12", end: "2026-08-14", type: "YI" },
+                { id: 2, empId: 1, start: "2026-08-15", end: "2026-08-15", type: "HT" },
+                { id: 3, empId: 1, start: "2026-08-16", end: "2026-08-18", type: "YI" }
             ],
             settings: {
                 storeName: "Mağaza 4254 - Park Bornova AVM",
@@ -297,31 +329,50 @@ html_content = """<!DOCTYPE html>
             }
         };
 
-        let appData = {};
+        let activeView = 'calendar'; 
 
-        // Initialization
+        function setViewMode(mode) {
+            activeView = mode;
+            const btnCal = document.getElementById('btn-view-cal');
+            const btnMat = document.getElementById('btn-view-mat');
+            const calContainer = document.getElementById('calendar-view-container');
+            const matContainer = document.getElementById('matrix-view-container');
+
+            if (mode === 'calendar') {
+                btnCal.className = "px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm";
+                btnMat.className = "px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 text-slate-400 hover:text-white";
+                calContainer.classList.remove('hidden');
+                matContainer.classList.add('hidden');
+            } else {
+                btnMat.className = "px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm";
+                btnCal.className = "px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 text-slate-400 hover:text-white";
+                matContainer.classList.remove('hidden');
+                calContainer.classList.add('hidden');
+            }
+            renderApp();
+        }
+
+        function parseDateSafely(dateStr) {
+            const [y, m, d] = dateStr.split('-');
+            return new Date(y, m - 1, d);
+        }
+
         function initApp() {
-            const stored = localStorage.getItem('leavePlannerData');
+            const stored = localStorage.getItem('leavePlannerData_v3');
             if (stored) {
                 appData = JSON.parse(stored);
             } else {
-                appData = JSON.parse(JSON.stringify(defaultData));
                 saveData();
             }
 
-            // Sync settings to inputs
             document.getElementById('store-name').value = appData.settings.storeName || '';
             document.getElementById('manager-name').value = appData.settings.managerName || '';
             
-            // Set current month/year to August 2026 based on initial prompt request context
-            document.getElementById('month-select').value = "7";
-            document.getElementById('year-select').value = "2026";
-
             renderApp();
         }
 
         function saveData() {
-            localStorage.setItem('leavePlannerData', JSON.stringify(appData));
+            localStorage.setItem('leavePlannerData_v3', JSON.stringify(appData));
         }
 
         function updateSettings() {
@@ -340,19 +391,16 @@ html_content = """<!DOCTYPE html>
             document.getElementById('pdf-month-year').innerText = `${monthNames[monthIdx]} ${year}`;
         }
 
-        // Generate Random Color for new employees
         function getRandomColor() {
-            const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#6366f1'];
+            const colors = ['#4f46e5', '#0891b2', '#0d9488', '#2563eb', '#db2777', '#7c3aed', '#ea580c'];
             return colors[Math.floor(Math.random() * colors.length)];
         }
-        document.getElementById('new-emp-color').value = getRandomColor();
 
-        // Employee Management
         function addEmployee() {
             const nameInput = document.getElementById('new-emp-name');
             const colorInput = document.getElementById('new-emp-color');
             const name = nameInput.value.trim();
-            if (!name) return alert("Lütfen personel adı giriniz.");
+            if (!name) return Swal.fire('Uyarı', 'Lütfen personel adı giriniz.', 'warning');
 
             const newId = appData.employees.length ? Math.max(...appData.employees.map(e => e.id)) + 1 : 1;
             appData.employees.push({ id: newId, name: name, color: colorInput.value });
@@ -361,18 +409,17 @@ html_content = """<!DOCTYPE html>
             colorInput.value = getRandomColor();
             saveData();
             renderApp();
-            
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Personel Eklendi', showConfirmButton: false, timer: 1500 });
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Personel Eklendi', showConfirmButton: false, timer: 1200 });
         }
 
         function deleteEmployee(id) {
             Swal.fire({
                 title: 'Emin misiniz?',
-                text: "Personel ve tüm izinleri silinecektir!",
+                text: "Personel ve atanmış tüm izinleri silinecektir!",
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
+                confirmButtonColor: '#4f46e5',
+                cancelButtonColor: '#ef4444',
                 confirmButtonText: 'Evet, Sil',
                 cancelButtonText: 'İptal'
             }).then((result) => {
@@ -381,7 +428,6 @@ html_content = """<!DOCTYPE html>
                     appData.leaves = appData.leaves.filter(l => l.empId !== id);
                     saveData();
                     renderApp();
-                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Silindi', showConfirmButton: false, timer: 1500 });
                 }
             });
         }
@@ -390,25 +436,22 @@ html_content = """<!DOCTYPE html>
             const list = document.getElementById('employee-list');
             const select = document.getElementById('leave-emp');
             list.innerHTML = '';
-            select.innerHTML = '<option value="">Personel Seçin...</option>';
+            select.innerHTML = '<option value="">Personel Seçiniz...</option>';
 
             appData.employees.forEach(emp => {
-                // List item
                 list.innerHTML += `
-                    <div class="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-200">
+                    <div class="flex justify-between items-center bg-slate-50 hover:bg-slate-100 px-3 py-2 rounded-xl border border-slate-100 transition">
                         <div class="flex items-center gap-2">
-                            <div class="w-4 h-4 rounded-full" style="background-color: ${emp.color}"></div>
-                            <span class="text-sm font-medium text-slate-700">${emp.name}</span>
+                            <div class="w-3.5 h-3.5 rounded-full shadow-sm" style="background-color: ${emp.color}"></div>
+                            <span class="text-xs font-semibold text-slate-700">${emp.name}</span>
                         </div>
-                        <button onclick="deleteEmployee(${emp.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash-can"></i></button>
+                        <button onclick="deleteEmployee(${emp.id})" class="text-slate-400 hover:text-red-600 transition text-xs"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                 `;
-                // Select option
                 select.innerHTML += `<option value="${emp.id}">${emp.name}</option>`;
             });
         }
 
-        // Leave Management
         function addLeave() {
             const empId = document.getElementById('leave-emp').value;
             const start = document.getElementById('leave-start').value;
@@ -416,12 +459,38 @@ html_content = """<!DOCTYPE html>
             const type = document.querySelector('input[name="leave-type"]:checked').value;
 
             if (!empId || !start || !end) {
-                return Swal.fire('Hata', 'Lütfen personel ve tarih aralığını seçin.', 'error');
+                return Swal.fire('Eksik Bilgi', 'Lütfen personel ve tarih aralığını seçiniz.', 'warning');
             }
             if (new Date(start) > new Date(end)) {
-                return Swal.fire('Hata', 'Bitiş tarihi başlangıç tarihinden önce olamaz.', 'error');
+                return Swal.fire('Tarih Hatası', 'Bitiş tarihi başlangıç tarihinden önce olamaz.', 'error');
             }
 
+            const hasConflict = appData.leaves.some(l => 
+                l.empId === parseInt(empId) &&
+                ((start >= l.start && start <= l.end) || (end >= l.start && end <= l.end) || (start <= l.start && end >= l.end))
+            );
+
+            if (hasConflict) {
+                Swal.fire({
+                    title: 'Çakışma Algılandı',
+                    text: 'Seçili tarihler arasında bu personelin zaten atanmış bir izni mevcut. Yine de eklemek istiyor musunuz?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#4f46e5',
+                    cancelButtonColor: '#94a3b8',
+                    confirmButtonText: 'Evet, Ekle',
+                    cancelButtonText: 'İptal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        saveNewLeave(empId, start, end, type);
+                    }
+                });
+            } else {
+                saveNewLeave(empId, start, end, type);
+            }
+        }
+
+        function saveNewLeave(empId, start, end, type) {
             const newId = appData.leaves.length ? Math.max(...appData.leaves.map(l => l.id)) + 1 : 1;
             appData.leaves.push({ id: newId, empId: parseInt(empId), start, end, type });
             
@@ -430,7 +499,7 @@ html_content = """<!DOCTYPE html>
             
             saveData();
             renderApp();
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'İzin Kaydedildi', showConfirmButton: false, timer: 1500 });
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'İzin başarıyla eklendi', showConfirmButton: false, timer: 1200 });
         }
 
         function deleteLeave(id) {
@@ -439,11 +508,14 @@ html_content = """<!DOCTYPE html>
             renderApp();
         }
 
-        // Core Rendering Logic
         function renderApp() {
             updatePDFHeader();
             renderEmployees();
-            renderCalendar();
+            if (activeView === 'calendar') {
+                renderCalendar();
+            } else {
+                renderMatrix();
+            }
             renderNotes();
         }
 
@@ -452,74 +524,141 @@ html_content = """<!DOCTYPE html>
             const year = parseInt(document.getElementById('year-select').value);
             const area = document.getElementById('calendar-render-area');
             
-            // Generate Grid
-            let html = '<div class="calendar-grid">';
-            
-            // Headers
-            dayNames.forEach(day => {
-                html += `<div class="calendar-header-cell">${day}</div>`;
-            });
-
             const firstDay = new Date(year, monthIdx, 1);
             const lastDay = new Date(year, monthIdx + 1, 0);
-            
-            let startingDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // Adjust so Monday is 0
+            let startingDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; 
             const totalDays = lastDay.getDate();
 
-            // Empty cells before start of month
+            const totalCellsNeeded = startingDayOfWeek + totalDays;
+            const rowsCount = Math.ceil(totalCellsNeeded / 7);
+            
+            const cellHeight = rowsCount === 6 ? '15.5mm' : '18.5mm';
+
+            let html = '<div class="flex flex-col h-full">';
+            
+            html += '<div class="calendar-row bg-slate-50 border-b border-slate-200">';
+            dayNamesShort.forEach(day => {
+                html += `
+                    <div class="w-[calc(100%/7)] text-center py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider" style="border-right: 1px solid #e2e8f0;">
+                        ${day}
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            let cellsArray = [];
             for (let i = 0; i < startingDayOfWeek; i++) {
-                html += `<div class="calendar-cell bg-gray-50/50"></div>`;
+                cellsArray.push({ empty: true });
+            }
+            for (let d = 1; d <= totalDays; d++) {
+                cellsArray.push({ empty: false, day: d });
+            }
+            while (cellsArray.length % 7 !== 0) {
+                cellsArray.push({ empty: true });
             }
 
-            // Days of the month
-            for (let d = 1; d <= totalDays; d++) {
-                const currentDateStr = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                const currentDateObj = new Date(year, monthIdx, d);
-                
-                // Find leaves for this day
-                const dayLeaves = appData.leaves.filter(l => {
-                    const lStart = new Date(l.start);
-                    const lEnd = new Date(l.end);
-                    // Reset time portions for accurate comparison
-                    lStart.setHours(0,0,0,0); lEnd.setHours(0,0,0,0); currentDateObj.setHours(0,0,0,0);
-                    return currentDateObj >= lStart && currentDateObj <= lEnd;
-                });
+            for (let r = 0; r < rowsCount; r++) {
+                html += `<div class="calendar-row" style="height: ${cellHeight};">`;
+                for (let c = 0; c < 7; c++) {
+                    const idx = r * 7 + c;
+                    const cell = cellsArray[idx];
 
-                let badgesHtml = '';
-                dayLeaves.forEach(l => {
-                    const emp = appData.employees.find(e => e.id === l.empId);
-                    if (emp) {
-                        const isHT = l.type === 'HT';
-                        const badgeClass = isHT ? 'ht-badge' : '';
-                        const colorStyle = isHT ? '' : `background-color: ${emp.color};`;
-                        const typeText = isHT ? 'HT' : 'Yİ';
+                    if (cell.empty) {
+                        html += `<div class="calendar-cell bg-slate-50/50"></div>`;
+                    } else {
+                        const currentDateObj = new Date(year, monthIdx, cell.day);
                         
-                        badgesHtml += `
-                            <div class="leave-badge ${badgeClass} group relative flex justify-between items-center" style="${colorStyle}">
-                                <span>${emp.name} (${typeText})</span>
-                                <i class="fa-solid fa-xmark text-[10px] ml-1 cursor-pointer hover:text-gray-200 no-print" onclick="deleteLeave(${l.id})" title="Sil"></i>
+                        const dayLeaves = appData.leaves.filter(l => {
+                            const lStart = parseDateSafely(l.start);
+                            const lEnd = parseDateSafely(l.end);
+                            return currentDateObj >= lStart && currentDateObj <= lEnd;
+                        });
+
+                        let badgesHtml = '';
+                        dayLeaves.forEach(l => {
+                            const emp = appData.employees.find(e => e.id === l.empId);
+                            if (emp) {
+                                const isHT = l.type === 'HT';
+                                const badgeStyle = isHT ? 'background-color: #f97316; color: white;' : `background-color: ${emp.color}; color: white;`;
+                                const typeText = isHT ? 'HT' : 'Yİ';
+                                
+                                badgesHtml += `
+                                    <div class="text-[9px] font-semibold rounded px-1 py-0.5 mt-0.5 flex items-center justify-between shadow-sm overflow-hidden select-none" style="${badgeStyle}">
+                                        <span class="truncate max-w-[85%]">${emp.name} (${typeText})</span>
+                                        <i class="fa-solid fa-circle-xmark ml-1 cursor-pointer hover:text-slate-200 transition no-print text-[9px]" onclick="deleteLeave(${l.id})"></i>
+                                    </div>
+                                `;
+                            }
+                        });
+
+                        const isToday = cell.day === new Date().getDate() && monthIdx === new Date().getMonth() && year === new Date().getFullYear();
+                        const todayBg = isToday ? 'background-color: #f1f5f9; border-top: 2px solid #4f46e5;' : '';
+
+                        html += `
+                            <div class="calendar-cell" style="${todayBg}">
+                                <span class="text-[10px] font-bold text-slate-500 self-end">${cell.day}</span>
+                                <div class="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-0.5 mt-1">
+                                    ${badgesHtml}
+                                </div>
                             </div>
                         `;
                     }
-                });
-
-                html += `
-                    <div class="calendar-cell ${d === new Date().getDate() && monthIdx === new Date().getMonth() && year === new Date().getFullYear() ? 'bg-blue-50' : 'bg-white'}">
-                        <div class="calendar-day-number">${d}</div>
-                        ${badgesHtml}
-                    </div>
-                `;
-            }
-
-            // Fill remaining cells to complete the grid
-            const totalCellsRendered = startingDayOfWeek + totalDays;
-            const remainingCells = (7 - (totalCellsRendered % 7)) % 7;
-            for (let i = 0; i < remainingCells; i++) {
-                html += `<div class="calendar-cell bg-gray-50/50"></div>`;
+                }
+                html += '</div>';
             }
 
             html += '</div>';
             area.innerHTML = html;
+        }
+
+        function renderMatrix() {
+            const monthIdx = parseInt(document.getElementById('month-select').value);
+            const year = parseInt(document.getElementById('year-select').value);
+            const lastDay = new Date(year, monthIdx + 1, 0);
+            const totalDays = lastDay.getDate();
+
+            const headerRow = document.getElementById('matrix-header');
+            const bodyRow = document.getElementById('matrix-body');
+
+            let headerHtml = `<tr><th class="matrix-name-col">Personel</th>`;
+            for (let d = 1; d <= totalDays; d++) {
+                headerHtml += `<th>${d}</th>`;
+            }
+            headerHtml += `</tr>`;
+            headerRow.innerHTML = headerHtml;
+
+            let bodyHtml = '';
+            if (appData.employees.length === 0) {
+                bodyHtml = `<tr><td colspan="${totalDays + 1}" class="text-center text-slate-400 py-6 italic text-xs">Kayıtlı personel bulunamadı.</td></tr>`;
+            } else {
+                appData.employees.forEach(emp => {
+                    bodyHtml += `<tr><td class="matrix-name-col" style="color: ${emp.color}">${emp.name}</td>`;
+                    for (let d = 1; d <= totalDays; d++) {
+                        const currentDateObj = new Date(year, monthIdx, d);
+                        const matchedLeave = appData.leaves.find(l => {
+                            if (l.empId !== emp.id) return false;
+                            const lStart = parseDateSafely(l.start);
+                            const lEnd = parseDateSafely(l.end);
+                            return currentDateObj >= lStart && currentDateObj <= lEnd;
+                        });
+
+                        let styleAttr = '';
+                        let textVal = '';
+                        if (matchedLeave) {
+                            if (matchedLeave.type === 'HT') {
+                                styleAttr = 'style="background-color: #f97316; color: white; font-weight: bold;"';
+                                textVal = 'HT';
+                            } else {
+                                styleAttr = `style="background-color: ${emp.color}; color: white; font-weight: bold;"`;
+                                textVal = 'Yİ';
+                            }
+                        }
+                        bodyHtml += `<td ${styleAttr}>${textVal}</td>`;
+                    }
+                    bodyHtml += `</tr>`;
+                });
+            }
+            bodyRow.innerHTML = bodyHtml;
         }
 
         function renderNotes() {
@@ -527,20 +666,20 @@ html_content = """<!DOCTYPE html>
             const year = parseInt(document.getElementById('year-select').value);
             const area = document.getElementById('notes-render-area');
             
-            // Filter leaves that fall into the currently selected month and year
+            const firstDayOfMonth = new Date(year, monthIdx, 1);
+            const lastDayOfMonth = new Date(year, monthIdx + 1, 0);
+
             const activeLeaves = appData.leaves.filter(l => {
-                const s = new Date(l.start);
-                const e = new Date(l.end);
-                return (s.getMonth() === monthIdx && s.getFullYear() === year) || 
-                       (e.getMonth() === monthIdx && e.getFullYear() === year);
+                const s = parseDateSafely(l.start);
+                const e = parseDateSafely(l.end);
+                return s <= lastDayOfMonth && e >= firstDayOfMonth;
             });
 
             if (activeLeaves.length === 0) {
-                area.innerHTML = '<div class="text-gray-400 italic text-sm col-span-2">Bu aya ait izin planlaması bulunmamaktadır.</div>';
+                area.innerHTML = '<div class="text-slate-400 italic text-[10px] col-span-3">Bu döneme ait planlanmış izin bulunmamaktadır.</div>';
                 return;
             }
 
-            // Group by Employee
             const grouped = {};
             activeLeaves.forEach(l => {
                 if (!grouped[l.empId]) grouped[l.empId] = [];
@@ -550,28 +689,27 @@ html_content = """<!DOCTYPE html>
             let html = '';
             appData.employees.forEach(emp => {
                 if (grouped[emp.id]) {
-                    // Sort leaves chronologically
-                    const leaves = grouped[emp.id].sort((a,b) => new Date(a.start) - new Date(b.start));
+                    const leaves = grouped[emp.id].sort((a,b) => parseDateSafely(a.start) - parseDateSafely(b.start));
                     
-                    let leaveTexts = leaves.map(l => {
-                        const startObj = new Date(l.start);
-                        const endObj = new Date(l.end);
-                        const typeStr = l.type === 'HT' ? '<span class="text-orange-600 font-bold">HT</span>' : '<span class="font-semibold">Yİ</span>';
+                    let leaveTexts = [];
+                    leaves.forEach(l => {
+                        const startObj = parseDateSafely(l.start);
+                        const endObj = parseDateSafely(l.end);
+                        const typeLabel = l.type === 'HT' ? '<span class="text-orange-600 font-bold">HT</span>' : '<span class="font-bold">Yİ</span>';
                         
                         if (l.start === l.end) {
-                            return `${startObj.getDate()} ${monthNames[startObj.getMonth()]} ${typeStr}`;
+                            leaveTexts.push(`${startObj.getDate()} ${monthNames[startObj.getMonth()]} (${typeLabel})`);
                         } else {
-                            return `${startObj.getDate()} ${monthNames[startObj.getMonth()]} - ${endObj.getDate()} ${monthNames[endObj.getMonth()]} ${typeStr}`;
+                            leaveTexts.push(`${startObj.getDate()} ${monthNames[startObj.getMonth()]} - ${endObj.getDate()} ${monthNames[endObj.getMonth()]} (${typeLabel})`);
                         }
                     });
 
-                    // Add color bullet matching the employee
                     html += `
-                        <div class="flex items-start gap-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                            <div class="w-3 h-3 rounded-full mt-1 shrink-0" style="background-color: ${emp.color}"></div>
-                            <div>
-                                <span class="font-bold text-slate-800" style="color: ${emp.color}">${emp.name}:</span> 
-                                <span class="text-slate-600 ml-1 leading-relaxed">${leaveTexts.join(', ')}</span>
+                        <div class="flex items-center gap-2 bg-slate-50 border border-slate-100 p-2 rounded-lg leading-relaxed shrink-0">
+                            <div class="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" style="background-color: ${emp.color}"></div>
+                            <div class="truncate">
+                                <span class="font-bold text-slate-800" style="color: ${emp.color}">${emp.name}:</span>
+                                <span class="text-slate-600 ml-1 font-medium text-[10px]">${leaveTexts.join(', ')}</span>
                             </div>
                         </div>
                     `;
@@ -580,18 +718,17 @@ html_content = """<!DOCTYPE html>
             area.innerHTML = html;
         }
 
-        // Backup and Restore (JSON)
         function exportData() {
             const dataStr = JSON.stringify(appData, null, 2);
             const blob = new Blob([dataStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `izin_plani_yedek_${new Date().toISOString().slice(0,10)}.json`;
+            a.download = `yillik_izin_plani_yedek_${new Date().toISOString().slice(0,10)}.json`;
             a.click();
             URL.revokeObjectURL(url);
             
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Yedek İndirildi', showConfirmButton: false, timer: 1500 });
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Yedek dosyası indirildi', showConfirmButton: false, timer: 1500 });
         }
 
         function importData(event) {
@@ -606,40 +743,37 @@ html_content = """<!DOCTYPE html>
                         appData = parsed;
                         saveData();
                         initApp();
-                        Swal.fire('Başarılı', 'Yedek dosyası başarıyla yüklendi.', 'success');
+                        Swal.fire('Yükleme Başarılı', 'Yedek dosyası başarıyla yüklendi.', 'success');
                     } else {
-                        throw new Error("Geçersiz format");
+                        throw new Error("Yanlış dosya formatı");
                     }
                 } catch (err) {
-                    Swal.fire('Hata', 'Dosya okunurken veya format doğrulanırken hata oluştu.', 'error');
+                    Swal.fire('Hata', 'Yükleme başarısız. Lütfen geçerli bir JSON yedek dosyası seçiniz.', 'error');
                 }
-                event.target.value = ''; // reset input
+                event.target.value = '';
             };
             reader.readAsText(file);
         }
 
-        // PDF Generation
         function generatePDF() {
-            // Setup loading state
             Swal.fire({
-                title: 'PDF Hazırlanıyor...',
-                text: 'Lütfen bekleyin',
+                title: 'Plan PDF Belgesi Hazırlanıyor...',
+                text: 'Yatay A4 formatına sığdırılıyor.',
                 allowOutsideClick: false,
                 didOpen: () => { Swal.showLoading() }
             });
 
             const element = document.getElementById('pdf-content');
-            
             const monthStr = monthNames[parseInt(document.getElementById('month-select').value)];
             const yearStr = document.getElementById('year-select').value;
-            const fileName = `Izin_Plani_${monthStr}_${yearStr}.pdf`;
+            const fileName = `Yillik_Izin_Plani_${monthStr}_${yearStr}.pdf`;
 
             const opt = {
                 margin:       [0, 0, 0, 0],
                 filename:     fileName,
                 image:        { type: 'jpeg', quality: 1.0 },
-                html2canvas:  { scale: 2, useCORS: true, logging: false },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                html2canvas:  { scale: 2.5, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
 
             html2pdf().set(opt).from(element).save().then(() => {
@@ -647,19 +781,19 @@ html_content = """<!DOCTYPE html>
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'PDF Başarıyla İndirildi', showConfirmButton: false, timer: 1500 });
             }).catch(err => {
                 Swal.close();
-                Swal.fire('Hata', 'PDF oluşturulurken bir hata oluştu.', 'error');
+                Swal.fire('Sistem Hatası', 'PDF oluşturulurken bir hata oluştu.', 'error');
                 console.error(err);
             });
         }
 
-        // Start App
         window.onload = initApp;
     </script>
 </body>
 </html>
 """
 
-with open("yillik_izin_planlama_programi.html", "w", encoding="utf-8") as f:
+with open("yillik_izin_planlama_programi_v4.html", "w", encoding="utf-8") as f:
     f.write(html_content)
 
-print("[file-tag: yillik_izin_planlama_programi.html]")
+print("[file-tag: yillik_izin_planlama_programi_v4.html]")
+
