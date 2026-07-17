@@ -1,0 +1,665 @@
+html_content = """<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yıllık İzin Planlama Programı</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        /* A4 Paper styling for screen preview */
+        .a4-container {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            padding: 15mm;
+            position: relative;
+        }
+
+        /* Calendar Grid Styles */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            border-top: 1px solid #e5e7eb;
+            border-left: 1px solid #e5e7eb;
+        }
+        
+        .calendar-header-cell {
+            background-color: #f8fafc;
+            font-weight: 600;
+            text-align: center;
+            padding: 8px;
+            border-right: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 0.875rem;
+            color: #334155;
+        }
+
+        .calendar-cell {
+            min-height: 100px;
+            border-right: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .calendar-day-number {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #64748b;
+            margin-bottom: 4px;
+            text-align: right;
+        }
+
+        .leave-badge {
+            font-size: 0.7rem;
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .ht-badge {
+            background-color: #f97316 !important; /* Fixed Orange for Hafta Tatili */
+            color: white;
+        }
+
+        /* Hide elements during print */
+        @media print {
+            .no-print { display: none !important; }
+            .a4-container {
+                box-shadow: none;
+                margin: 0;
+                padding: 0;
+                width: 100%;
+            }
+            body { background-color: white; }
+        }
+        
+        /* Print layout adjustments for html2pdf */
+        #pdf-content {
+            background-color: white;
+        }
+    </style>
+</head>
+<body class="text-gray-800 pb-12">
+
+    <!-- Top Navigation / Header -->
+    <nav class="bg-slate-800 text-white p-4 shadow-md no-print sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-calendar-days text-2xl text-blue-400"></i>
+                <h1 class="text-xl font-bold">Profesyonel Yıllık İzin Planlama</h1>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('file-upload').click()" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded transition flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-upload"></i> Yedeği Yükle
+                </button>
+                <input type="file" id="file-upload" class="hidden" accept=".json" onchange="importData(event)">
+                
+                <button onclick="exportData()" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded transition flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-download"></i> Yedek Al
+                </button>
+                
+                <button onclick="generatePDF()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-semibold transition flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-file-pdf"></i> PDF İndir / Yazdır
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto mt-6 flex flex-col lg:flex-row gap-6 px-4 no-print">
+        <!-- Controls Sidebar -->
+        <div class="w-full lg:w-1/3 flex flex-col gap-6">
+            
+            <!-- Calendar Navigation -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+                <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Ay ve Yıl Seçimi</h2>
+                <div class="flex gap-2">
+                    <select id="month-select" class="flex-1 border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" onchange="renderApp()">
+                        <option value="0">Ocak</option>
+                        <option value="1">Şubat</option>
+                        <option value="2">Mart</option>
+                        <option value="3">Nisan</option>
+                        <option value="4">Mayıs</option>
+                        <option value="5">Haziran</option>
+                        <option value="6">Temmuz</option>
+                        <option value="7" selected>Ağustos</option>
+                        <option value="8">Eylül</option>
+                        <option value="9">Ekim</option>
+                        <option value="10">Kasım</option>
+                        <option value="11">Aralık</option>
+                    </select>
+                    <input type="number" id="year-select" class="w-24 border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" value="2026" onchange="renderApp()">
+                </div>
+            </div>
+
+            <!-- Settings / Context -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+                <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Belge Ayarları</h2>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase">Kurum / Mağaza Adı</label>
+                        <input type="text" id="store-name" class="w-full border border-gray-300 rounded p-2 mt-1 text-sm" value="Mağaza 4254 - Park Bornova AVM" oninput="updateSettings()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase">Yönetici Adı</label>
+                        <input type="text" id="manager-name" class="w-full border border-gray-300 rounded p-2 mt-1 text-sm" value="Arda Ulaş" oninput="updateSettings()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Employee -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+                <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Personel Yönetimi</h2>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="new-emp-name" placeholder="Ad Soyad" class="flex-1 border border-gray-300 rounded p-2 text-sm">
+                    <input type="color" id="new-emp-color" class="w-10 h-10 rounded border border-gray-300 cursor-pointer p-1">
+                    <button onclick="addEmployee()" class="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700"><i class="fa-solid fa-plus"></i></button>
+                </div>
+                <div id="employee-list" class="space-y-2 max-h-40 overflow-y-auto">
+                    <!-- Employees dynamically rendered here -->
+                </div>
+            </div>
+
+            <!-- Add Leave Form -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+                <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2 text-blue-600"><i class="fa-solid fa-calendar-plus mr-2"></i>Yeni İzin / HT Ekle</h2>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase">Personel</label>
+                        <select id="leave-emp" class="w-full border border-gray-300 rounded p-2 mt-1 text-sm"></select>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="flex-1">
+                            <label class="block text-xs font-semibold text-gray-500 uppercase">Başlangıç</label>
+                            <input type="date" id="leave-start" class="w-full border border-gray-300 rounded p-2 mt-1 text-sm">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-xs font-semibold text-gray-500 uppercase">Bitiş</label>
+                            <input type="date" id="leave-end" class="w-full border border-gray-300 rounded p-2 mt-1 text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase">İzin Türü</label>
+                        <div class="flex gap-4 mt-2">
+                            <label class="flex items-center gap-1 text-sm cursor-pointer">
+                                <input type="radio" name="leave-type" value="YI" checked class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                                <span>Yıllık İzin (Yİ)</span>
+                            </label>
+                            <label class="flex items-center gap-1 text-sm cursor-pointer">
+                                <input type="radio" name="leave-type" value="HT" class="w-4 h-4 text-orange-500 focus:ring-orange-500">
+                                <span class="text-orange-600 font-semibold">Hafta Tatili (HT)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <button onclick="addLeave()" class="w-full bg-blue-600 text-white font-semibold py-2 rounded mt-2 hover:bg-blue-700 transition">İzni Kaydet</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- A4 Preview Area -->
+        <div class="w-full lg:w-2/3 overflow-x-auto pb-8">
+            <div id="pdf-content" class="a4-container">
+                
+                <!-- PDF Header -->
+                <div class="flex justify-between items-end border-b-2 border-slate-800 pb-4 mb-6">
+                    <div>
+                        <h1 id="pdf-store-name" class="text-2xl font-bold text-slate-800">Mağaza 4254 - Park Bornova AVM</h1>
+                        <h2 class="text-lg text-slate-600 font-medium mt-1">Personel Yıllık İzin ve Çalışma Planı</h2>
+                    </div>
+                    <div class="text-right">
+                        <div id="pdf-month-year" class="text-xl font-bold text-blue-700 bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">Ağustos 2026</div>
+                    </div>
+                </div>
+
+                <!-- Calendar Area -->
+                <div id="calendar-render-area" class="mb-8">
+                    <!-- Calendar Grid Generated via JS -->
+                </div>
+
+                <!-- Notes / Summaries Area -->
+                <div class="mt-8 border-t border-gray-300 pt-6">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-list text-blue-600"></i> İzin ve Tatil Notları (Özet)
+                    </h3>
+                    <div id="notes-render-area" class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                        <!-- Notes Generated via JS -->
+                    </div>
+                </div>
+
+                <!-- Footer Signatures -->
+                <div class="mt-16 flex justify-between px-10">
+                    <div class="text-center">
+                        <div class="font-semibold text-slate-700 border-b border-gray-400 pb-1 px-4 mb-8 w-48">Onaylayan</div>
+                        <div id="pdf-manager-name" class="font-bold text-slate-800 uppercase">Arda Ulaş</div>
+                        <div class="text-xs text-gray-500 mt-1">Mağaza Yöneticisi</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="font-semibold text-slate-700 border-b border-gray-400 pb-1 px-4 mb-8 w-48">Tarih / İmza</div>
+                        <div class="text-gray-400">.... / .... / 20...</div>
+                    </div>
+                </div>
+                
+                <!-- Watermark / Footer text -->
+                <div class="absolute bottom-4 right-8 text-xs text-gray-400 italic">
+                    Otomatik oluşturuldu. Yİ: Yıllık İzin | HT: Hafta Tatili
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+        const dayNames = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+
+        // Default Data State
+        let defaultData = {
+            employees: [
+                { id: 1, name: "Ahmet Yılmaz", color: "#3b82f6" },
+                { id: 2, name: "Ayşe Demir", color: "#8b5cf6" },
+                { id: 3, name: "Mehmet Kaya", color: "#10b981" }
+            ],
+            leaves: [
+                { id: 1, empId: 1, start: "2026-08-13", end: "2026-08-15", type: "YI" },
+                { id: 2, empId: 1, start: "2026-08-16", end: "2026-08-16", type: "HT" },
+                { id: 3, empId: 1, start: "2026-08-17", end: "2026-08-17", type: "YI" }
+            ],
+            settings: {
+                storeName: "Mağaza 4254 - Park Bornova AVM",
+                managerName: "Arda Ulaş"
+            }
+        };
+
+        let appData = {};
+
+        // Initialization
+        function initApp() {
+            const stored = localStorage.getItem('leavePlannerData');
+            if (stored) {
+                appData = JSON.parse(stored);
+            } else {
+                appData = JSON.parse(JSON.stringify(defaultData));
+                saveData();
+            }
+
+            // Sync settings to inputs
+            document.getElementById('store-name').value = appData.settings.storeName || '';
+            document.getElementById('manager-name').value = appData.settings.managerName || '';
+            
+            // Set current month/year to August 2026 based on initial prompt request context
+            document.getElementById('month-select').value = "7";
+            document.getElementById('year-select').value = "2026";
+
+            renderApp();
+        }
+
+        function saveData() {
+            localStorage.setItem('leavePlannerData', JSON.stringify(appData));
+        }
+
+        function updateSettings() {
+            appData.settings.storeName = document.getElementById('store-name').value;
+            appData.settings.managerName = document.getElementById('manager-name').value;
+            saveData();
+            updatePDFHeader();
+        }
+
+        function updatePDFHeader() {
+            document.getElementById('pdf-store-name').innerText = appData.settings.storeName;
+            document.getElementById('pdf-manager-name').innerText = appData.settings.managerName;
+            
+            const monthIdx = parseInt(document.getElementById('month-select').value);
+            const year = document.getElementById('year-select').value;
+            document.getElementById('pdf-month-year').innerText = `${monthNames[monthIdx]} ${year}`;
+        }
+
+        // Generate Random Color for new employees
+        function getRandomColor() {
+            const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#6366f1'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        document.getElementById('new-emp-color').value = getRandomColor();
+
+        // Employee Management
+        function addEmployee() {
+            const nameInput = document.getElementById('new-emp-name');
+            const colorInput = document.getElementById('new-emp-color');
+            const name = nameInput.value.trim();
+            if (!name) return alert("Lütfen personel adı giriniz.");
+
+            const newId = appData.employees.length ? Math.max(...appData.employees.map(e => e.id)) + 1 : 1;
+            appData.employees.push({ id: newId, name: name, color: colorInput.value });
+            
+            nameInput.value = '';
+            colorInput.value = getRandomColor();
+            saveData();
+            renderApp();
+            
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Personel Eklendi', showConfirmButton: false, timer: 1500 });
+        }
+
+        function deleteEmployee(id) {
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: "Personel ve tüm izinleri silinecektir!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Evet, Sil',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    appData.employees = appData.employees.filter(e => e.id !== id);
+                    appData.leaves = appData.leaves.filter(l => l.empId !== id);
+                    saveData();
+                    renderApp();
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Silindi', showConfirmButton: false, timer: 1500 });
+                }
+            });
+        }
+
+        function renderEmployees() {
+            const list = document.getElementById('employee-list');
+            const select = document.getElementById('leave-emp');
+            list.innerHTML = '';
+            select.innerHTML = '<option value="">Personel Seçin...</option>';
+
+            appData.employees.forEach(emp => {
+                // List item
+                list.innerHTML += `
+                    <div class="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-200">
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 rounded-full" style="background-color: ${emp.color}"></div>
+                            <span class="text-sm font-medium text-slate-700">${emp.name}</span>
+                        </div>
+                        <button onclick="deleteEmployee(${emp.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                `;
+                // Select option
+                select.innerHTML += `<option value="${emp.id}">${emp.name}</option>`;
+            });
+        }
+
+        // Leave Management
+        function addLeave() {
+            const empId = document.getElementById('leave-emp').value;
+            const start = document.getElementById('leave-start').value;
+            const end = document.getElementById('leave-end').value;
+            const type = document.querySelector('input[name="leave-type"]:checked').value;
+
+            if (!empId || !start || !end) {
+                return Swal.fire('Hata', 'Lütfen personel ve tarih aralığını seçin.', 'error');
+            }
+            if (new Date(start) > new Date(end)) {
+                return Swal.fire('Hata', 'Bitiş tarihi başlangıç tarihinden önce olamaz.', 'error');
+            }
+
+            const newId = appData.leaves.length ? Math.max(...appData.leaves.map(l => l.id)) + 1 : 1;
+            appData.leaves.push({ id: newId, empId: parseInt(empId), start, end, type });
+            
+            document.getElementById('leave-start').value = '';
+            document.getElementById('leave-end').value = '';
+            
+            saveData();
+            renderApp();
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'İzin Kaydedildi', showConfirmButton: false, timer: 1500 });
+        }
+
+        function deleteLeave(id) {
+            appData.leaves = appData.leaves.filter(l => l.id !== id);
+            saveData();
+            renderApp();
+        }
+
+        // Core Rendering Logic
+        function renderApp() {
+            updatePDFHeader();
+            renderEmployees();
+            renderCalendar();
+            renderNotes();
+        }
+
+        function renderCalendar() {
+            const monthIdx = parseInt(document.getElementById('month-select').value);
+            const year = parseInt(document.getElementById('year-select').value);
+            const area = document.getElementById('calendar-render-area');
+            
+            // Generate Grid
+            let html = '<div class="calendar-grid">';
+            
+            // Headers
+            dayNames.forEach(day => {
+                html += `<div class="calendar-header-cell">${day}</div>`;
+            });
+
+            const firstDay = new Date(year, monthIdx, 1);
+            const lastDay = new Date(year, monthIdx + 1, 0);
+            
+            let startingDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // Adjust so Monday is 0
+            const totalDays = lastDay.getDate();
+
+            // Empty cells before start of month
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                html += `<div class="calendar-cell bg-gray-50/50"></div>`;
+            }
+
+            // Days of the month
+            for (let d = 1; d <= totalDays; d++) {
+                const currentDateStr = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const currentDateObj = new Date(year, monthIdx, d);
+                
+                // Find leaves for this day
+                const dayLeaves = appData.leaves.filter(l => {
+                    const lStart = new Date(l.start);
+                    const lEnd = new Date(l.end);
+                    // Reset time portions for accurate comparison
+                    lStart.setHours(0,0,0,0); lEnd.setHours(0,0,0,0); currentDateObj.setHours(0,0,0,0);
+                    return currentDateObj >= lStart && currentDateObj <= lEnd;
+                });
+
+                let badgesHtml = '';
+                dayLeaves.forEach(l => {
+                    const emp = appData.employees.find(e => e.id === l.empId);
+                    if (emp) {
+                        const isHT = l.type === 'HT';
+                        const badgeClass = isHT ? 'ht-badge' : '';
+                        const colorStyle = isHT ? '' : `background-color: ${emp.color};`;
+                        const typeText = isHT ? 'HT' : 'Yİ';
+                        
+                        badgesHtml += `
+                            <div class="leave-badge ${badgeClass} group relative flex justify-between items-center" style="${colorStyle}">
+                                <span>${emp.name} (${typeText})</span>
+                                <i class="fa-solid fa-xmark text-[10px] ml-1 cursor-pointer hover:text-gray-200 no-print" onclick="deleteLeave(${l.id})" title="Sil"></i>
+                            </div>
+                        `;
+                    }
+                });
+
+                html += `
+                    <div class="calendar-cell ${d === new Date().getDate() && monthIdx === new Date().getMonth() && year === new Date().getFullYear() ? 'bg-blue-50' : 'bg-white'}">
+                        <div class="calendar-day-number">${d}</div>
+                        ${badgesHtml}
+                    </div>
+                `;
+            }
+
+            // Fill remaining cells to complete the grid
+            const totalCellsRendered = startingDayOfWeek + totalDays;
+            const remainingCells = (7 - (totalCellsRendered % 7)) % 7;
+            for (let i = 0; i < remainingCells; i++) {
+                html += `<div class="calendar-cell bg-gray-50/50"></div>`;
+            }
+
+            html += '</div>';
+            area.innerHTML = html;
+        }
+
+        function renderNotes() {
+            const monthIdx = parseInt(document.getElementById('month-select').value);
+            const year = parseInt(document.getElementById('year-select').value);
+            const area = document.getElementById('notes-render-area');
+            
+            // Filter leaves that fall into the currently selected month and year
+            const activeLeaves = appData.leaves.filter(l => {
+                const s = new Date(l.start);
+                const e = new Date(l.end);
+                return (s.getMonth() === monthIdx && s.getFullYear() === year) || 
+                       (e.getMonth() === monthIdx && e.getFullYear() === year);
+            });
+
+            if (activeLeaves.length === 0) {
+                area.innerHTML = '<div class="text-gray-400 italic text-sm col-span-2">Bu aya ait izin planlaması bulunmamaktadır.</div>';
+                return;
+            }
+
+            // Group by Employee
+            const grouped = {};
+            activeLeaves.forEach(l => {
+                if (!grouped[l.empId]) grouped[l.empId] = [];
+                grouped[l.empId].push(l);
+            });
+
+            let html = '';
+            appData.employees.forEach(emp => {
+                if (grouped[emp.id]) {
+                    // Sort leaves chronologically
+                    const leaves = grouped[emp.id].sort((a,b) => new Date(a.start) - new Date(b.start));
+                    
+                    let leaveTexts = leaves.map(l => {
+                        const startObj = new Date(l.start);
+                        const endObj = new Date(l.end);
+                        const typeStr = l.type === 'HT' ? '<span class="text-orange-600 font-bold">HT</span>' : '<span class="font-semibold">Yİ</span>';
+                        
+                        if (l.start === l.end) {
+                            return `${startObj.getDate()} ${monthNames[startObj.getMonth()]} ${typeStr}`;
+                        } else {
+                            return `${startObj.getDate()} ${monthNames[startObj.getMonth()]} - ${endObj.getDate()} ${monthNames[endObj.getMonth()]} ${typeStr}`;
+                        }
+                    });
+
+                    // Add color bullet matching the employee
+                    html += `
+                        <div class="flex items-start gap-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            <div class="w-3 h-3 rounded-full mt-1 shrink-0" style="background-color: ${emp.color}"></div>
+                            <div>
+                                <span class="font-bold text-slate-800" style="color: ${emp.color}">${emp.name}:</span> 
+                                <span class="text-slate-600 ml-1 leading-relaxed">${leaveTexts.join(', ')}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            area.innerHTML = html;
+        }
+
+        // Backup and Restore (JSON)
+        function exportData() {
+            const dataStr = JSON.stringify(appData, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `izin_plani_yedek_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Yedek İndirildi', showConfirmButton: false, timer: 1500 });
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed.employees && parsed.leaves) {
+                        appData = parsed;
+                        saveData();
+                        initApp();
+                        Swal.fire('Başarılı', 'Yedek dosyası başarıyla yüklendi.', 'success');
+                    } else {
+                        throw new Error("Geçersiz format");
+                    }
+                } catch (err) {
+                    Swal.fire('Hata', 'Dosya okunurken veya format doğrulanırken hata oluştu.', 'error');
+                }
+                event.target.value = ''; // reset input
+            };
+            reader.readAsText(file);
+        }
+
+        // PDF Generation
+        function generatePDF() {
+            // Setup loading state
+            Swal.fire({
+                title: 'PDF Hazırlanıyor...',
+                text: 'Lütfen bekleyin',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading() }
+            });
+
+            const element = document.getElementById('pdf-content');
+            
+            const monthStr = monthNames[parseInt(document.getElementById('month-select').value)];
+            const yearStr = document.getElementById('year-select').value;
+            const fileName = `Izin_Plani_${monthStr}_${yearStr}.pdf`;
+
+            const opt = {
+                margin:       [0, 0, 0, 0],
+                filename:     fileName,
+                image:        { type: 'jpeg', quality: 1.0 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                Swal.close();
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'PDF Başarıyla İndirildi', showConfirmButton: false, timer: 1500 });
+            }).catch(err => {
+                Swal.close();
+                Swal.fire('Hata', 'PDF oluşturulurken bir hata oluştu.', 'error');
+                console.error(err);
+            });
+        }
+
+        // Start App
+        window.onload = initApp;
+    </script>
+</body>
+</html>
+"""
+
+with open("yillik_izin_planlama_programi.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+print("[file-tag: yillik_izin_planlama_programi.html]")
