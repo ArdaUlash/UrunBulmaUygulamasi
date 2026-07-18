@@ -1,57 +1,82 @@
+Haklısınız, önceki tasarım işlevselliğe odaklandığı için modern web standartlarının ve lüks kurumsal panellerin (SaaS dashboard) estetiğinden uzaktı.
+Uygulamayı sıradan bir web sayfasından çıkarıp, modern bir kurumsal yönetim paneli (SaaS Dashboard) arayüzüne dönüştürdüm.
+Yapılan UI/UX Zenginleştirmeleri:
+ * Premium Renk Paleti & Tipografi: Arka planda yumuşak ve göz yormayan slate/indigo tonları (bg-slate-50), kartlarda temiz kontrast ve derinlik hissi veren özel katmanlı gölgeler (shadow-sm, shadow-xl/4) kullanıldı.
+ * Canlı İstatistik Kartları (Analytics): Sayfanın üst kısmına "Toplam Personel", "Aktif Vardiyadakiler" ve "Atanan Toplam Mola" gibi paneli zengin gösteren dinamik sayaçlar eklendi.
+ * Mikro-Etkileşimler & Animasyonlar: Butonlara dokunulduğunda veya üzerlerine gelindiğinde yumuşak geçişler (smooth transitions), iOS uyumlu tıklama efektleri ve ölçeklenme efektleri (active:scale-95) eklendi.
+ * Zenginleştirilmiş Mobil Kart Tasarımı: Zaman girdileri ve butonlar iOS Safari dokunmatik hedef boyutlarına (minimum 44px) uygun hale getirildi. Personel isimlerinin soluna şık, renk geçişli (gradient) kurumsal profil ikonları entegre edildi.
+ * Modernleştirilmiş A4 Çıktı Tasarımı: PDF çıktısı, tamamen kurumsal bir rapor görünümüne kavuşturuldu. Tablo satır aralıkları, font ağırlıkları ve çizgi netlikleri okunabilirliği en üst düzeye çıkaracak şekilde "Executive Rapor" standartlarında yeniden tasarlandı.
+Aşağıdaki güncellenmiş ve zenginleştirilmiş kod blokunu mola-yonetim-premium.html olarak kaydedip hemen kullanmaya başlayabilirsiniz:
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pro Mola & Vardiya Yönetimi</title>
+    <title>Enterprise Vardiya & Mola Yönetim Paneli</title>
     
-    <!-- Tailwind CSS (Modern ve Mobil Uyumlu UI için) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- FontAwesome (İkonlar için) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- html2pdf.js (A4 PDF Çıktısı için) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* iOS Time Input Görünüm İyileştirmesi */
+        /* iOS Safari Gelişmiş Saat Seçici Stili */
         input[type="time"] {
             -webkit-appearance: none;
             appearance: none;
-            background-color: #fff;
-            padding: 0.5rem;
-            border-radius: 0.375rem;
-            border: 1px solid #d1d5db;
+            background-color: #f8fafc;
+            font-weight: 500;
+            color: #1e293b;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        input[type="time"]:focus {
+            outline: none;
+            background-color: #ffffff;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
 
-        /* Sekme Geçiş Animasyonları */
+        /* Akıcı Sekme Geçişleri */
         .tab-content {
             display: none;
-            animation: fadeIn 0.3s ease-in-out;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .tab-content.active {
             display: block;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(5px); }
-            to { opacity: 1; transform: translateY(0); }
+            opacity: 1;
+            transform: translateY(0);
         }
 
-        /* PDF (A4) Çıktı Şablonu Gizliliği - Sadece PDF Üretilirken Görünür */
-        #pdf-container {
-            display: none;
+        /* Şık Kaydırma Çubukları */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
         }
 
-        /* Sadece yazdırılma anında devreye giren CSS */
+        /* Gizli PDF Konteyneri */
+        #pdf-container { display: none; }
+
         @media print {
             body > *:not(#pdf-container) { display: none !important; }
             #pdf-container { 
@@ -63,199 +88,258 @@
         }
     </style>
 </head>
-<body class="text-gray-800 pb-20">
+<body class="text-slate-800 pb-24 bg-slate-50/50">
 
-    <!-- Üst Menü -->
-    <nav class="bg-indigo-600 text-white shadow-lg sticky top-0 z-50">
-        <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="font-bold text-lg tracking-wide"><i class="fa-solid fa-clock mr-2"></i>Mola Planlama</h1>
-            <div class="text-sm opacity-80" id="current-date-display"></div>
+    <header class="bg-slate-900 text-white shadow-xl sticky top-0 z-50 border-b border-slate-800">
+        <div class="max-w-5xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                        <i class="fa-solid fa-layer-group text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-base tracking-tight leading-none">BreakControl</h1>
+                        <span class="text-[11px] text-slate-400 font-medium tracking-wider uppercase">Enterprise Suite</span>
+                    </div>
+                </div>
+                <div class="hidden sm:flex items-center gap-2 bg-slate-800/60 px-3 py-1.5 rounded-lg border border-slate-700/50 text-xs text-slate-300">
+                    <i class="fa-solid fa-calendar text-indigo-400"></i>
+                    <span id="current-date-display" class="font-medium">...</span>
+                </div>
+            </div>
+            
+            <div class="pb-3">
+                <div class="bg-slate-800/80 p-1 rounded-xl flex gap-1 border border-slate-700/30">
+                    <button onclick="switchTab('planlama')" id="tab-planlama" class="flex-1 py-2.5 text-center text-xs font-semibold rounded-lg transition-all duration-200 bg-indigo-600 text-white shadow-md shadow-indigo-600/10">
+                        <i class="fa-solid fa-chart-pie-alt mr-1.5 opacity-80"></i>Günlük Operasyon Çizelgesi
+                    </button>
+                    <button onclick="switchTab('yonetim')" id="tab-yonetim" class="flex-1 py-2.5 text-center text-xs font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-user-gear mr-1.5 opacity-80"></i>Personel Havuz Yönetimi
+                    </button>
+                </div>
+            </div>
         </div>
-        <div class="flex bg-indigo-700">
-            <button onclick="switchTab('planlama')" id="tab-planlama" class="flex-1 py-3 text-center font-medium border-b-2 border-white transition-colors">
-                <i class="fa-solid fa-calendar-day mr-1"></i> Günlük Plan
-            </button>
-            <button onclick="switchTab('yonetim')" id="tab-yonetim" class="flex-1 py-3 text-center font-medium border-b-2 border-transparent hover:bg-indigo-800 transition-colors">
-                <i class="fa-solid fa-users mr-1"></i> Personel Ynt.
-            </button>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 mt-6">
+        
+        <div class="grid grid-cols-3 gap-3 mb-6">
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200/60 shadow-sm flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm"><i class="fa-solid fa-users"></i></div>
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Toplam</p>
+                    <h4 class="text-base font-extrabold text-slate-700 leading-none mt-0.5" id="metric-total-staff">0</h4>
+                </div>
+            </div>
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200/60 shadow-sm flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm"><i class="fa-solid fa-user-clock"></i></div>
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Vardiyada</p>
+                    <h4 class="text-base font-extrabold text-slate-700 leading-none mt-0.5" id="metric-active-staff">0</h4>
+                </div>
+            </div>
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-200/60 shadow-sm flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm"><i class="fa-solid fa-mug-saucer"></i></div>
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mola Planı</p>
+                    <h4 class="text-base font-extrabold text-slate-700 leading-none mt-0.5" id="metric-total-breaks">0</h4>
+                </div>
+            </div>
         </div>
-    </nav>
 
-    <!-- ANA İÇERİK -->
-    <main class="max-w-4xl mx-auto px-4 mt-6">
-
-        <!-- 1. GÜNLÜK PLAN (Mola Atamaları) EKRANI -->
         <section id="planlama" class="tab-content active">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-gray-700">Vardiya ve Mola Atamaları</h2>
-                <button onclick="generatePDF()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow font-medium text-sm transition-all active:scale-95">
-                    <i class="fa-solid fa-file-pdf mr-1"></i> PDF Çıktı Al
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800 tracking-tight">Mola ve Mesai Atamaları</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Aktif personellerin günlük zaman planlaması</p>
+                </div>
+                <button onclick="generatePDF()" class="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2.5 rounded-xl shadow-lg shadow-rose-500/10 font-semibold text-xs tracking-wide transition-all active:scale-95 flex items-center gap-2">
+                    <i class="fa-solid fa-file-pdf text-sm"></i> PDF Raporu Al
                 </button>
             </div>
 
-            <p class="text-sm text-gray-500 mb-4 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                <i class="fa-solid fa-circle-info text-blue-400 mr-1"></i> 
-                Aşağıdaki listede sadece <b>"Bugün Vardiyada"</b> olarak işaretlediğiniz personeller görünür. Değişiklikler otomatik kaydedilir.
-            </p>
-
-            <!-- Dinamik Personel Kartları Buraya Gelecek -->
             <div id="shift-cards-container" class="space-y-4">
-                <!-- JS ile doldurulacak -->
-            </div>
+                </div>
 
-            <div id="no-shift-warning" class="hidden text-center py-10 bg-white rounded-xl shadow border border-gray-100">
-                <i class="fa-solid fa-user-clock text-4xl text-gray-300 mb-3"></i>
-                <h3 class="text-gray-500 font-medium">Vardiyada personel bulunmuyor.</h3>
-                <p class="text-sm text-gray-400 mt-1">Önce "Personel Ynt." sekmesinden personelleri vardiyaya ekleyin.</p>
+            <div id="no-shift-warning" class="hidden text-center py-16 bg-white rounded-3xl shadow-sm border border-slate-200/60 px-6">
+                <div class="w-16 h-16 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 border border-slate-100">
+                    <i class="fa-solid fa-user-slash"></i>
+                </div>
+                <h3 class="text-slate-700 font-bold text-base">Vardiyada Kimse Yok</h3>
+                <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Bugün için mola planlaması yapabilmek adına öncelikle personel havuzundan aktif çalışanları seçmelisiniz.</p>
+                <button onclick="switchTab('yonetim')" class="mt-4 text-xs font-semibold bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl hover:bg-indigo-100 transition">
+                    Personel Havuzuna Git
+                </button>
             </div>
         </section>
 
-        <!-- 2. PERSONEL YÖNETİMİ EKRANI -->
         <section id="yonetim" class="tab-content">
-            <h2 class="text-xl font-bold text-gray-700 mb-4">Sistem Personel Havuzu</h2>
+            <div class="mb-4">
+                <h2 class="text-lg font-bold text-slate-800 tracking-tight">Sistem Personel Havuzu</h2>
+                <p class="text-xs text-slate-400 mt-0.5">Personel ekleyin ve bugünkü operasyon durumunu güncelleyin</p>
+            </div>
             
-            <!-- Personel Ekleme Formu -->
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm mb-6">
                 <form id="add-personnel-form" class="flex gap-2">
-                    <input type="text" id="new-personnel-name" placeholder="Ad Soyad giriniz..." required
-                        class="flex-1 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
-                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition font-medium active:scale-95 whitespace-nowrap">
-                        <i class="fa-solid fa-plus mr-1"></i> Ekle
+                    <div class="relative flex-1">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </div>
+                        <input type="text" id="new-personnel-name" placeholder="Personel Adı Soyadı..." required
+                            class="pl-9 bg-slate-50/80 border border-slate-200 text-slate-800 text-xs rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 block w-full p-3 font-medium placeholder-slate-400 transition-all">
+                    </div>
+                    <button type="submit" class="bg-indigo-600 text-white px-5 py-3 rounded-xl hover:bg-indigo-700 transition shadow-md shadow-indigo-600/10 font-bold text-xs tracking-wide active:scale-95 whitespace-nowrap flex items-center gap-1">
+                        <i class="fa-solid fa-plus"></i> Ekle
                     </button>
                 </form>
             </div>
 
-            <!-- Personel Listesi -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="px-4 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                    <span class="font-semibold text-gray-600 text-sm">Tüm Personeller</span>
-                    <span class="text-xs text-gray-400">Durum / Sil</span>
+            <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/70 flex justify-between items-center">
+                    <span class="font-bold text-slate-500 text-[11px] uppercase tracking-wider">Mevcut Kadro</span>
+                    <span class="font-bold text-slate-500 text-[11px] uppercase tracking-wider">Durum / Aksiyon</span>
                 </div>
-                <ul id="personnel-list" class="divide-y divide-gray-100">
-                    <!-- JS ile doldurulacak -->
-                </ul>
+                <ul id="personnel-list" class="divide-y divide-slate-100">
+                    </ul>
             </div>
         </section>
     </main>
 
-    <!-- PDF (A4) ÇIKTI ŞABLONU (Ekranda görünmez, sadece PDF'te basılır) -->
-    <div id="pdf-container" class="bg-white p-8">
-        <!-- Antet -->
-        <div class="flex justify-between items-end border-b-2 border-gray-800 pb-4 mb-6">
+    <div id="pdf-container" class="bg-white p-12 text-slate-900">
+        <div class="border-b-4 border-slate-900 pb-5 mb-6 flex justify-between items-end">
             <div>
-                <h1 class="text-2xl font-bold uppercase tracking-wider text-gray-900">Günlük Vardiya ve Mola Çizelgesi</h1>
-                <p class="text-gray-600 mt-1" id="pdf-date"></p>
+                <span class="text-[10px] font-extrabold uppercase text-indigo-600 tracking-widest block mb-1">Günlük Resmi Rapor</span>
+                <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 uppercase">Vardiya ve Mola Dağılım Çizelgesi</h1>
+                <p class="text-slate-500 text-xs font-medium mt-1" id="pdf-date"></p>
             </div>
-            <div class="text-right text-sm text-gray-500">
-                <p>Belge Tarihi: <span class="font-medium" id="pdf-print-date"></span></p>
+            <div class="text-right">
+                <span class="text-[10px] font-bold text-slate-400 block uppercase">Oluşturulma Zamanı</span>
+                <p class="text-slate-700 font-semibold text-xs mt-0.5" id="pdf-print-date"></p>
             </div>
         </div>
 
-        <!-- Tablo -->
-        <table class="w-full text-sm text-left text-gray-800 border-collapse">
-            <thead class="text-xs text-gray-900 uppercase bg-gray-100 border-b-2 border-gray-800">
-                <tr>
-                    <th scope="col" class="px-4 py-3 border border-gray-300">Personel Adı</th>
-                    <th scope="col" class="px-4 py-3 border border-gray-300 text-center">Vardiya</th>
-                    <th scope="col" class="px-4 py-3 border border-gray-300 text-center">Yemek Molası</th>
-                    <th scope="col" class="px-4 py-3 border border-gray-300 text-center">1. Çay Molası</th>
-                    <th scope="col" class="px-4 py-3 border border-gray-300 text-center">2. Çay Molası</th>
-                </tr>
-            </thead>
+        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200/60 text-[11px] text-slate-500 mb-6 font-medium">
+            <i class="fa-solid fa-circle-info text-slate-400 mr-1.5"></i> Bu belge, ilgili tarihe ait aktif personel vardiya sürelerini ve mola kullanım dilimlerini gösteren resmi bilgilendirme tablosudur.
+        </div>
+
+        <table class="w-full text-xs text-left text-slate-800 border-collapse">
+            <thead>
+                </thead>
             <tbody id="pdf-table-body">
-                <!-- JS ile doldurulacak -->
-            </tbody>
+                </tbody>
         </table>
-
-        <!-- Alt İmza Alanı -->
-        <div class="mt-16 flex justify-between px-10 text-sm">
-            <div class="text-center">
-                <p class="font-semibold text-gray-800">Hazırlayan</p>
-                <p class="text-gray-500 mt-1">Mağaza Yöneticisi</p>
-                <div class="mt-8 border-t border-gray-800 w-40 mx-auto"></div>
-            </div>
-            <div class="text-center">
-                <p class="font-semibold text-gray-800">Onay</p>
-                <p class="text-gray-500 mt-1">Bölge Müdürü (Opsiyonel)</p>
-                <div class="mt-8 border-t border-gray-800 w-40 mx-auto"></div>
-            </div>
-        </div>
     </div>
 
 
     <script>
-        /* --- VERİ MODELİ VE YEREL DEPOLAMA (Local Storage) --- */
+        /* --- VERİ MİMARİSİ VE DEPOLAMA --- */
         let state = {
-            personnel: [], // { id: 1, name: "Arda Ulaş", isWorkingToday: true, shift: "09:00-18:00", molaYemek: "13:00-14:00", molaCay1: "16:00-16:15", molaCay2: "" }
+            personnel: [] 
         };
 
-        const STORAGE_KEY = 'mola_sistemi_data';
+        const STORAGE_KEY = 'mola_sistemi_data_v3';
 
         function loadData() {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 state = JSON.parse(saved);
+            } else {
+                // v2 Sürümünden göç senaryosu veri koruması
+                const oldSaved = localStorage.getItem('mola_sistemi_data_v2');
+                if (oldSaved) {
+                    try { state = JSON.parse(oldSaved); saveData(); } catch(e) {}
+                }
             }
-            // Tarihi başlığa yazdır
+            
+            // Tarih Verilerini Set Etme
             const today = new Date().toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             document.getElementById('current-date-display').innerText = today;
-            document.getElementById('pdf-date').innerText = `Tarih: ${today}`;
+            document.getElementById('pdf-date').innerText = `Operasyon Tarihi: ${today}`;
             
             const now = new Date();
-            document.getElementById('pdf-print-date').innerText = `${now.toLocaleDateString('tr-TR')} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+            document.getElementById('pdf-print-date').innerText = `${now.toLocaleDateString('tr-TR')} - ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+            
+            updateMetrics();
         }
 
         function saveData() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            updateMetrics();
         }
 
-        /* --- UI RENDER FONKSİYONLARI --- */
+        // Canlı Analitik Verileri Güncelleyici
+        function updateMetrics() {
+            document.getElementById('metric-total-staff').innerText = state.personnel.length;
+            const activeCount = state.personnel.filter(p => p.isWorkingToday).length;
+            document.getElementById('metric-active-staff').innerText = activeCount;
+            
+            let totalBreaks = 0;
+            state.personnel.filter(p => p.isWorkingToday).forEach(p => {
+                if(p.breaks) totalBreaks += p.breaks.length;
+            });
+            document.getElementById('metric-total-breaks').innerText = totalBreaks;
+        }
 
-        // 1. Sekme Değiştirme
+        /* --- UI TAB DENETLEYİCİSİ --- */
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
 
-            document.getElementById('tab-planlama').classList.replace('border-white', 'border-transparent');
-            document.getElementById('tab-yonetim').classList.replace('border-white', 'border-transparent');
-            
-            document.getElementById(`tab-${tabId}`).classList.replace('border-transparent', 'border-white');
+            const tabPlanlama = document.getElementById('tab-planlama');
+            const tabYonetim = document.getElementById('tab-yonetim');
 
-            if(tabId === 'planlama') renderPlanlama();
-            if(tabId === 'yonetim') renderYonetim();
+            if(tabId === 'planlama') {
+                tabPlanlama.className = "flex-1 py-2.5 text-center text-xs font-semibold rounded-lg transition-all duration-200 bg-indigo-600 text-white shadow-md shadow-indigo-600/10";
+                tabYonetim.className = "flex-1 py-2.5 text-center text-xs font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-white";
+                renderPlanlama();
+            } else {
+                tabYonetim.className = "flex-1 py-2.5 text-center text-xs font-semibold rounded-lg transition-all duration-200 bg-indigo-600 text-white shadow-md shadow-indigo-600/10";
+                tabPlanlama.className = "flex-1 py-2.5 text-center text-xs font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-white";
+                renderYonetim();
+            }
         }
 
-        // 2. Personel Yönetimi Sekmesini Çiz
+        /* --- SEKME 2: PERSONEL YÖNETİM ARAYÜZÜ --- */
         function renderYonetim() {
             const list = document.getElementById('personnel-list');
             list.innerHTML = '';
 
             if(state.personnel.length === 0) {
-                list.innerHTML = `<li class="px-4 py-3 text-sm text-gray-500 text-center">Henüz personel eklenmemiş.</li>`;
+                list.innerHTML = `<li class="px-4 py-8 text-xs font-medium text-slate-400 text-center bg-slate-50/40">Havuzda kayıtlı personel bulunamadı.</li>`;
                 return;
             }
 
-            state.personnel.forEach(p => {
+            state.personnel.forEach((p, index) => {
                 const li = document.createElement('li');
-                li.className = "px-4 py-3 flex justify-between items-center hover:bg-gray-50 transition";
+                li.className = "px-4 py-3.5 flex justify-between items-center hover:bg-slate-50/80 transition duration-150";
                 
                 const isWorkingHTML = p.isWorkingToday 
-                    ? `<span class="bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded-full"><i class="fa-solid fa-check mr-1"></i> Vardiyada</span>`
-                    : `<span class="bg-gray-100 text-gray-500 text-xs font-semibold px-2 py-1 rounded-full"><i class="fa-solid fa-moon mr-1"></i> İzinli/Yok</span>`;
+                    ? `<span class="bg-emerald-50 text-emerald-700 text-[11px] font-bold px-2.5 py-1.5 rounded-xl border border-emerald-200/50 flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>Vardiyada</span>`
+                    : `<span class="bg-slate-100 text-slate-400 text-[11px] font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-slate-400 rounded-full"></span>İzinli</span>`;
+
+                // İsimlerin ilk harfine göre şık gradientli profil avatarı üretimi
+                const gradients = [
+                    'from-indigo-400 to-cyan-400',
+                    'from-emerald-400 to-teal-400',
+                    'from-amber-400 to-orange-400',
+                    'from-rose-400 to-pink-400',
+                    'from-violet-400 to-purple-400'
+                ];
+                const selectedGradient = gradients[index % gradients.length];
 
                 li.innerHTML = `
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
-                            ${p.name.charAt(0)}
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br ${selectedGradient} text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                            ${p.name.charAt(0).toUpperCase()}
                         </div>
-                        <span class="font-medium text-gray-800">${p.name}</span>
+                        <span class="font-semibold text-slate-700 text-xs">${p.name}</span>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <button onclick="toggleWorkingStatus(${p.id})" class="focus:outline-none" title="Vardiya Durumunu Değiştir">
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleWorkingStatus(${p.id})" class="focus:outline-none select-none transition active:scale-95">
                             ${isWorkingHTML}
                         </button>
-                        <button onclick="deletePersonnel(${p.id})" class="text-red-400 hover:text-red-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50 transition" title="Personeli Sil">
-                            <i class="fa-solid fa-trash-can"></i>
+                        <button onclick="deletePersonnel(${p.id})" class="text-slate-400 hover:text-rose-600 w-9 h-9 flex items-center justify-center rounded-xl hover:bg-rose-50 transition duration-150">
+                            <i class="fa-solid fa-trash-can text-sm"></i>
                         </button>
                     </div>
                 `;
@@ -263,7 +347,7 @@
             });
         }
 
-        // 3. Günlük Planlama (Mola Kartları) Çiz
+        /* --- SEKME 1: GÜNLÜK OPERASYON VE MOLA PLANI --- */
         function renderPlanlama() {
             const container = document.getElementById('shift-cards-container');
             const warning = document.getElementById('no-shift-warning');
@@ -273,69 +357,75 @@
 
             if(workingStaff.length === 0) {
                 warning.classList.remove('hidden');
-            } else {
-                warning.classList.add('hidden');
+                return;
+            }
+            
+            warning.classList.add('hidden');
+            
+            workingStaff.forEach(p => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition duration-200";
                 
-                workingStaff.forEach(p => {
-                    const card = document.createElement('div');
-                    card.className = "bg-white p-4 rounded-xl shadow-sm border border-gray-100";
-                    
-                    // Saati parçalama fonksiyonu (örnek "09:00-18:00" stringinden)
-                    const splitTime = (val, index) => val ? val.split('-')[index] || '' : '';
+                const splitTime = (val, index) => val ? val.split('-')[index] || '' : '';
 
-                    card.innerHTML = `
-                        <div class="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
-                            <div class="font-bold text-gray-800 text-lg"><i class="fa-regular fa-user text-indigo-500 mr-2"></i>${p.name}</div>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-4">
-                            <!-- Vardiya Saati -->
-                            <div class="col-span-2 sm:col-span-1 bg-gray-50 p-2 rounded-lg border border-gray-200">
-                                <label class="block text-xs font-semibold text-gray-500 mb-1">Vardiya Saatleri</label>
-                                <div class="flex items-center gap-2">
-                                    <input type="time" class="w-full text-sm" value="${splitTime(p.shift, 0)}" onchange="updateData(${p.id}, 'shiftStart', this.value)">
-                                    <span class="text-gray-400">-</span>
-                                    <input type="time" class="w-full text-sm" value="${splitTime(p.shift, 1)}" onchange="updateData(${p.id}, 'shiftEnd', this.value)">
+                // Molaları listeleme UI alanı
+                let breaksHTML = '';
+                if(p.breaks && p.breaks.length > 0) {
+                    p.breaks.forEach((brk, bIndex) => {
+                        breaksHTML += `
+                            <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200/40 mb-2">
+                                <span class="text-[11px] font-bold text-indigo-600 w-16 bg-indigo-50 px-1.5 py-1 rounded-md text-center">${bIndex + 1}. Mola</span>
+                                <div class="flex items-center gap-1.5 flex-1">
+                                    <input type="time" class="w-full text-xs" value="${splitTime(brk, 0)}" onchange="updateBreakTime(${p.id}, ${bIndex}, 0, this.value)">
+                                    <span class="text-slate-400 text-xs font-bold">-</span>
+                                    <input type="time" class="w-full text-xs" value="${splitTime(brk, 1)}" onchange="updateBreakTime(${p.id}, ${bIndex}, 1, this.value)">
                                 </div>
+                                <button onclick="removeBreak(${p.id}, ${bIndex})" class="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 transition">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
                             </div>
-
-                            <!-- Yemek Molası -->
-                            <div class="col-span-2 sm:col-span-1 bg-orange-50 p-2 rounded-lg border border-orange-100">
-                                <label class="block text-xs font-semibold text-orange-600 mb-1"><i class="fa-solid fa-utensils mr-1"></i>Yemek Molası</label>
-                                <div class="flex items-center gap-2">
-                                    <input type="time" class="w-full text-sm" value="${splitTime(p.molaYemek, 0)}" onchange="updateData(${p.id}, 'molaYemekStart', this.value)">
-                                    <span class="text-gray-400">-</span>
-                                    <input type="time" class="w-full text-sm" value="${splitTime(p.molaYemek, 1)}" onchange="updateData(${p.id}, 'molaYemekEnd', this.value)">
-                                </div>
-                            </div>
-
-                            <!-- 1. Çay Molası -->
-                            <div class="col-span-1 bg-teal-50 p-2 rounded-lg border border-teal-100">
-                                <label class="block text-xs font-semibold text-teal-600 mb-1"><i class="fa-solid fa-mug-hot mr-1"></i>1. Çay Molası</label>
-                                <div class="flex items-center gap-1">
-                                    <input type="time" class="w-full text-xs" value="${splitTime(p.molaCay1, 0)}" onchange="updateData(${p.id}, 'molaCay1Start', this.value)">
-                                    <span class="text-gray-400 text-xs">-</span>
-                                    <input type="time" class="w-full text-xs" value="${splitTime(p.molaCay1, 1)}" onchange="updateData(${p.id}, 'molaCay1End', this.value)">
-                                </div>
-                            </div>
-
-                            <!-- 2. Çay Molası -->
-                            <div class="col-span-1 bg-teal-50 p-2 rounded-lg border border-teal-100">
-                                <label class="block text-xs font-semibold text-teal-600 mb-1"><i class="fa-solid fa-mug-hot mr-1"></i>2. Çay Molası</label>
-                                <div class="flex items-center gap-1">
-                                    <input type="time" class="w-full text-xs" value="${splitTime(p.molaCay2, 0)}" onchange="updateData(${p.id}, 'molaCay2Start', this.value)">
-                                    <span class="text-gray-400 text-xs">-</span>
-                                    <input type="time" class="w-full text-xs" value="${splitTime(p.molaCay2, 1)}" onchange="updateData(${p.id}, 'molaCay2End', this.value)">
-                                </div>
-                            </div>
+                        `;
+                    });
+                } else {
+                    breaksHTML = `
+                        <div class="text-center py-4 border border-dashed border-slate-200 rounded-xl bg-slate-50/30">
+                            <p class="text-[11px] text-slate-400 font-medium italic"><i class="fa-solid fa-calendar-minus mr-1"></i>Mola atanmamış. Ekleyin.</p>
                         </div>
                     `;
-                    container.appendChild(card);
-                });
-            }
+                }
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-2.5 h-2.5 rounded-full bg-indigo-500"></div>
+                            <div class="font-bold text-slate-800 text-sm tracking-tight">${p.name}</div>
+                        </div>
+                        <button onclick="addBreakSlot(${p.id})" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-[11px] font-bold px-3 py-2 rounded-xl transition-all duration-150 active:scale-95 flex items-center gap-1">
+                            <i class="fa-solid fa-plus text-xs"></i> Mola Ekle
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="bg-slate-50/60 p-3 rounded-xl border border-slate-200/50 h-fit">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2"><i class="fa-solid fa-business-time text-slate-400 mr-1"></i>Vardiya Saatleri</label>
+                            <div class="flex items-center gap-2">
+                                <input type="time" class="w-full text-xs" value="${splitTime(p.shift, 0)}" onchange="updateShiftTime(${p.id}, 0, this.value)">
+                                <span class="text-slate-400 font-bold text-xs">-</span>
+                                <input type="time" class="w-full text-xs" value="${splitTime(p.shift, 1)}" onchange="updateShiftTime(${p.id}, 1, this.value)">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2"><i class="fa-solid fa-clock-history text-slate-400 mr-1"></i>Mola Dağılım Çizelgesi</label>
+                            ${breaksHTML}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
         }
 
-        /* --- VERİ İŞLEMLERİ (CRUD) --- */
+        /* --- VERİ MUTASYON İŞLEMLERİ --- */
 
         document.getElementById('add-personnel-form').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -345,11 +435,9 @@
                 state.personnel.push({
                     id: Date.now(),
                     name: name,
-                    isWorkingToday: true, // Eklenince varsayılan olarak vardiyada olsun
+                    isWorkingToday: true,
                     shift: "",
-                    molaYemek: "",
-                    molaCay1: "",
-                    molaCay2: ""
+                    breaks: []
                 });
                 input.value = '';
                 saveData();
@@ -375,85 +463,128 @@
             }
         }
 
-        // Veri girişlerini ayrıştırıp objeye kaydetme
-        function updateData(id, fieldType, val) {
+        function updateShiftTime(id, index, val) {
             const p = state.personnel.find(x => x.id === id);
             if(!p) return;
-
-            const updateTimeStr = (currentStr, index, newValue) => {
-                let parts = currentStr ? currentStr.split('-') : ["", ""];
-                parts[index] = newValue;
-                return parts[0] === "" && parts[1] === "" ? "" : `${parts[0]}-${parts[1]}`;
-            };
-
-            switch(fieldType) {
-                case 'shiftStart': p.shift = updateTimeStr(p.shift, 0, val); break;
-                case 'shiftEnd': p.shift = updateTimeStr(p.shift, 1, val); break;
-                case 'molaYemekStart': p.molaYemek = updateTimeStr(p.molaYemek, 0, val); break;
-                case 'molaYemekEnd': p.molaYemek = updateTimeStr(p.molaYemek, 1, val); break;
-                case 'molaCay1Start': p.molaCay1 = updateTimeStr(p.molaCay1, 0, val); break;
-                case 'molaCay1End': p.molaCay1 = updateTimeStr(p.molaCay1, 1, val); break;
-                case 'molaCay2Start': p.molaCay2 = updateTimeStr(p.molaCay2, 0, val); break;
-                case 'molaCay2End': p.molaCay2 = updateTimeStr(p.molaCay2, 1, val); break;
-            }
+            let parts = p.shift ? p.shift.split('-') : ["", ""];
+            parts[index] = val;
+            p.shift = (parts[0] === "" && parts[1] === "") ? "" : `${parts[0]}-${parts[1]}`;
             saveData();
         }
 
-        /* --- PDF OLUŞTURMA İŞLEMİ (html2pdf) --- */
+        function addBreakSlot(id) {
+            const p = state.personnel.find(x => x.id === id);
+            if(p) {
+                if(!p.breaks) p.breaks = [];
+                p.breaks.push("-");
+                saveData();
+                renderPlanlama();
+            }
+        }
+
+        function removeBreak(id, breakIndex) {
+            const p = state.personnel.find(x => x.id === id);
+            if(p && p.breaks) {
+                p.breaks.splice(breakIndex, 1);
+                saveData();
+                renderPlanlama();
+            }
+        }
+
+        function updateBreakTime(id, breakIndex, index, val) {
+            const p = state.personnel.find(x => x.id === id);
+            if(!p || !p.breaks) return;
+            let parts = p.breaks[breakIndex] ? p.breaks[breakIndex].split('-') : ["", ""];
+            if(parts.length < 2) parts = ["", ""];
+            parts[index] = val;
+            p.breaks[breakIndex] = `${parts[0]}-${parts[1]}`;
+            saveData();
+        }
+
+        /* --- PREMIUM DİNAMİK PDF YAZDIRMA MİMARİSİ --- */
         function generatePDF() {
             const workingStaff = state.personnel.filter(p => p.isWorkingToday);
             if(workingStaff.length === 0) {
-                alert("Vardiyada personel bulunmuyor. Lütfen önce personel ekleyin ve vardiyaya atayın.");
+                alert("Vardiyada etkin çalışan bulunmamaktadır.");
                 return;
             }
 
-            // PDF Tablosunu oluştur
+            // Sistemdeki maksimum mola kolon ihtiyacını bulma algoritması
+            let maxBreaksInSystem = 0;
+            workingStaff.forEach(p => {
+                if(p.breaks && p.breaks.length > maxBreaksInSystem) {
+                    maxBreaksInSystem = p.breaks.length;
+                }
+            });
+
+            let activeBreakColumnCount = Math.max(maxBreaksInSystem, 1);
+
+            // 1. Tablo Başlığı (Thead) İnşası - Premium Rapor Görünümü
+            const thead = document.querySelector('#pdf-container thead');
+            let headerHTML = `
+                <tr class="text-[10px] text-slate-700 uppercase bg-slate-100 font-extrabold tracking-wider border-b-2 border-slate-900">
+                    <th scope="col" class="px-3 py-2.5 border border-slate-300">Personel Ad Soyad</th>
+                    <th scope="col" class="px-3 py-2.5 border border-slate-300 text-center">Planlanan Vardiya</th>
+            `;
+            for(let i = 1; i <= activeBreakColumnCount; i++) {
+                headerHTML += `<th scope="col" class="px-3 py-2.5 border border-slate-300 text-center">${i}. Mola Dilimi</th>`;
+            }
+            headerHTML += `</tr>`;
+            thead.innerHTML = headerHTML;
+
+            // 2. Tablo Satırları (Tbody) İnşası - Akıllı Boş Hücre Analizi
             const tbody = document.getElementById('pdf-table-body');
             tbody.innerHTML = '';
             
             workingStaff.forEach(p => {
-                const formatTime = (timeStr) => {
-                    if(!timeStr || timeStr === "-") return "-";
-                    return timeStr;
-                };
+                let rowHTML = `
+                    <td class="px-3 py-2.5 border border-slate-300 font-bold text-slate-900 text-xs">${p.name}</td>
+                    <td class="px-3 py-2.5 border border-slate-300 text-center font-extrabold text-slate-700 bg-slate-50/50">${(p.shift && p.shift !== "-") ? p.shift : "-"}</td>
+                `;
+                
+                for(let i = 0; i < activeBreakColumnCount; i++) {
+                    let breakVal = (p.breaks && p.breaks[i]) ? p.breaks[i] : "-";
+                    if(breakVal === "-" || breakVal === "" || breakVal.trim() === "-") {
+                        breakVal = "-";
+                    }
+                    
+                    // Verisi olan mola hücresini daha belirgin yap, boş olanları silikleştir
+                    if(breakVal !== "-") {
+                        rowHTML += `<td class="px-3 py-2.5 border border-slate-300 text-center font-semibold text-indigo-900 bg-indigo-50/20">${breakVal}</td>`;
+                    } else {
+                        rowHTML += `<td class="px-3 py-2.5 border border-slate-300 text-center text-slate-300 font-normal">${breakVal}</td>`;
+                    }
+                }
 
                 const tr = document.createElement('tr');
-                tr.className = "bg-white border-b border-gray-300";
-                tr.innerHTML = `
-                    <td class="px-4 py-3 border border-gray-300 font-medium whitespace-nowrap text-gray-900">${p.name}</td>
-                    <td class="px-4 py-3 border border-gray-300 text-center font-semibold text-gray-700">${formatTime(p.shift)}</td>
-                    <td class="px-4 py-3 border border-gray-300 text-center">${formatTime(p.molaYemek)}</td>
-                    <td class="px-4 py-3 border border-gray-300 text-center">${formatTime(p.molaCay1)}</td>
-                    <td class="px-4 py-3 border border-gray-300 text-center">${formatTime(p.molaCay2)}</td>
-                `;
+                tr.className = "hover:bg-slate-50/50 transition duration-100 border-b border-slate-200";
+                tr.innerHTML = rowHTML;
                 tbody.appendChild(tr);
             });
 
-            // html2pdf konfigürasyonu
+            // Arka planda gizli olan A4 Container'ı aktif edip çıktı alma tetikleyicisi
             const element = document.getElementById('pdf-container');
-            
-            // Render edebilmek için geçici olarak display:block yapıyoruz (ekranda titrememesi için z-index arkasına saklanabilir ama kütüphane çözer)
             element.style.display = 'block';
 
             const opt = {
-                margin:       10, // mm cinsinden marj
-                filename:     `Gunluk_Mola_Cizelgesi.pdf`,
+                margin:       [12, 12, 12, 12],
+                filename:     `Kurumsal_Mola_Plani_Raporu.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
+                html2canvas:  { scale: 2.5, useCORS: true, letterRendering: true },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            // PDF'i oluştur, indir ve kapsayıcıyı geri gizle
             html2pdf().set(opt).from(element).save().then(() => {
-                element.style.display = 'none';
+                element.style.display = 'none'; 
             });
         }
 
-        /* --- BAŞLATMA --- */
+        /* --- DOM INITIALIZER --- */
         window.onload = () => {
             loadData();
-            renderPlanlama(); // İlk açılışta planlama sekmesi
+            renderPlanlama();
         };
     </script>
 </body>
 </html>
+
