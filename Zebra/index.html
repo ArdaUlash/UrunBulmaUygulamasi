@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BreakControl Pro | Timeline & Enterprise Suite</title>
+    <title>BreakControl Premium v5 | Akıllı Zaman Planlayıcı</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -20,14 +20,14 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* iOS Safari Gelişmiş Saat Seçici Stili */
+        /* iOS Safari Zaman Girdisi Özelleştirmesi */
         input[type="time"] {
             -webkit-appearance: none;
             appearance: none;
             background-color: #ffffff;
             font-weight: 600;
             color: #0f172a;
-            padding: 0.4rem 0.6rem;
+            padding: 0.4rem 0.5rem;
             border-radius: 0.5rem;
             border: 1px solid #cbd5e1;
             font-size: 0.825rem;
@@ -39,7 +39,6 @@
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
         }
 
-        /* Akıcı Sekme Geçişleri */
         .tab-content {
             display: none;
             opacity: 0;
@@ -52,7 +51,6 @@
             transform: translateY(0);
         }
 
-        /* Gizli PDF Konteyneri */
         #pdf-container { display: none; }
 
         @media print {
@@ -77,7 +75,7 @@
                     </div>
                     <div>
                         <h1 class="font-bold text-base tracking-tight leading-none">BreakControl</h1>
-                        <span class="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Timeline Edition</span>
+                        <span class="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Premium v5</span>
                     </div>
                 </div>
                 <div class="bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-300 flex items-center gap-1.5">
@@ -89,7 +87,7 @@
             <div class="pb-3">
                 <div class="bg-slate-900 p-1 rounded-xl flex gap-1 border border-slate-800">
                     <button onclick="switchTab('planlama')" id="tab-planlama" class="flex-1 py-2.5 text-center text-xs font-semibold rounded-lg transition-all duration-200 bg-indigo-600 text-white shadow-md">
-                        <i class="fa-solid fa-timeline text-sm mr-1.5 opacity-90"></i>Günlük Plan & Timeline
+                        <i class="fa-solid fa-timeline text-sm mr-1.5 opacity-90"></i>Günlük Plan & Özet Timeline
                     </button>
                     <button onclick="switchTab('yonetim')" id="tab-yonetim" class="flex-1 py-2.5 text-center text-xs font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-white">
                         <i class="fa-solid fa-sliders text-sm mr-1.5 opacity-90"></i>Yönetim & Kısayollar
@@ -104,37 +102,34 @@
         <section id="planlama" class="tab-content active">
             
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-6 overflow-hidden">
-                <div class="flex justify-between items-center mb-3">
-                    <div>
-                        <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                            <span class="flex h-2 w-2 relative">
-                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                              <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                            </span>
-                            Anlık Görsel Mola Timeline Matrisi
-                        </h3>
-                        <p class="text-[11px] text-slate-400">Günlük mola yoğunluğunu ve personel dağılımını saatlik takip edin</p>
-                    </div>
+                <div class="mb-3">
+                    <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="flex h-2 w-2 relative">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                        </span>
+                        Yoğunluk Odaklı Dinamik Mola Çizelgesi
+                    </h3>
+                    <p class="text-[11px] text-slate-400">Görüntü kalabalığı önlenmiştir; sadece mola planlaması olan saat dilimleri listelenir.</p>
                 </div>
                 
                 <div class="overflow-x-auto rounded-xl border border-slate-100 bg-slate-50/50">
-                    <div class="min-w-[800px] p-3" id="timeline-matrix-container">
+                    <div class="min-w-[600px] p-3 flex flex-col gap-1.5" id="timeline-matrix-container">
                         </div>
                 </div>
                 <div class="flex gap-4 mt-2.5 px-1 justify-end text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                    <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-indigo-600"></span> Vardiya Süresi</div>
                     <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-amber-500"></span> Molada</div>
-                    <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-slate-200"></span> Mesai Dışı</div>
+                    <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-indigo-600/20 border border-indigo-200"></span> Vardiya Süresi</div>
                 </div>
             </div>
 
             <div class="flex justify-between items-center mb-4">
                 <div>
                     <h2 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Mola & Vardiya Saat Girişleri</h2>
-                    <p class="text-xs text-slate-400 mt-0.5">Personeller ilk işe başlama saatine göre otomatik sıralanır</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Personeller mesai başlangıç saatine göre otomatik olarak sıralanır.</p>
                 </div>
                 <button onclick="generatePDF()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl shadow-lg shadow-rose-600/10 font-bold text-xs tracking-wide transition-all active:scale-95 flex items-center gap-2">
-                    <i class="fa-solid fa-file-pdf text-sm"></i> Sıralı PDF Raporu Çıkar
+                    <i class="fa-solid fa-file-pdf text-sm"></i> Sıralı PDF Çıktısı Al
                 </button>
             </div>
 
@@ -145,8 +140,8 @@
                 <div class="w-12 h-12 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center text-xl mx-auto mb-3 border border-slate-100">
                     <i class="fa-solid fa-user-slash"></i>
                 </div>
-                <h3 class="text-slate-700 font-bold text-sm">Vardiyada Personel Yok</h3>
-                <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Mola planı yapabilmek için "Yönetim & Kısayollar" sekmesinden personelleri vardiyaya dahil edin.</p>
+                <h3 class="text-slate-700 font-bold text-sm">Vardiyada Aktif Personel Yok</h3>
+                <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">"Yönetim & Kısayollar" sekmesinden personelleri vardiyaya dahil edebilirsiniz.</p>
             </div>
         </section>
 
@@ -156,7 +151,7 @@
                 <div class="md:col-span-1 space-y-6">
                     <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                         <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-1"><i class="fa-solid fa-bolt text-amber-500 mr-1.5"></i>Vardiya Kısayolları</h3>
-                        <p class="text-[11px] text-slate-400 mb-4">Sık kullanılan mesai saatlerini şablon olarak kaydedin</p>
+                        <p class="text-[11px] text-slate-400 mb-4">Sık kullanılan mesai saatlerini şablon olarak kaydedip tek tıkla atayın.</p>
                         
                         <form id="add-shortcut-form" class="space-y-2 mb-4">
                             <div class="grid grid-cols-2 gap-2">
@@ -213,7 +208,7 @@
     <div id="pdf-container" class="bg-white p-12 text-slate-900">
         <div class="border-b-4 border-slate-950 pb-4 mb-5 flex justify-between items-end">
             <div>
-                <span class="text-[10px] font-extrabold uppercase text-indigo-600 tracking-widest block mb-1">Resmi Günlük Çizelge</span>
+                <span class="text-[10px] font-extrabold uppercase text-indigo-600 tracking-widest block mb-1">Bilgilendirme Çizelgesi</span>
                 <h1 class="text-xl font-black tracking-tight text-slate-950 uppercase">Vardiya ve Kronolojik Mola Dağılım Raporu</h1>
                 <p class="text-slate-500 text-xs font-medium mt-0.5" id="pdf-date"></p>
             </div>
@@ -235,18 +230,49 @@
         /* --- VERİ MODELİ VE DEPOLAMA --- */
         let state = {
             personnel: [],
-            shortcuts: ["09:00-18:00", "13:30-22:00", "15:00-24:00"] // Varsayılan şablonlar
+            shortcuts: ["09:00-18:00", "13:30-22:00", "15:00-24:00"]
         };
 
-        const STORAGE_KEY = 'mola_sistemi_data_v4';
+        const STORAGE_KEY = 'mola_sistemi_data_v5';
 
         function loadData() {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 state = JSON.parse(saved);
+                // Eski string tabanlı mola verisi varsa nesne yapısına göç ettir (Hata Önleme)
+                state.personnel.forEach(p => {
+                    if (p.breaks && p.breaks.length > 0 && typeof p.breaks[0] === 'string') {
+                        p.breaks = p.breaks.map(b => {
+                            if (!b || b === "-") return { start: "", end: "" };
+                            const pts = b.split('-');
+                            return { start: pts[0] || "", end: pts[1] || "" };
+                        });
+                    }
+                });
+            } else {
+                // v4 sürümü varsa verileri taşı
+                const oldSaved = localStorage.getItem('mola_sistemi_data_v4');
+                if (oldSaved) {
+                    try {
+                        const parsed = JSON.parse(oldSaved);
+                        state.personnel = parsed.personnel || [];
+                        if (parsed.shortcuts) state.shortcuts = parsed.shortcuts;
+                        // Güvenli nesne kontrolü
+                        state.personnel.forEach(p => {
+                            p.breaks = (p.breaks || []).map(b => {
+                                if (typeof b === 'string') {
+                                    const pts = b.split('-');
+                                    return { start: pts[0] || "", end: pts[1] || "" };
+                                }
+                                return b;
+                            });
+                        });
+                        saveData();
+                    } catch(e) { console.log(e); }
+                }
             }
             
-            // Tarih Ayarlamaları
+            // Tarih Ayarları
             const today = new Date().toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             document.getElementById('current-date-display').innerText = today;
             document.getElementById('pdf-date').innerText = `Tarih: ${today}`;
@@ -261,18 +287,18 @@
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         }
 
-        /* --- SÜRE VE SAAT YARDIMCI FONKSİYONLARI --- */
+        /* --- KRONOLOJİK SIRALAMA VE MATEMATİK ASİSTANLARI --- */
         
-        // Zaman formatlarını karşılaştırıp sıralamak için asistan (HH:MM string sıralayıcı)
-        function sortTimes(timeArray) {
-            return timeArray.filter(t => t && t !== "-").sort((a, b) => {
-                const aStart = a.split('-')[0] || "00:00";
-                const bStart = b.split('-')[0] || "00:00";
-                return aStart.localeCompare(bStart);
+        // Molaları başlangıç saatine göre sıralayan asistan
+        function sortBreaks(breakArray) {
+            return [...breakArray].sort((a, b) => {
+                if (!a.start) return 1;
+                if (!b.start) return -1;
+                return a.start.localeCompare(b.start);
             });
         }
 
-        // Personelleri vardiya başlangıç saatine göre sıralayan asistan
+        // Personelleri vardiya başlangıç saatine göre kronolojik sıralar
         function getSortedWorkingPersonnel() {
             return state.personnel.filter(p => p.isWorkingToday).sort((a, b) => {
                 const aStart = a.shift ? a.shift.split('-')[0] || "23:59" : "23:59";
@@ -281,10 +307,22 @@
             });
         }
 
-        // İki saat diliminin (Örn: 14:15-15:00) hedef saat dilimi (Örn: 14:00) ile çakışıp çakışmadığını bulan matematiksel fonksiyon
-        function isTimeOverlappingHour(timeRange, targetHour) {
-            if (!timeRange || timeRange === "-") return false;
-            const [start, end] = timeRange.split('-');
+        // Bir molanın ilgili saate (Örn: 14:00-15:00 dilimi) denk gelip gelmediğini kontrol eder
+        function isBreakInHour(brk, targetHour) {
+            if (!brk.start || !brk.end) return false;
+            const rangeStart = parseInt(brk.start.split(':')[0]) * 60 + parseInt(brk.start.split(':')[1]);
+            const rangeEnd = parseInt(brk.end.split(':')[0]) * 60 + parseInt(brk.end.split(':')[1]);
+            
+            const targetStart = targetHour * 60;
+            const targetEnd = (targetHour + 1) * 60;
+            
+            return (rangeStart < targetEnd && rangeEnd > targetStart);
+        }
+
+        // Kişinin vardiyasının o saate denk gelip gelmediğini kontrol eder
+        function isShiftInHour(shiftRange, targetHour) {
+            if (!shiftRange || shiftRange === "-") return false;
+            const [start, end] = shiftRange.split('-');
             if (!start || !end) return false;
             
             const rangeStart = parseInt(start.split(':')[0]) * 60 + parseInt(start.split(':')[1]);
@@ -293,13 +331,7 @@
             const targetStart = targetHour * 60;
             const targetEnd = (targetHour + 1) * 60;
             
-            // Eğer mola bu saat diliminin herhangi bir yerine denk geliyorsa true döner
             return (rangeStart < targetEnd && rangeEnd > targetStart);
-        }
-
-        function isTimeInShift(shiftRange, targetHour) {
-            if (!shiftRange || shiftRange === "-") return false;
-            return isTimeOverlappingHour(shiftRange, targetHour);
         }
 
         /* --- SEKME DENETLEYİCİSİ --- */
@@ -321,7 +353,7 @@
             }
         }
 
-        /* --- TIMELINE MATRIX (GANTT VIEW) ÜRETİCİSİ --- */
+        /* --- TIMELINE MATRIX (GANTT VIEW) OPTİMİZASYONU --- */
         function renderTimelineMatrix(workingStaff) {
             const container = document.getElementById('timeline-matrix-container');
             container.innerHTML = '';
@@ -331,56 +363,69 @@
                 return;
             }
 
-            // Timeline saat kapsama alanı (Sabah 08:00 - Gece 24:00 arası takip)
-            const startHour = 8;
-            const endHour = 23;
-
-            // Header Row (Saat başlıkları)
-            let headerHTML = `<div class="grid grid-cols-12 gap-1 items-center mb-2 font-bold text-[10px] text-slate-400 text-center uppercase tracking-wider">
-                <div class="col-span-3 text-left pl-1">Personel & Vardiya</div>`;
-            for (let h = startHour; h <= endHour; h++) {
-                headerHTML += `<div class="col-span-1 bg-slate-100 rounded py-0.5">${String(h).padStart(2, '0')}:00</div>`;
+            // AKILLI FİLTRE: Sadece en az 1 personelin molasının olduğu saatleri tespit et
+            let activeHours = [];
+            for (let h = 0; h < 24; h++) {
+                let hourHasBreak = workingStaff.some(p => p.breaks && p.breaks.some(b => isBreakInHour(b, h)));
+                if (hourHasBreak) {
+                    activeHours.push(h);
+                }
             }
-            headerHTML += `</div>`;
 
+            // Eğer hiç mola tanımlanmadıysa, kalabalık yapmamak adına temiz bir uyarı bas ve çık
+            if (activeHours.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-6 text-xs text-slate-400 font-medium bg-white rounded-xl border border-dashed border-slate-200">
+                        <i class="fa-solid fa-bell-slash mr-1"></i> Henüz hiçbir personele mola planlaması yapılmadığı için yoğunluk çizelgesi gizlenmiştir.
+                    </div>`;
+                return;
+            }
+
+            // Dinamik CSS Grid Yapısı Kurulması
+            container.style.display = 'grid';
+            container.style.gridTemplateColumns = `minmax(140px, 22%) repeat(${activeHours.length}, minmax(45px, 1fr))`;
+
+            // Saat Başlık Satırı (Header Row)
+            let headerHTML = `<div class="font-bold text-[10px] text-slate-400 uppercase tracking-wider self-center">Personel & Vardiya</div>`;
+            activeHours.forEach(h => {
+                headerHTML += `<div class="bg-amber-500/10 text-amber-700 rounded text-center font-bold text-[10px] py-1 border border-amber-500/20 shadow-sm">${String(h).padStart(2, '0')}:00</div>`;
+            });
+
+            // Personel Satırları
             let rowsHTML = '';
             workingStaff.forEach(p => {
-                rowsHTML += `<div class="grid grid-cols-12 gap-1 items-center mb-1.5 text-xs">
-                    <div class="col-span-3 font-semibold text-slate-700 truncate pr-1">
-                        <span class="block truncate">${p.name}</span>
-                        <span class="text-[9px] font-bold text-indigo-500 block -mt-0.5">${p.shift || 'Vardiya Yok'}</span>
+                rowsHTML += `
+                    <div class="font-semibold text-slate-700 truncate pr-2 self-center">
+                        <span class="block truncate text-xs">${p.name}</span>
+                        <span class="text-[9px] font-bold text-slate-400 block -mt-0.5">${p.shift || 'Vardiya Yok'}</span>
                     </div>`;
                 
-                for (let h = startHour; h <= endHour; h++) {
-                    let cellColor = 'bg-slate-100/60'; // Varsayılan: Mesai dışı silik renk
+                activeHours.forEach(h => {
+                    let cellColor = 'bg-slate-100/40 border border-slate-200/30'; // Mesai / Vardiya dışı alan
                     
-                    if (isTimeInShift(p.shift, h)) {
-                        cellColor = 'bg-indigo-600/90'; // Mesaide / Çalışıyor (Mavi)
+                    if (isShiftInHour(p.shift, h)) {
+                        cellColor = 'bg-indigo-50 text-indigo-400 border border-indigo-100/80'; // Vardiya içi ama mola değil
                     }
 
-                    // Eğer o saatte molası varsa mola rengi ezsin (Turuncu)
-                    if (p.breaks && p.breaks.some(brk => isTimeOverlappingHour(brk, h))) {
-                        cellColor = 'bg-amber-500 animate-pulse';
+                    // Eğer o saatte molası varsa
+                    if (p.breaks && p.breaks.some(b => isBreakInHour(b, h))) {
+                        cellColor = 'bg-gradient-to-br from-amber-400 to-amber-500 shadow-sm shadow-amber-500/20 ring-1 ring-amber-500/20';
                     }
 
-                    rowsHTML += `<div class="col-span-1 h-5 rounded-md ${cellColor} transition-all" title="${p.name}"></div>`;
-                }
-                rowsHTML += `</div>`;
+                    rowsHTML += `<div class="h-6 rounded-lg ${cellColor} transition-all duration-150" title="${p.name} - Saat ${h}:00"></div>`;
+                });
             });
 
             container.innerHTML = headerHTML + rowsHTML;
         }
 
-        /* --- SEKME 1: PLANLAMA VE KARTLARIN ÇİZİLMESİ --- */
+        /* --- SEKME 1: GÜNLÜK PLAN KARTLARI --- */
         function renderPlanlama() {
             const container = document.getElementById('shift-cards-container');
             const warning = document.getElementById('no-shift-warning');
             container.innerHTML = '';
 
-            // Personelleri sıralı alıyoruz (İş başı saatine göre kronolojik)
             const workingStaff = getSortedWorkingPersonnel();
-
-            // Timeline özet matrisini besle
             renderTimelineMatrix(workingStaff);
 
             if(workingStaff.length === 0) {
@@ -390,15 +435,13 @@
             warning.classList.add('hidden');
             
             workingStaff.forEach(p => {
-                // Her personelin mola listesini kendi içinde de kronolojik sıralıyoruz
-                p.breaks = sortTimes(p.breaks || []);
+                // Molaları güvenli bir şekilde kronolojik sıraya sokuyoruz
+                p.breaks = sortBreaks(p.breaks || []);
 
                 const card = document.createElement('div');
                 card.className = "bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition duration-150";
                 
-                const splitTime = (val, index) => val ? val.split('-')[index] || '' : '';
-
-                // Kısayol butonlarının HTML kod inşası
+                // Kısayol buton listesi üretimi
                 let shortcutButtonsHTML = '';
                 state.shortcuts.forEach(sc => {
                     shortcutButtonsHTML += `
@@ -408,19 +451,19 @@
                     `;
                 });
 
-                // Sıralı molaların HTML blok inşası
+                // Mola Satırlarının UI Olarak İnşası (Bozulma tamamen düzeltildi)
                 let breaksHTML = '';
                 if(p.breaks && p.breaks.length > 0) {
                     p.breaks.forEach((brk, bIndex) => {
                         breaksHTML += `
                             <div class="flex items-center gap-2 bg-slate-50/80 p-2 rounded-xl border border-slate-200/40 mb-1.5">
                                 <span class="text-[10px] font-extrabold text-indigo-600 w-16 bg-indigo-50 px-1.5 py-1 rounded-md text-center">${bIndex + 1}. Mola</span>
-                                <div class="flex items-center gap-1 flex-1">
-                                    <input type="time" class="w-full" value="${splitTime(brk, 0)}" onchange="updateBreakTime(${p.id}, ${bIndex}, 0, this.value)">
+                                <div class="flex items-center gap-1.5 flex-1">
+                                    <input type="time" class="w-full" value="${brk.start || ''}" onchange="updateBreakTimeValue(${p.id}, ${bIndex}, 'start', this.value)">
                                     <span class="text-slate-400 text-xs font-bold">-</span>
-                                    <input type="time" class="w-full" value="${splitTime(brk, 1)}" onchange="updateBreakTime(${p.id}, ${bIndex}, 1, this.value)">
+                                    <input type="time" class="w-full" value="${brk.end || ''}" onchange="updateBreakTimeValue(${p.id}, ${bIndex}, 'end', this.value)">
                                 </div>
-                                <button onclick="removeBreak(${p.id}, ${bIndex})" class="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg transition">
+                                <button onclick="removeBreak(${p.id}, ${bIndex})" class="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg transition" title="Sil">
                                     <i class="fa-solid fa-trash-can text-xs"></i>
                                 </button>
                             </div>
@@ -429,10 +472,13 @@
                 } else {
                     breaksHTML = `
                         <div class="text-center py-4 border border-dashed border-slate-200 rounded-xl bg-slate-50/20">
-                            <p class="text-[11px] text-slate-400 font-medium italic"><i class="fa-solid fa-mug-hot mr-1"></i>Atanmış mola bulunmuyor.</p>
+                            <p class="text-[11px] text-slate-400 font-medium italic"><i class="fa-solid fa-plus mr-1"></i>Henüz mola eklenmedi.</p>
                         </div>
                     `;
                 }
+
+                const shiftStart = p.shift ? p.shift.split('-')[0] || '' : '';
+                const shiftEnd = p.shift ? p.shift.split('-')[1] || '' : '';
 
                 card.innerHTML = `
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-2.5 mb-3 gap-2">
@@ -447,21 +493,21 @@
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="bg-slate-50/60 p-3 rounded-xl border border-slate-200/50 h-fit">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Vardiya Saat Seçimi</label>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Vardiya Saatleri</label>
                             <div class="flex items-center gap-2 mb-3">
-                                <input type="time" class="w-full shadow-sm" id="shift-start-${p.id}" value="${splitTime(p.shift, 0)}" onchange="syncManualShiftInputs(${p.id})">
+                                <input type="time" class="w-full shadow-sm" id="shift-start-${p.id}" value="${shiftStart}" onchange="syncManualShiftInputs(${p.id})">
                                 <span class="text-slate-400 font-bold text-xs">-</span>
-                                <input type="time" class="w-full shadow-sm" id="shift-end-${p.id}" value="${splitTime(p.shift, 1)}" onchange="syncManualShiftInputs(${p.id})">
+                                <input type="time" class="w-full shadow-sm" id="shift-end-${p.id}" value="${shiftEnd}" onchange="syncManualShiftInputs(${p.id})">
                             </div>
                             
-                            <label class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Hızlı Vardiya Şablonları</label>
+                            <label class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Hızlı Vardiya Kısayolları</label>
                             <div class="flex flex-wrap gap-1">
                                 ${shortcutButtonsHTML}
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Sıralı Mola Çizelgesi (Kronolojik)</label>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Mola Çizelgesi</label>
                             ${breaksHTML}
                         </div>
                     </div>
@@ -470,67 +516,8 @@
             });
         }
 
-        /* --- SEKME 2: YÖNETİM, KISAYOLLAR VE PERSONEL HAVUZU --- */
-        function renderYonetim() {
-            // 1. Kısayol Şablonlarını Listele
-            const scContainer = document.getElementById('shortcuts-list-container');
-            scContainer.innerHTML = '';
-            
-            if(state.shortcuts.length === 0) {
-                scContainer.innerHTML = `<span class="text-xs text-slate-400 italic">Kısayol yok.</span>`;
-            } else {
-                state.shortcuts.forEach((sc, idx) => {
-                    scContainer.innerHTML += `
-                        <span class="inline-flex items-center gap-1 text-[11px] font-bold bg-slate-100 text-slate-700 pl-2.5 pr-1 py-1 rounded-lg border border-slate-200">
-                            ${sc}
-                            <button type="button" onclick="deleteShortcut(${idx})" class="text-slate-400 hover:text-rose-500 w-4 h-4 flex items-center justify-center rounded transition">
-                                <i class="fa-solid fa-xmark text-[10px]"></i>
-                            </button>
-                        </span>
-                    `;
-                });
-            }
+        /* --- VERİ YÖNETİM METODLARI (MUTATIONS) --- */
 
-            // 2. Personel Havuzunu Listele
-            const list = document.getElementById('personnel-list');
-            list.innerHTML = '';
-
-            if(state.personnel.length === 0) {
-                list.innerHTML = `<li class="px-4 py-8 text-xs font-medium text-slate-400 text-center">Havuzda kayıtlı personel bulunamadı.</li>`;
-                return;
-            }
-
-            state.personnel.forEach((p) => {
-                const li = document.createElement('li');
-                li.className = "px-4 py-3.5 flex justify-between items-center hover:bg-slate-50/50 transition duration-150";
-                
-                const isWorkingHTML = p.isWorkingToday 
-                    ? `<span class="bg-emerald-50 text-emerald-700 text-[11px] font-bold px-2.5 py-1.5 rounded-xl border border-emerald-200/50 flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>Vardiyada</span>`
-                    : `<span class="bg-slate-100 text-slate-400 text-[11px] font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-slate-400 rounded-full"></span>Hariç (İzinli)</span>`;
-
-                li.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs border border-slate-200">
-                            ${p.name.charAt(0).toUpperCase()}
-                        </div>
-                        <span class="font-bold text-slate-700 text-xs">${p.name}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button onclick="toggleWorkingStatus(${p.id})" class="focus:outline-none select-none">
-                            ${isWorkingHTML}
-                        </button>
-                        <button onclick="deletePersonnel(${p.id})" class="text-slate-400 hover:text-rose-600 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-rose-50 transition">
-                            <i class="fa-solid fa-trash-can text-xs"></i>
-                        </button>
-                    </div>
-                `;
-                list.appendChild(li);
-            });
-        }
-
-        /* --- VERİ DEĞİŞTİRME VE İŞLEME (MUTATIONS) --- */
-
-        // Elle vardiya saatleri girildiğinde veriyi eşitleme ve tetikleme
         function syncManualShiftInputs(personnelId) {
             const startVal = document.getElementById(`shift-start-${personnelId}`).value;
             const endVal = document.getElementById(`shift-end-${personnelId}`).value;
@@ -538,22 +525,50 @@
             if(p) {
                 p.shift = (startVal || endVal) ? `${startVal}-${endVal}` : "";
                 saveData();
-                // Sıralama değişebileceği için timeline matrisini anlık yeniliyoruz
                 renderTimelineMatrix(getSortedWorkingPersonnel());
             }
         }
 
-        // Kısayol şablonunu tek tıkla personele basma
         function applyShiftShortcut(personnelId, shortcutStr) {
             const p = state.personnel.find(x => x.id === personnelId);
             if(p) {
                 p.shift = shortcutStr;
                 saveData();
-                renderPlanlama(); // Ekranı ve sıralamayı tazelemek için kartları baştan çiz
+                renderPlanlama(); 
             }
         }
 
-        // Yeni vardiya kısayolu ekleme formu tetikleyicisi
+        function addBreakSlot(id) {
+            const p = state.personnel.find(x => x.id === id);
+            if(p) {
+                if(!p.breaks) p.breaks = [];
+                // Nesne tabanlı güvenli ekleme - Bozulmaları önler
+                p.breaks.push({ start: "", end: "" });
+                saveData();
+                renderPlanlama();
+            }
+        }
+
+        function removeBreak(id, breakIndex) {
+            const p = state.personnel.find(x => x.id === id);
+            if(p && p.breaks) {
+                p.breaks.splice(breakIndex, 1);
+                saveData();
+                renderPlanlama();
+            }
+        }
+
+        function updateBreakTimeValue(id, breakIndex, type, value) {
+            const p = state.personnel.find(x => x.id === id);
+            if(p && p.breaks && p.breaks[breakIndex]) {
+                p.breaks[breakIndex][type] = value;
+                saveData();
+                // Kullanıcı yazarken timeline matrisini anlık güncelle
+                renderTimelineMatrix(getSortedWorkingPersonnel());
+            }
+        }
+
+        /* --- SEKME 2 FORMLARI --- */
         document.getElementById('add-shortcut-form').addEventListener('submit', (e) => {
             e.preventDefault();
             const start = document.getElementById('sc-start').value;
@@ -609,48 +624,64 @@
             }
         }
 
-        function addBreakSlot(id) {
-            const p = state.personnel.find(x => x.id === id);
-            if(p) {
-                if(!p.breaks) p.breaks = [];
-                p.breaks.push("-");
-                saveData();
-                renderPlanlama();
-            }
-        }
+        function renderYonetim() {
+            const scContainer = document.getElementById('shortcuts-list-container');
+            scContainer.innerHTML = '';
+            state.shortcuts.forEach((sc, idx) => {
+                scContainer.innerHTML += `
+                    <span class="inline-flex items-center gap-1 text-[11px] font-bold bg-slate-100 text-slate-700 pl-2.5 pr-1 py-1 rounded-lg border border-slate-200">
+                        ${sc}
+                        <button type="button" onclick="deleteShortcut(${idx})" class="text-slate-400 hover:text-rose-500 w-4 h-4 flex items-center justify-center rounded transition">
+                            <i class="fa-solid fa-xmark text-[10px]"></i>
+                        </button>
+                    </span>`;
+            });
 
-        function removeBreak(id, breakIndex) {
-            const p = state.personnel.find(x => x.id === id);
-            if(p && p.breaks) {
-                p.breaks.splice(breakIndex, 1);
-                saveData();
-                renderPlanlama();
-            }
-        }
+            const list = document.getElementById('personnel-list');
+            list.innerHTML = '';
 
-        function updateBreakTime(id, breakIndex, timeInputIndex, val) {
-            const p = state.personnel.find(x => x.id === id);
-            if(!p || !p.breaks) return;
-            let parts = p.breaks[breakIndex] ? p.breaks[breakIndex].split('-') : ["", ""];
-            if(parts.length < 2) parts = ["", ""];
-            parts[timeInputIndex] = val;
-            p.breaks[breakIndex] = `${parts[0]}-${parts[1]}`;
-            saveData();
-        }
-
-        /* --- AKILLI, SIRALI VE DİNAMİK PDF RAPORLAMA MİMARİSİ --- */
-        function generatePDF() {
-            // Çıktı öncesi hem personelleri mesai başlangıcına, hem de molaları kendi içine kronolojik dizer
-            const workingStaff = getSortedWorkingPersonnel();
-            if(workingStaff.length === 0) {
-                alert("Vardiyada aktif çalışan bulunmamaktadır.");
+            if(state.personnel.length === 0) {
+                list.innerHTML = `<li class="px-4 py-8 text-xs font-medium text-slate-400 text-center">Havuzda kayıtlı personel bulunamadı.</li>`;
                 return;
             }
 
-            // Çıktıda görünecek maksimum mola sütun ihtiyacını saptama
+            state.personnel.forEach((p) => {
+                const li = document.createElement('li');
+                li.className = "px-4 py-3.5 flex justify-between items-center hover:bg-slate-50/50 transition duration-150";
+                const isWorkingHTML = p.isWorkingToday 
+                    ? `<span class="bg-emerald-50 text-emerald-700 text-[11px] font-bold px-2.5 py-1.5 rounded-xl border border-emerald-200/50 flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>Vardiyada</span>`
+                    : `<span class="bg-slate-100 text-slate-400 text-[11px] font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-slate-400 rounded-full"></span>Hariç (İzinli)</span>`;
+
+                li.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs border border-slate-200">
+                            ${p.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span class="font-bold text-slate-700 text-xs">${p.name}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleWorkingStatus(${p.id})" class="focus:outline-none select-none">
+                            ${isWorkingHTML}
+                        </button>
+                        <button onclick="deletePersonnel(${p.id})" class="text-slate-400 hover:text-rose-600 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-rose-50 transition">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>`;
+                list.appendChild(li);
+            });
+        }
+
+        /* --- KRONOLOJİK VE SIRALI PDF ÇIKTI ALMA SİSTEMİ --- */
+        function generatePDF() {
+            const workingStaff = getSortedWorkingPersonnel();
+            if(workingStaff.length === 0) {
+                alert("Vardiyada etkin çalışan bulunmamaktadır.");
+                return;
+            }
+
             let maxBreaksInSystem = 0;
             workingStaff.forEach(p => {
-                p.breaks = sortTimes(p.breaks || []); // İç mola saat sıralamasını kesinleştir
+                p.breaks = sortBreaks(p.breaks || []); // PDF öncesi iç mola sıralamasını kesinleştir
                 if(p.breaks.length > maxBreaksInSystem) {
                     maxBreaksInSystem = p.breaks.length;
                 }
@@ -658,7 +689,7 @@
 
             let activeBreakColumnCount = Math.max(maxBreaksInSystem, 1);
 
-            // 1. PDF Tablo Başlığı (Thead) İnşası
+            // PDF Başlığı İnşası
             const thead = document.querySelector('#pdf-container thead');
             let headerHTML = `
                 <tr class="text-[10px] text-slate-800 uppercase bg-slate-100 font-extrabold tracking-wider border-b-2 border-slate-950">
@@ -671,7 +702,7 @@
             headerHTML += `</tr>`;
             thead.innerHTML = headerHTML;
 
-            // 2. PDF Tablo Satırları (Tbody) İnşası
+            // PDF Satırları İnşası
             const tbody = document.getElementById('pdf-table-body');
             tbody.innerHTML = '';
             
@@ -682,15 +713,13 @@
                 `;
                 
                 for(let i = 0; i < activeBreakColumnCount; i++) {
-                    let breakVal = (p.breaks && p.breaks[i]) ? p.breaks[i] : "-";
-                    if(breakVal === "-" || breakVal === "" || breakVal.trim() === "-") {
-                        breakVal = "-";
-                    }
+                    let bObj = p.breaks && p.breaks[i];
+                    let breakVal = (bObj && bObj.start && bObj.end) ? `${bObj.start}-${bObj.end}` : "-";
                     
                     if(breakVal !== "-") {
-                        rowHTML += `<td class="px-3 py-2 border border-slate-300 text-center font-semibold text-slate-800 bg-amber-50/30">${breakVal}</td>`;
+                        rowHTML += `<td class="px-3 py-2 border border-slate-300 text-center font-semibold text-slate-800 bg-amber-50/20">${breakVal}</td>`;
                     } else {
-                        rowHTML += `<td class="px-3 py-2 border border-slate-300 text-center text-slate-300 font-normal">${breakVal}</td>`;
+                        rowHTML += `<td class="px-3 py-2 border border-slate-300 text-center text-slate-300 font-normal">-</td>`;
                     }
                 }
 
@@ -700,7 +729,6 @@
                 tbody.appendChild(tr);
             });
 
-            // Arka plandaki görünmez A4 katmanını aktifleştirip çıktı alma emri gönderme
             const element = document.getElementById('pdf-container');
             element.style.display = 'block';
 
@@ -713,12 +741,11 @@
             };
 
             html2pdf().set(opt).from(element).save().then(() => {
-                element.style.display = 'none'; // İndirme sonu geri gizle
-                renderPlanlama(); // Sayfa içindeki kartları da sıralı halleriyle tazelemek için tetikle
+                element.style.display = 'none'; 
+                renderPlanlama(); // Ekranı taze tut
             });
         }
 
-        /* --- SİSTEMİ ATEŞLEME --- */
         window.onload = () => {
             loadData();
         };
