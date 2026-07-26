@@ -25,8 +25,8 @@
             margin: 0; padding: 0;
         }
 
-        /* UYGULAMA KİLİDİ */
-        body.app-locked {
+        /* BEYAZ SAYFA KESİN ÇÖZÜMÜ: */
+        body.is-app {
             overflow: hidden !important; 
             width: 100vw !important;
             height: 100vh !important;
@@ -35,12 +35,18 @@
             top: 0; left: 0;
         }
 
+        body.is-pdf {
+            overflow: visible !important;
+            height: auto !important;
+            position: relative !important;
+            background-color: #ffffff !important;
+        }
+
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        /* UYGULAMA İSKELETİ */
         #app-wrapper {
             display: flex;
             flex-direction: column;
@@ -65,7 +71,6 @@
             z-index: 20;
         }
 
-        /* TAKVİM UI */
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -102,7 +107,6 @@
             gap: 3px;
         }
 
-        /* PERSONEL AVATARLARI */
         .emp-avatar {
             width: 44px; height: 44px;
             border-radius: 50%;
@@ -119,18 +123,16 @@
             box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
         }
 
-        /* 
-           BEYAZ SAYFA KESİN ÇÖZÜMÜ (ONCLONE METODU): 
-           Artık ekranla oynamıyoruz. Bu div sayfanın her yerinde DİZİLİM DIŞI (gizli) duruyor.
-           html2pdf kütüphanesi sayfayı klonlarken (onclone), klonlanan yapıda bu div'i görünür yapıyor 
-           ve fotoğrafını çekiyor. Ekran kayması, kırpılması SIFIR!
-        */
+        /* PDF GÖRÜNÜMÜ */
         #pdf-render-canvas {
             display: none; 
             width: 1122px; 
+            min-width: 1122px;
+            max-width: 1122px;
             background-color: #ffffff;
             padding: 40px;
             box-sizing: border-box;
+            margin: 0;
         }
 
         .pdf-grid {
@@ -166,14 +168,9 @@
         }
     </style>
 </head>
-<body class="app-locked">
+<body class="is-app">
 
-    <!-- ==============================================
-         1. UYGULAMA ARAYÜZÜ (FLEXBOX İSKELETİ)
-         ============================================== -->
     <div id="app-wrapper">
-        
-        <!-- ÜST MENÜ (Sabit) -->
         <header class="bg-white shadow-sm shrink-0 z-20">
             <div class="max-w-[1200px] mx-auto px-4 h-16 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -196,11 +193,8 @@
             </div>
         </header>
 
-        <!-- ORTA İÇERİK (Kaydırılabilir Alan) -->
         <main class="app-main-content" id="main-scroll">
             <div class="max-w-[1200px] mx-auto">
-                
-                <!-- Tarih Seçici -->
                 <div class="flex justify-between items-center bg-white p-2.5 sm:p-4 rounded-2xl shadow-sm border border-slate-100 mb-5">
                     <button onclick="changeMonth(-1)" class="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center transition"><i class="fa-solid fa-chevron-left"></i></button>
                     <div class="flex gap-2 items-center">
@@ -210,12 +204,8 @@
                     <button onclick="changeMonth(1)" class="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center transition"><i class="fa-solid fa-chevron-right"></i></button>
                 </div>
 
-                <!-- Takvim Izgarası -->
-                <div class="calendar-grid shadow-sm" id="ui-calendar">
-                    <!-- JS Dolduracak -->
-                </div>
+                <div class="calendar-grid shadow-sm" id="ui-calendar"></div>
 
-                <!-- Bilgi Notu -->
                 <div class="mt-5 text-center px-4 pb-4">
                     <p class="text-[11px] sm:text-xs text-slate-400 font-medium bg-slate-200/50 inline-block px-4 py-2 rounded-full">
                         <i class="fa-solid fa-hand-pointer text-amber-500 mr-1.5"></i> Alttan personeli seçip takvimdeki günlere dokunarak izin atayabilirsiniz.
@@ -224,21 +214,14 @@
             </div>
         </main>
 
-        <!-- ALT BAR (Sabit) -->
         <footer class="app-bottom-bar px-2 py-3">
             <div class="max-w-[1200px] mx-auto flex items-center gap-3 sm:gap-4">
-                
                 <div class="flex flex-col gap-1 shrink-0 bg-slate-100 p-1 rounded-xl">
                     <button onclick="setPaintType('YI')" id="btn-type-yi" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition bg-white shadow-sm text-indigo-600">Yİ</button>
                     <button onclick="setPaintType('HT')" id="btn-type-ht" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition text-slate-500 hover:text-orange-500">HT</button>
                 </div>
-                
                 <div class="w-px h-12 bg-slate-200 shrink-0"></div>
-                
-                <div class="flex-1 overflow-x-auto flex items-center gap-4 no-scrollbar py-2 px-1" id="paint-employees-container">
-                    <!-- JS Dolduracak -->
-                </div>
-                
+                <div class="flex-1 overflow-x-auto flex items-center gap-4 no-scrollbar py-2 px-1" id="paint-employees-container"></div>
                 <button onclick="setActiveEmp(null)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 hover:bg-red-100 hover:text-red-500 shrink-0 flex items-center justify-center transition" title="Seçimi Kaldır">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
@@ -247,9 +230,6 @@
     </div>
 
 
-    <!-- ==============================================
-         2. PDF BASKI ŞABLONU (DOM'da Gizli, Sadece OnClone'da Açılır)
-         ============================================== -->
     <div id="pdf-render-canvas">
         <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1e293b; padding-bottom: 15px; margin-bottom: 25px;">
             <div>
@@ -261,7 +241,6 @@
 
         <div id="pdf-grid-container" style="display: flex; flex-direction: column; flex: 1;"></div>
 
-        <!-- Dönem Özeti -->
         <div class="avoid-page-break" style="margin-top: 25px; border-top: 2px solid #e2e8f0; padding-top: 15px;">
             <h4 style="font-size: 13px; font-weight: 800; color: #334155; margin: 0 0 12px 0; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
                 Dönem Özeti (Kalan Yİ Bakiyeleri)
@@ -269,7 +248,6 @@
             <div id="pdf-notes-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 11px;"></div>
         </div>
 
-        <!-- İmza -->
         <div class="avoid-page-break" style="margin-top: 35px; display: flex; justify-content: space-between; font-size: 13px; padding-bottom: 10px;">
             <div style="display: flex; gap: 50px;">
                 <div><strong style="color: #475569;">Düzenleyen / Onaylayan:</strong> <span id="pdf-manager-label" style="font-weight: 800; text-transform: uppercase; color: #0f172a; margin-left: 6px;">Arda Ulaş</span></div>
@@ -280,10 +258,7 @@
     </div>
 
 
-    <!-- ==============================================
-         3. AYARLAR MODALI
-         ============================================== -->
-    <div id="settings-modal" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 invisible transition-all duration-200 p-4">
+    <div id="settings-modal" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center opacity-0 invisible transition-all duration-200 p-4">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-transform duration-200 flex flex-col" id="settings-content" style="max-height: 90vh;">
             <div class="bg-slate-800 px-6 py-4 flex justify-between items-center shrink-0">
                 <h3 class="text-white font-bold tracking-wide"><i class="fa-solid fa-gear mr-2"></i> Yönetim Paneli</h3>
@@ -291,7 +266,6 @@
             </div>
             
             <div class="overflow-y-auto p-6 space-y-6 flex-1">
-                <!-- Başlık Bilgileri -->
                 <div>
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Belge Başlık Bilgileri</h4>
                     <div class="space-y-3">
@@ -300,7 +274,6 @@
                     </div>
                 </div>
                 
-                <!-- Özel Gün / Resmi Tatil Ekleme -->
                 <div class="pt-5 border-t border-slate-100">
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Özel Gün / Resmi Tatil Ekle</h4>
                     <div class="flex gap-2">
@@ -314,11 +287,9 @@
                             </button>
                         </div>
                     </div>
-                    <!-- Tatil Listesi -->
                     <div id="settings-hol-list" class="space-y-2 mt-3 empty:hidden"></div>
                 </div>
 
-                <!-- Personel Ekleme -->
                 <div class="pt-5 border-t border-slate-100">
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Yeni Personel Ekle</h4>
                     <div class="flex gap-2">
@@ -335,13 +306,11 @@
                     </div>
                 </div>
 
-                <!-- Personel Listesi -->
                 <div>
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Kayıtlı Ekip</h4>
                     <div id="settings-emp-list" class="space-y-2"></div>
                 </div>
 
-                <!-- Dosya İşlemleri (Yedek Alma) -->
                 <div class="pt-5 border-t border-slate-100 grid grid-cols-2 gap-3">
                     <button onclick="document.getElementById('file-upload-2').click()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-upload"></i> İçe Aktar
@@ -356,9 +325,7 @@
         </div>
     </div>
 
-    <!-- ==============================================
-         4. SCRIPT MANTIK VE GÜÇLÜ ALGORİTMALAR
-         ============================================== -->
+
     <script>
         const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
         const dayNamesShort = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
@@ -390,13 +357,11 @@
             paintType: 'YI' 
         };
 
-        // --- YARDIMCI METOTLAR ---
         function getInitials(name) { return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase(); }
         function parseDate(dateStr) { const [y,m,d] = dateStr.split('-'); return new Date(y, m-1, d); }
         function formatDate(y, m, d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
         function getRandomColor() { const c = ['#ef4444','#f97316','#f59e0b','#84cc16','#10b981','#06b6d4','#3b82f6','#6366f1','#8b5cf6','#d946ef']; return c[Math.floor(Math.random()*c.length)]; }
 
-        // Bakiye Hesaplama
         function getRemainingQuota(empId) {
             const emp = appData.employees.find(e => e.id === empId);
             if (!emp) return 0;
@@ -404,7 +369,6 @@
             return (emp.quota || 0) - usedYI;
         }
 
-        // Veri formatı güncelleme
         function checkAndMigrateData() {
             let migrated = false;
             let newLeaves = [];
@@ -530,7 +494,6 @@
             renderApp();
         }
 
-        // ŞERİT (STRIP) GÖRÜNÜM ALGORİTMASI
         function getStripStyles(d, empId, type, startDay) {
             const prevDateStr = formatDate(state.year, state.month, d - 1);
             const nextDateStr = formatDate(state.year, state.month, d + 1);
@@ -606,7 +569,6 @@
             for (let d = 1; d <= totalDays; d++) {
                 const dateStr = formatDate(state.year, state.month, d);
                 
-                // Özel Gün Kontrolü
                 const specialDay = appData.specialDays.find(s => s.date === dateStr);
                 let specialHtml = '';
                 if (specialDay) {
@@ -651,7 +613,6 @@
             area.innerHTML = html;
         }
 
-        // --- AYARLAR & ÖZEL GÜNLER ---
         function toggleSettings() {
             const modal = document.getElementById('settings-modal');
             const content = document.getElementById('settings-content');
@@ -673,7 +634,6 @@
             saveData();
         }
 
-        // Özel Gün Fonksiyonları
         function addSpecialDay() {
             const name = document.getElementById('inp-hol-name').value.trim();
             const dateStr = document.getElementById('inp-hol-date').value;
@@ -718,7 +678,6 @@
                 `;
             });
 
-            // Özel gün listesi render
             const holList = document.getElementById('settings-hol-list');
             holList.innerHTML = '';
             appData.specialDays.forEach(hol => {
@@ -773,8 +732,6 @@
             a.download = `IzinPlani_VeriYedegi_${new Date().toISOString().slice(0,10)}.json`; 
             a.click();
             URL.revokeObjectURL(url);
-            
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Yedek dosyası indirildi.', showConfirmButton: false, timer: 1500 });
         }
 
         function importData(event) {
@@ -791,9 +748,6 @@
             reader.readAsText(file);
         }
 
-        // ==============================================
-        // BEYAZ SAYFA VE KESİLME KESİN ÇÖZÜMÜ V6 (ONCLONE)
-        // ==============================================
         function buildPDFDOM() {
             document.getElementById('pdf-store-title').innerText = appData.settings.storeName || 'Kurum Adı';
             document.getElementById('pdf-manager-label').innerText = appData.settings.managerName || 'Yönetici';
@@ -821,7 +775,6 @@
                     } else {
                         const dateStr = formatDate(state.year, state.month, day);
                         
-                        // Özel gün
                         const specialDay = appData.specialDays.find(s => s.date === dateStr);
                         let specialHtml = '';
                         if(specialDay) {
@@ -861,7 +814,6 @@
             html += '</div>';
             document.getElementById('pdf-grid-container').innerHTML = html;
 
-            // Özet Notları
             const notesContainer = document.getElementById('pdf-notes-container');
             const grouped = {};
             appData.leaves.forEach(l => {
@@ -932,7 +884,16 @@
             
             buildPDFDOM(); 
             
-            const target = document.getElementById('pdf-render-canvas');
+            const uiLayer = document.getElementById('app-wrapper');
+            const pdfLayer = document.getElementById('pdf-render-canvas');
+            
+            uiLayer.style.display = 'none';
+            document.body.classList.remove('is-app'); 
+            document.body.classList.add('is-pdf'); 
+            
+            pdfLayer.style.display = 'block';
+            
+            window.scrollTo(0,0);
 
             const opt = {
                 margin:       [10, 0, 10, 0], 
@@ -941,29 +902,31 @@
                 html2canvas:  { 
                     scale: 2, 
                     useCORS: true,
-                    backgroundColor: '#ffffff',
-                    // Onclone metodu: Kullanıcının ekranıyla (DOM) hiç oynamaz. html2canvas sanal bir ekran (iframe) kopyası çıkarır,
-                    // Bu fonksiyon o kopyadaki saklı div'i görünür yapıp resmini çeker! Kesilme olmaz.
-                    onclone: function (clonedDoc) {
-                        const el = clonedDoc.getElementById('pdf-render-canvas');
-                        el.style.display = 'block';
-                        
-                        clonedDoc.body.style.width = '1122px';
-                        clonedDoc.body.style.overflow = 'visible';
-                        clonedDoc.documentElement.style.overflow = 'visible';
-                    }
+                    backgroundColor: '#ffffff'
                 },
                 jsPDF:        { unit: 'px', format: [1122, 793], orientation: 'landscape' },
                 pagebreak:    { mode: ['css', 'legacy'] }
             };
 
-            html2pdf().set(opt).from(target).save().then(() => {
-                Swal.close();
-                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'PDF İndirildi', showConfirmButton: false, timer: 1500 });
-            }).catch(err => {
-                Swal.close();
-                Swal.fire('Hata', 'Cihazınızda PDF oluşturulurken hata yaşandı.', 'error');
-            });
+            setTimeout(() => {
+                html2pdf().set(opt).from(pdfLayer).save().then(() => {
+                    pdfLayer.style.display = 'none';
+                    uiLayer.style.display = 'flex';
+                    document.body.classList.remove('is-pdf'); 
+                    document.body.classList.add('is-app');
+                    
+                    Swal.close();
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'PDF İndirildi', showConfirmButton: false, timer: 1500 });
+                }).catch(err => {
+                    pdfLayer.style.display = 'none';
+                    uiLayer.style.display = 'flex';
+                    document.body.classList.remove('is-pdf'); 
+                    document.body.classList.add('is-app');
+                    
+                    Swal.close();
+                    Swal.fire('Hata', 'PDF oluşturulurken hata yaşandı.', 'error');
+                });
+            }, 1000); 
         }
 
         window.onload = initApp;
