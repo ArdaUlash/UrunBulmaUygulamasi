@@ -23,9 +23,19 @@
             color: #334155;
             -webkit-tap-highlight-color: transparent;
             margin: 0; padding: 0;
+        }
+
+        /* 
+          1. MOBİL & EKRAN KİLİDİ 
+          Bu sınıf, uygulama kullanılırken ekranın iOS/Android'de sağa sola, 
+          aşağı yukarı sekmesini (bounce) engeller. 
+          Ancak PDF üretilirken masaüstünde kesilme olmaması için geçici olarak kaldırılır!
+        */
+        body.app-locked {
             overflow: hidden !important; 
             width: 100vw !important;
             height: 100vh !important;
+            height: 100dvh !important;
             position: fixed !important;
             top: 0; left: 0;
         }
@@ -39,8 +49,7 @@
         #app-wrapper {
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            height: 100dvh; 
+            height: 100%;
             width: 100vw;
         }
 
@@ -171,7 +180,7 @@
         }
     </style>
 </head>
-<body>
+<body class="app-locked">
 
     <!-- ==============================================
          1. UYGULAMA ARAYÜZÜ (FLEXBOX İSKELETİ)
@@ -340,8 +349,8 @@
                             <input type="number" id="inp-new-quota" placeholder="Yıllık İzin Hakkı (Gün)" value="14" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500">
                         </div>
                         <div class="flex flex-col gap-2 shrink-0">
-                            <input type="color" id="inp-new-color" class="w-12 h-12 rounded-xl border border-slate-200 cursor-pointer p-1 bg-white">
-                            <button onclick="addEmployee()" class="w-12 h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center transition shadow-sm">
+                            <input type="color" id="inp-new-color" class="w-11 h-11 rounded-xl border border-slate-200 cursor-pointer p-0.5 bg-white">
+                            <button onclick="addEmployee()" class="w-11 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center transition shadow-sm">
                                 <i class="fa-solid fa-plus"></i>
                             </button>
                         </div>
@@ -354,15 +363,15 @@
                     <div id="settings-emp-list" class="space-y-2"></div>
                 </div>
 
-                <!-- Dosya İşlemleri -->
+                <!-- Dosya İşlemleri (Yedek Alma) -->
                 <div class="pt-5 border-t border-slate-100 grid grid-cols-2 gap-3">
                     <button onclick="document.getElementById('file-upload-2').click()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-upload"></i> İçe Aktar
                     </button>
                     <input type="file" id="file-upload-2" class="hidden" accept=".json" onchange="importData(event)">
                     
-                    <button onclick="exportData()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-download"></i> Dışa Aktar
+                    <button onclick="exportData()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border border-indigo-200">
+                        <i class="fa-solid fa-download"></i> Yedek Çıktı Al
                     </button>
                 </div>
             </div>
@@ -388,8 +397,7 @@
                 { id: 104, empId: 1, date: "2026-08-15", type: "HT" }
             ],
             specialDays: [
-                // Yeni Eklenen Özellik
-                { id: 1, name: "Bayram", date: "2026-08-21" }
+                { id: 1, name: "Zafer Bayramı", date: "2026-08-30" }
             ],
             settings: {
                 storeName: "Mağaza 4254 - Park Bornova AVM",
@@ -453,7 +461,7 @@
         }
 
         function initApp() {
-            const stored = localStorage.getItem('leavePlannerPro_v16');
+            const stored = localStorage.getItem('leavePlannerPro_v17');
             if (stored) { appData = JSON.parse(stored); checkAndMigrateData(); } 
             else { saveData(); }
 
@@ -470,7 +478,7 @@
         }
 
         function saveData() { 
-            localStorage.setItem('leavePlannerPro_v16', JSON.stringify(appData)); 
+            localStorage.setItem('leavePlannerPro_v17', JSON.stringify(appData)); 
             buildPDFDOM(); 
         }
 
@@ -788,8 +796,12 @@
             const blob = new Blob([JSON.stringify(appData, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = `IzinPlani_Yedek.json`; a.click();
+            a.href = url; 
+            a.download = `IzinPlani_VeriYedegi_${new Date().toISOString().slice(0,10)}.json`; 
+            a.click();
             URL.revokeObjectURL(url);
+            
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Yedek dosyası indirildi.', showConfirmButton: false, timer: 1500 });
         }
 
         function importData(event) {
@@ -807,7 +819,7 @@
         }
 
         // ==============================================
-        // PDF RENDER İŞLEMLERİ
+        // PDF RENDER İŞLEMLERİ (MASAÜSTÜ & MOBİL KESİN ÇÖZÜM)
         // ==============================================
         function buildPDFDOM() {
             document.getElementById('pdf-store-title').innerText = appData.settings.storeName || 'Kurum Adı';
@@ -949,9 +961,20 @@
             
             const overlay = document.getElementById('pdf-overlay');
             const target = document.getElementById('pdf-render-canvas');
+            const appWrapper = document.getElementById('app-wrapper');
             
-            overlay.style.display = 'flex';
-            overlay.scrollTo(0,0);
+            // 1. Desktop ve iOS uyumlu "Swap" mantığı
+            appWrapper.style.display = 'none'; // Arayüzü kapat
+            document.body.classList.remove('app-locked'); // Body kilitlerini aç
+            
+            overlay.style.display = 'block';
+            overlay.style.position = 'relative'; // Ekranda serbest kalsın (Desktop kesilmelerini önler)
+            overlay.style.width = '1122px';
+            overlay.style.height = 'auto';
+            overlay.style.padding = '0';
+            overlay.style.backgroundColor = '#fff';
+            
+            window.scrollTo(0,0);
 
             const opt = {
                 margin:       [10, 0, 10, 0], 
@@ -961,8 +984,8 @@
                     scale: 2, 
                     useCORS: true,
                     windowWidth: 1122,
-                    scrollX: 0,
-                    scrollY: 0
+                    scrollY: 0,
+                    scrollX: 0
                 },
                 jsPDF:        { unit: 'px', format: [1122, 793], orientation: 'landscape' },
                 pagebreak:    { mode: ['css', 'legacy'] }
@@ -970,13 +993,22 @@
 
             setTimeout(() => {
                 html2pdf().set(opt).from(target).save().then(() => {
-                    overlay.style.display = 'none'; 
+                    // Geri Al
+                    overlay.style.display = 'none';
+                    overlay.style.position = 'fixed'; // Eski haline getir
+                    appWrapper.style.display = 'flex';
+                    document.body.classList.add('app-locked');
+                    
                     Swal.close();
                     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'PDF İndirildi', showConfirmButton: false, timer: 1500 });
                 }).catch(err => {
                     overlay.style.display = 'none';
+                    overlay.style.position = 'fixed'; 
+                    appWrapper.style.display = 'flex';
+                    document.body.classList.add('app-locked');
+                    
                     Swal.close();
-                    Swal.fire('Hata', 'Cihazınızda PDF oluşturulurken hata yaşandı.', 'error');
+                    Swal.fire('Hata', 'PDF oluşturulurken hata yaşandı.', 'error');
                 });
             }, 800);
         }
