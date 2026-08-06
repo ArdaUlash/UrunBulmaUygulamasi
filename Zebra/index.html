@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gelişmiş Depo & Mağaza Yönetim Sistemi</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -28,87 +28,154 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); overflow-x: hidden; }
 
-        /* Login */
+        /* --- LOGIN --- */
         #login-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             display: flex; justify-content: center; align-items: center; z-index: 1000;
+            padding: 20px;
         }
-        .login-box { background: var(--white); padding: 40px; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        .login-box { background: var(--white); padding: 30px; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
         .login-box h2 { margin-bottom: 24px; color: var(--sidebar-bg); }
         .form-group { margin-bottom: 16px; text-align: left; }
         .form-group label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; }
-        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 14px; background: #fff;}
+        .form-group input, .form-group select { width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 16px; background: #fff;}
         .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
-        .btn { background-color: var(--primary); color: var(--white); border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; transition: 0.2s; }
+        .btn { background-color: var(--primary); color: var(--white); border: none; padding: 14px 20px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; font-size: 16px; transition: 0.2s; }
         .btn:hover { background-color: var(--primary-dark); }
-        .error-msg { color: var(--danger); font-size: 13px; margin-top: 10px; display: none; }
+        .error-msg { color: var(--danger); font-size: 14px; margin-top: 10px; display: none; }
 
-        /* Layout */
+        /* --- MOBİL ÜST BAR (YENİ) --- */
+        .mobile-header {
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--sidebar-bg);
+            color: var(--white);
+            padding: 15px 20px;
+            position: fixed;
+            top: 0; left: 0; width: 100%;
+            z-index: 99;
+        }
+        .menu-toggle { background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+
+        /* --- LAYOUT & SIDEBAR --- */
         #app-container { display: none; height: 100vh; }
-        .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); position: fixed; height: 100%; display: flex; flex-direction: column; }
+        
+        .sidebar {
+            width: 260px; background-color: var(--sidebar-bg); color: var(--white);
+            position: fixed; height: 100%; display: flex; flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+        
+        /* Sidebar Overlay (Mobilde menü açıldığında arkaplanı karartmak için) */
+        .sidebar-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 98;
+        }
+
         .sidebar-header { padding: 24px; font-size: 20px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; }
         .nav-links { list-style: none; padding: 10px 0; flex: 1; }
         .nav-links li { padding: 0 10px; margin-bottom: 5px; }
-        .nav-links a { display: flex; align-items: center; padding: 12px 16px; color: #cbd5e1; text-decoration: none; border-radius: 6px; transition: 0.2s; }
+        .nav-links a { display: flex; align-items: center; padding: 14px 16px; color: #cbd5e1; text-decoration: none; border-radius: 6px; transition: 0.2s; font-size:15px;}
         .nav-links a i { width: 24px; font-size: 18px; }
         .nav-links a:hover, .nav-links a.active { background-color: var(--primary); color: var(--white); }
+        
         .user-info { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 14px; }
-        .main-content { margin-left: 260px; padding: 30px; height: 100vh; overflow-y: auto; }
-        .header-title { font-size: 24px; margin-bottom: 24px; color: var(--sidebar-bg); font-weight: 700;}
+        
+        .main-content {
+            margin-left: 260px; padding: 30px; height: 100vh; overflow-y: auto;
+            transition: margin-left 0.3s ease;
+        }
+        .header-title { font-size: 22px; margin-bottom: 20px; color: var(--sidebar-bg); font-weight: 700;}
 
-        /* Cards & Grids */
-        .card { background: var(--white); padding: 24px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
+        /* --- CARDS & GRIDS --- */
+        .card { background: var(--white); padding: 20px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .section { display: none; }
         .section.active { display: block; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-
-        /* Tables & Badges */
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-        th, td { padding: 14px 15px; text-align: left; border-bottom: 1px solid var(--border); }
-        th { background-color: #f1f5f9; font-weight: 600; color: var(--text-light); text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;}
-        tr:hover { background-color: #f8fafc; }
         
-        .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .grid-2, .grid-3, .grid-4 { display: grid; gap: 15px; }
+        .grid-2 { grid-template-columns: 1fr 1fr; }
+        .grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+        .stat-card { border-left: 4px solid var(--primary); }
+        .stat-card h3 { color: var(--text-light); font-size: 13px; font-weight: 500;}
+        .stat-card h1 { font-size: 28px; color: var(--sidebar-bg); margin-top: 8px;}
+
+        /* --- MOBİL UYUMLU TABLOLAR --- */
+        .table-responsive { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background-color: #f1f5f9; font-weight: 600; color: var(--text-light); text-transform: uppercase; font-size: 12px;}
+        tr:hover { background-color: #f8fafc; }
+
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; margin-top:5px;}
         .badge-danger { background: #fee2e2; color: #991b1b; }
         .badge-warning { background: #fef3c7; color: #b45309; }
         .badge-success { background: #d1fae5; color: #065f46; }
         .badge-info { background: #dbeafe; color: #1e40af; }
         
-        .btn-sm { padding: 6px 12px; font-size: 12px; background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
-        .btn-sm:hover { background: #e2e8f0; }
-        .btn-sm.success:hover { background: var(--success); color: white; border-color: var(--success); }
-
-        /* Dashboard Stats */
-        .stat-card { border-left: 4px solid var(--primary); }
-        .stat-card h3 { color: var(--text-light); font-size: 14px; font-weight: 500;}
-        .stat-card h1 { font-size: 32px; color: var(--sidebar-bg); margin-top: 8px;}
+        .btn-sm { padding: 8px 12px; font-size: 13px; background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-weight:500;}
+        .btn-sm.success { background: var(--success); color: white; border-color: var(--success); }
 
         /* Arama & Etiket */
-        .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
-        .search-box input { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 16px;}
-        .label-preview { width: 10cm; height: 5cm; background: white; border: 1px solid #000; padding: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; margin: 20px auto; }
-        
+        .search-box { display: flex; gap: 10px; margin-bottom: 15px; }
+        .search-box input { flex: 1; padding: 14px; border: 1px solid var(--border); border-radius: 6px; font-size: 16px;}
+        .label-preview { width: 100%; max-width: 10cm; height: auto; min-height: 5cm; background: white; border: 1px solid #000; padding: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; margin: 20px auto; }
+        .label-preview svg { max-width: 100%; height: auto; }
+
+        /* =========================================
+           MOBİL (RESPONSIVE) TASARIM KURALLARI 
+           ========================================= */
+        @media (max-width: 768px) {
+            /* Üst barı göster, sidebar'ı gizle */
+            .mobile-header { display: flex; }
+            .sidebar { transform: translateX(-100%); }
+            
+            /* Menü açıldığında Sidebar'ı ekrana sok */
+            .sidebar.active { transform: translateX(0); }
+            .sidebar-overlay.active { display: block; }
+
+            /* Ana içeriğin sol boşluğunu sıfırla ve mobilde üst bar kadar üstten boşluk bırak */
+            .main-content { margin-left: 0; padding: 15px; padding-top: 80px; }
+
+            /* Gridleri tek sütuna düşür */
+            .grid-2, .grid-4 { grid-template-columns: 1fr; }
+
+            /* Tabloları Kart Görünümüne Çevir (Veri Okunabilirliği İçin) */
+            table, thead, tbody, th, td, tr { display: block; }
+            thead tr { position: absolute; top: -9999px; left: -9999px; } /* Başlıkları gizle */
+            tr { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 15px; padding: 10px; background: #fff;}
+            td { border: none; border-bottom: 1px solid #f1f5f9; position: relative; padding-left: 40%; min-height: 40px;}
+            td:last-child { border-bottom: 0; }
+            /* Her hücrenin başına başlığını yaz */
+            td::before {
+                position: absolute; top: 12px; left: 10px; width: 35%; padding-right: 10px;
+                white-space: nowrap; font-weight: 600; font-size: 12px; color: var(--text-light); content: attr(data-label);
+            }
+        }
+
         @media print {
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
             #print-area { position: absolute; left: 0; top: 0; width: 100%; }
             .card { box-shadow: none; border: none; padding: 0; }
+            .mobile-header { display: none; }
         }
     </style>
 </head>
 <body>
 
-    <!-- 1. GİRİŞ EKRANI -->
+    <!-- GİRİŞ EKRANI -->
     <div id="login-screen">
         <div class="login-box">
-            <h2>Sistem Girişi</h2>
+            <h2 style="font-size:22px;"><i class="fa-solid fa-boxes-stacked"></i> DepoYönet</h2>
             <form onsubmit="event.preventDefault(); checkLogin();">
                 <div class="form-group">
                     <label>Sicil No</label>
-                    <input type="text" id="sicil" placeholder="Örn: 87118" required autocomplete="off">
+                    <!-- Mobilde sadece sayısal klavye açılması için type="number" veya pattern="[0-9]*" -->
+                    <input type="text" id="sicil" pattern="[0-9]*" inputmode="numeric" placeholder="Örn: 87118" required autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label>Şifre</label>
@@ -116,16 +183,27 @@
                 </div>
                 <button type="submit" class="btn">Giriş Yap</button>
             </form>
-            <div class="error-msg" id="login-error">Hatalı sicil veya şifre! (İpucu: 87118 / 3094)</div>
+            <div class="error-msg" id="login-error">Hatalı sicil veya şifre! (87118 / 3094)</div>
         </div>
     </div>
 
     <!-- ANA UYGULAMA -->
     <div id="app-container">
         
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <i class="fa-solid fa-boxes-stacked"></i> DepoYönet
+        <!-- MOBİL ÜST BAR -->
+        <div class="mobile-header">
+            <div style="font-weight:700; font-size:18px;"><i class="fa-solid fa-boxes-stacked"></i> DepoYönet</div>
+            <button class="menu-toggle" onclick="toggleMenu()"><i class="fa-solid fa-bars"></i></button>
+        </div>
+
+        <!-- SIDEBAR OVERLAY (Mobilde arkapanı karartır) -->
+        <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMenu()"></div>
+
+        <!-- YAN MENÜ -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <span><i class="fa-solid fa-boxes-stacked"></i> Menü</span>
+                <button onclick="toggleMenu()" class="menu-toggle" style="font-size:18px; display:none;" id="close-menu-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <ul class="nav-links">
                 <li><a href="#" onclick="showSection('sec-dashboard')" class="active"><i class="fa-solid fa-chart-pie"></i> Özet Tablo</a></li>
@@ -135,10 +213,11 @@
             </ul>
             <div class="user-info">
                 <i class="fa-solid fa-user-circle"></i> Sicil: <span id="logged-user"></span><br>
-                <small style="color: #94a3b8; cursor:pointer; margin-top:5px; display:inline-block;" onclick="location.reload()">Çıkış Yap</small>
+                <small style="color: #94a3b8; cursor:pointer; margin-top:10px; display:inline-block; font-size:14px;" onclick="location.reload()"><i class="fa-solid fa-right-from-bracket"></i> Çıkış Yap</small>
             </div>
         </aside>
 
+        <!-- İÇERİK ALANI -->
         <main class="main-content">
             
             <!-- Dashboard -->
@@ -164,68 +243,60 @@
                 </div>
             </div>
 
-            <!-- GÖREV VE PERSONEL YÖNETİMİ (YENİLENEN MODÜL) -->
+            <!-- GÖREV YÖNETİMİ -->
             <div id="sec-personel" class="section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                    <h2 class="header-title" style="margin: 0;">İş Gücü & Görev Yönetimi</h2>
-                </div>
+                <h2 class="header-title">İş Gücü & Görev Yönetimi</h2>
 
                 <div class="grid-2">
-                    <!-- Yeni Görev Atama Formu -->
                     <div class="card">
-                        <h3 style="margin-bottom: 20px; color: var(--sidebar-bg); border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                        <h3 style="margin-bottom: 15px; color: var(--sidebar-bg); border-bottom: 1px solid var(--border); padding-bottom: 10px;">
                             <i class="fa-solid fa-clipboard-user"></i> Yeni Görev Ata
                         </h3>
                         <form onsubmit="event.preventDefault(); gorevAta();">
                             <div class="form-group">
-                                <label>Personel Seçimi</label>
+                                <label>Personel</label>
                                 <select id="g_personel" required>
                                     <option value="">-- Personel Seçin --</option>
-                                    <option value="Ahmet Yılmaz">Ahmet Yılmaz (Sicil: 87119)</option>
-                                    <option value="Ayşe Demir">Ayşe Demir (Sicil: 87120)</option>
-                                    <option value="Mehmet Kaya">Mehmet Kaya (Sicil: 87121)</option>
-                                    <option value="Zeynep Çelik">Zeynep Çelik (Sicil: 87122)</option>
+                                    <option value="Ahmet Yılmaz">Ahmet Yılmaz</option>
+                                    <option value="Ayşe Demir">Ayşe Demir</option>
+                                    <option value="Mehmet Kaya">Mehmet Kaya</option>
                                 </select>
                             </div>
-                            <div class="grid-2">
-                                <div class="form-group">
-                                    <label>Görev Tipi</label>
-                                    <select id="g_tip" required>
-                                        <option value="Mal Kabul / Koli Açma">Mal Kabul / Koli Açma</option>
-                                        <option value="Raf Sayımı">Raf Sayımı</option>
-                                        <option value="Reyon Düzenleme (Yerleştirme)">Reyon Düzenleme (Yerleştirme)</option>
-                                        <option value="İade & Defolu Kontrolü">İade & Defolu Kontrolü</option>
-                                        <option value="Etiketleme">Etiketleme</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Çalışma Bölgesi</label>
-                                    <select id="g_bolge" required>
-                                        <option value="Ana Depo (Arka Alan)">Ana Depo (Arka Alan)</option>
-                                        <option value="Kadın Reyonu">Kadın Reyonu</option>
-                                        <option value="Erkek Reyonu">Erkek Reyonu</option>
-                                        <option value="Spor Depo">Spor Depo</option>
-                                        <option value="Kasa Arkası / Sevkiyat">Kasa Arkası / Sevkiyat</option>
-                                    </select>
-                                </div>
+                            <div class="form-group">
+                                <label>Görev Tipi</label>
+                                <select id="g_tip" required>
+                                    <option value="Mal Kabul / Koli Açma">Mal Kabul</option>
+                                    <option value="Raf Sayımı">Raf Sayımı</option>
+                                    <option value="Reyon Düzenleme">Reyon Düzenleme</option>
+                                    <option value="Etiketleme">Etiketleme</option>
+                                </select>
                             </div>
                             <div class="form-group">
-                                <label>Öncelik Durumu</label>
+                                <label>Çalışma Bölgesi</label>
+                                <select id="g_bolge" required>
+                                    <option value="Ana Depo">Ana Depo</option>
+                                    <option value="Kadın Reyonu">Kadın Reyonu</option>
+                                    <option value="Erkek Reyonu">Erkek Reyonu</option>
+                                    <option value="Spor Depo">Spor Depo</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Öncelik</label>
                                 <select id="g_oncelik" required>
                                     <option value="Normal">Normal</option>
-                                    <option value="Acil">Acil (Yüksek Öncelik)</option>
+                                    <option value="Acil">Acil</option>
                                 </select>
                             </div>
                             <button type="submit" class="btn"><i class="fa-solid fa-paper-plane"></i> Görevi İşleme Al</button>
                         </form>
                     </div>
 
-                    <!-- Görev Havuzu -->
-                    <div class="card" style="overflow: hidden;">
-                        <h3 style="margin-bottom: 20px; color: var(--sidebar-bg); border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                    <div class="card">
+                        <h3 style="margin-bottom: 15px; color: var(--sidebar-bg); border-bottom: 1px solid var(--border); padding-bottom: 10px;">
                             <i class="fa-solid fa-list-check"></i> Aktif Görev Havuzu
                         </h3>
-                        <div style="max-height: 350px; overflow-y: auto;">
+                        <!-- Mobilde tablo kart görünümüne geçer -->
+                        <div class="table-responsive">
                             <table id="gorev-tablosu">
                                 <thead>
                                     <tr>
@@ -242,88 +313,81 @@
                         </div>
                     </div>
                 </div>
-                
-                <!-- Personel Performans Geçmişi -->
-                <div class="card">
-                    <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-clock-rotate-left"></i> Son Tamamlanan İşlemler</h3>
-                    <table id="gecmis-tablosu">
-                        <thead>
-                            <tr>
-                                <th>Zaman</th>
-                                <th>Personel</th>
-                                <th>Görev Tipi</th>
-                                <th>Performans Puanı</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>09:15</td>
-                                <td>Ayşe Demir</td>
-                                <td>Raf Sayımı (Spor Depo)</td>
-                                <td><span style="color:var(--success)"><i class="fa-solid fa-star"></i> Zamanında</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
             </div>
 
-            <!-- Raf ve Etiket Sistemi -->
+            <!-- RAF YÖNETİMİ -->
             <div id="sec-raf" class="section">
-                <h2 class="header-title">Depo Raf Kaydı & Etiket Baskısı</h2>
+                <h2 class="header-title">Raf Kaydı & Etiket</h2>
                 <div class="grid-2">
                     <div class="card">
-                        <h3>Ürün - Raf Eşleştirme</h3>
-                        <div class="form-group" style="margin-top:15px;">
+                        <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-link"></i> Ürün - Raf Eşleştir</h3>
+                        <div class="form-group">
                             <label>Raf Kodu (Örn: A-101)</label>
                             <input type="text" id="raf_input" placeholder="Okutun">
                         </div>
                         <div class="form-group">
                             <label>Ürün Barkodu</label>
-                            <input type="text" id="urun_barkod_input" placeholder="Okutun">
+                            <input type="text" id="urun_barkod_input" placeholder="Okutun" inputmode="numeric">
                         </div>
-                        <button class="btn" onclick="rafaKaydet()"><i class="fa-solid fa-save"></i> Eşleştir ve Kaydet</button>
+                        <button class="btn" onclick="rafaKaydet()"><i class="fa-solid fa-save"></i> Kaydet</button>
                     </div>
 
                     <div class="card">
-                        <h3>Zebra Etiketi Üret</h3>
-                        <div class="form-group" style="margin-top:15px;">
-                            <label>Barkoda Çevrilecek Veri</label>
+                        <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-print"></i> Etiket Üret</h3>
+                        <div class="form-group">
+                            <label>Barkod Verisi</label>
                             <input type="text" id="etiket_input" placeholder="Raf veya ürün kodu">
                         </div>
-                        <button class="btn" onclick="etiketOlustur()" style="background-color: var(--sidebar-bg);"><i class="fa-solid fa-barcode"></i> Barkod Çiz</button>
+                        <button class="btn" onclick="etiketOlustur()" style="background-color: var(--sidebar-bg);"><i class="fa-solid fa-barcode"></i> Önizleme</button>
                     </div>
                 </div>
+                
                 <div class="card" id="print-card" style="display:none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <h3>Yazıcı Önizlemesi</h3>
-                        <button class="btn" onclick="window.print()" style="width: auto;"><i class="fa-solid fa-print"></i> Yazdır</button>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom:10px;">
+                        <h3>Önizleme</h3>
+                        <button class="btn-sm success" onclick="window.print()"><i class="fa-solid fa-print"></i> Yazdır</button>
                     </div>
                     <div id="print-area">
                         <div class="label-preview">
-                            <h2 style="font-family: Arial, sans-serif; font-size: 24px; margin-bottom: 5px;">LOKASYON BARKODU</h2>
+                            <h2 style="font-family: Arial, sans-serif; font-size: 20px; margin-bottom: 5px; text-align:center;">LOKASYON BARKODU</h2>
                             <svg id="barcode"></svg>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Ürün Bulma Alanı -->
+            <!-- ÜRÜN BULUCU -->
             <div id="sec-bul" class="section">
                 <h2 class="header-title">Terminal Ürün Sorgulama</h2>
                 <div class="card">
                     <div class="search-box">
-                        <input type="text" id="sorgu_barkod" placeholder="Aranacak barkodu okutun..." onkeypress="if(event.key === 'Enter') urunSorgula()">
-                        <button class="btn" style="width: auto;" onclick="urunSorgula()"><i class="fa-solid fa-magnifying-glass"></i> Ara</button>
+                        <input type="text" id="sorgu_barkod" placeholder="Barkod okutun..." inputmode="numeric" onkeypress="if(event.key === 'Enter') urunSorgula()">
+                        <button class="btn" style="width: 60px; padding:0;" onclick="urunSorgula()"><i class="fa-solid fa-magnifying-glass"></i></button>
                     </div>
-                    <div id="sorgu_sonuc" style="display: none; padding: 20px; border-radius: 8px; border: 1px solid var(--border); font-size: 18px; text-align: center;"></div>
+                    <div id="sorgu_sonuc" style="display: none; padding: 20px; border-radius: 8px; border: 1px solid var(--border); text-align: center; margin-top:20px;"></div>
                 </div>
             </div>
 
         </main>
     </div>
 
-    <!-- UYGULAMA MANTIĞI -->
+    <!-- MANTIK (JS) -->
     <script>
+        // -- MOBİL MENÜ KONTROLÜ --
+        function toggleMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const closeBtn = document.getElementById('close-menu-btn');
+            
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+            
+            // Eğer mobildeysek (genişlik 768px veya altıysa) kapatma butonunu göster
+            if (window.innerWidth <= 768) {
+                closeBtn.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+            }
+        }
+
         // -- GİRİŞ İŞLEMLERİ --
         function checkLogin() {
             const sicil = document.getElementById('sicil').value.trim();
@@ -333,7 +397,7 @@
                 document.getElementById('login-screen').style.display = "none";
                 document.getElementById('app-container').style.display = "block";
                 document.getElementById('logged-user').innerText = sicil;
-                tablolariGuncelle(); // Tabloları ilk açılışta çiz
+                tablolariGuncelle();
             } else {
                 document.getElementById('login-error').style.display = "block";
             }
@@ -345,14 +409,20 @@
             document.querySelectorAll('.nav-links a').forEach(link => link.classList.remove('active'));
             document.getElementById(sectionId).classList.add('active');
             if (event && event.currentTarget) event.currentTarget.classList.add('active');
+            
+            // Mobilde sekme seçilince menüyü otomatik kapat
+            if(window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('active');
+                document.getElementById('sidebar-overlay').classList.remove('active');
+            }
         }
 
-        // --- GÖREV YÖNETİMİ VERİ TABANI (MOCK WMS) ---
+        // --- GÖREV YÖNETİMİ ---
         let gorevListesi = [
             { id: 1, personel: "Ahmet Yılmaz", tip: "Reyon Düzenleme", bolge: "Erkek Reyonu", oncelik: "Normal", durum: "Devam Ediyor" },
             { id: 2, personel: "Zeynep Çelik", tip: "Koli Açma", bolge: "Ana Depo", oncelik: "Acil", durum: "Bekliyor" }
         ];
-        let kpiTamamlanan = 1; // Örnek başlangıç değeri
+        let kpiTamamlanan = 1;
 
         function gorevAta() {
             const personel = document.getElementById('g_personel').value;
@@ -362,95 +432,64 @@
 
             if (!personel) { alert("Lütfen personel seçin!"); return; }
 
-            const yeniGorev = {
-                id: Date.now(),
-                personel: personel,
-                tip: tip,
-                bolge: bolge,
-                oncelik: oncelik,
-                durum: "Bekliyor"
-            };
-
-            gorevListesi.push(yeniGorev);
+            gorevListesi.push({
+                id: Date.now(), personel, tip, bolge, oncelik, durum: "Bekliyor"
+            });
             tablolariGuncelle();
-            
-            // Formu sıfırla
             document.getElementById('g_personel').value = "";
-            document.getElementById('g_oncelik').value = "Normal";
         }
 
         function durumDegistir(id, yeniDurum) {
             const gorev = gorevListesi.find(g => g.id === id);
             if (gorev) {
                 gorev.durum = yeniDurum;
-                
-                // Eğer tamamlandıysa aktif listeden çıkar, geçmişe ekle
                 if (yeniDurum === "Tamamlandı") {
                     kpiTamamlanan++;
-                    gecmiseEkle(gorev);
                     gorevListesi = gorevListesi.filter(g => g.id !== id);
                 }
                 tablolariGuncelle();
             }
         }
 
-        function gecmiseEkle(gorev) {
-            const tbody = document.querySelector("#gecmis-tablosu tbody");
-            const saat = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td>${saat}</td>
-                <td>${gorev.personel}</td>
-                <td>${gorev.tip} (${gorev.bolge})</td>
-                <td><span style="color:var(--success)"><i class="fa-solid fa-check-circle"></i> Başarılı</span></td>
-            `;
-            tbody.prepend(tr); // En üste ekle
-        }
-
         function tablolariGuncelle() {
             const tbody = document.querySelector("#gorev-tablosu tbody");
             tbody.innerHTML = "";
-
             let aktifGorevSayisi = 0;
 
             gorevListesi.forEach(gorev => {
                 aktifGorevSayisi++;
                 const tr = document.createElement("tr");
-                
-                // Öncelik Badge
                 const oncelikBadge = gorev.oncelik === "Acil" ? `<span class="badge badge-danger">ACİL</span>` : ``;
                 
-                // Durum Badge
                 let durumBadge = "";
                 if(gorev.durum === "Bekliyor") durumBadge = `<span class="badge badge-warning">Bekliyor</span>`;
-                if(gorev.durum === "Devam Ediyor") durumBadge = `<span class="badge badge-info">Devam Ediyor</span>`;
+                if(gorev.durum === "Devam Ediyor") durumBadge = `<span class="badge badge-info">Devam</span>`;
 
-                // Aksiyon Butonları
                 let butonlar = "";
                 if(gorev.durum === "Bekliyor") {
                     butonlar = `<button class="btn-sm" onclick="durumDegistir(${gorev.id}, 'Devam Ediyor')">Başlat</button>`;
                 } else if(gorev.durum === "Devam Ediyor") {
-                    butonlar = `<button class="btn-sm success" onclick="durumDegistir(${gorev.id}, 'Tamamlandı')">Tamamla</button>`;
+                    butonlar = `<button class="btn-sm success" onclick="durumDegistir(${gorev.id}, 'Tamamlandı')">Bitir</button>`;
                 }
 
+                // Mobilde td'lerin başlıklarını göstermek için data-label eklendi
                 tr.innerHTML = `
-                    <td style="font-weight:500;">${gorev.personel} ${oncelikBadge}</td>
-                    <td>
+                    <td data-label="Personel:" style="font-weight:500;">${gorev.personel} <br>${oncelikBadge}</td>
+                    <td data-label="Görev/Bölge:">
                         <div style="font-weight:600;">${gorev.tip}</div>
                         <div style="font-size:12px; color:var(--text-light);"><i class="fa-solid fa-location-dot"></i> ${gorev.bolge}</div>
                     </td>
-                    <td>${durumBadge}</td>
-                    <td>${butonlar}</td>
+                    <td data-label="Durum:">${durumBadge}</td>
+                    <td data-label="İşlem:">${butonlar}</td>
                 `;
                 tbody.appendChild(tr);
             });
 
-            // KPI Dashboard Güncelleme
             document.getElementById("kpi-aktif-gorev").innerText = aktifGorevSayisi;
             document.getElementById("kpi-tamamlanan").innerText = kpiTamamlanan;
         }
 
-        // --- RAF & ÜRÜN BULUCU MANTIĞI ---
+        // --- RAF & ÜRÜN BULUCU ---
         const depoVeritabani = [
             { barkod: "8691234567890", raf: "A-101" }
         ];
@@ -465,17 +504,15 @@
             
             document.getElementById('urun_barkod_input').value = "";
             document.getElementById('urun_barkod_input').focus();
-            
-            // KPI Güncelle
-            document.getElementById("kpi-raf").innerText = depoVeritabani.length + 123; // mock calc
-            alert(`Kayıt Başarılı! ${urunBarkod} -> ${rafKodu}`);
+            document.getElementById("kpi-raf").innerText = depoVeritabani.length + 123;
+            alert(`Kayıt Başarılı! \n${urunBarkod} -> ${rafKodu}`);
         }
 
         function etiketOlustur() {
             const veri = document.getElementById('etiket_input').value.trim();
             if (!veri) return;
             document.getElementById('print-card').style.display = "block";
-            JsBarcode("#barcode", veri, { format: "CODE128", lineColor: "#000", width: 3, height: 100, displayValue: true });
+            JsBarcode("#barcode", veri, { format: "CODE128", lineColor: "#000", width: 2, height: 80, displayValue: true });
         }
 
         function urunSorgula() {
@@ -486,10 +523,10 @@
             sonucDiv.style.display = "block";
             if (urun) {
                 sonucDiv.style.backgroundColor = "#eff6ff"; sonucDiv.style.borderColor = "var(--primary)";
-                sonucDiv.innerHTML = `<div style="color:#1e40af;">Barkod: ${urun.barkod}</div><div style="font-size:30px; margin-top:10px; color:#166534;">RAF: <strong>${urun.raf}</strong></div>`;
+                sonucDiv.innerHTML = `<div style="color:#1e40af; font-size:14px;">Barkod: ${urun.barkod}</div><div style="font-size:24px; margin-top:10px; color:#166534;">RAF: <strong>${urun.raf}</strong></div>`;
             } else {
                 sonucDiv.style.backgroundColor = "#fef2f2"; sonucDiv.style.borderColor = "var(--danger)";
-                sonucDiv.innerHTML = `<div style="color:var(--danger);">Sistemde bu barkoda ait raf bulunamadı!</div>`;
+                sonucDiv.innerHTML = `<div style="color:var(--danger); font-size:14px;">Sistemde bu barkoda ait raf bulunamadı!</div>`;
             }
             document.getElementById('sorgu_barkod').select();
         }
