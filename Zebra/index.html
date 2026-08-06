@@ -5,13 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gelişmiş Depo & Mağaza Yönetim Sistemi</title>
     
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- FontAwesome (İkonlar) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- JsBarcode (Zebra etiketler için gerçek barkod üretimi) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
-    <!-- SheetJS (Excel işlemleri için altyapı) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
@@ -187,13 +183,12 @@
         
         /* Zebra Etiket Önizleme */
         .label-preview {
-            width: 10cm; height: 5cm; /* Zebra standartlarına yakın */
+            width: 10cm; height: 5cm;
             background: white; border: 1px solid #000;
             padding: 10px; display: flex; flex-direction: column;
             justify-content: center; align-items: center; margin: 20px auto;
         }
 
-        /* --- YAZDIRMA AYARLARI (Zebra için sadece etiketi yazdırır) --- */
         @media print {
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
@@ -204,27 +199,26 @@
 </head>
 <body>
 
-    <!-- 1. GİRİŞ EKRANI -->
     <div id="login-screen">
         <div class="login-box">
             <h2>Sistem Girişi</h2>
-            <div class="form-group">
-                <label>Sicil No</label>
-                <input type="text" id="sicil" placeholder="Örn: 87118">
-            </div>
-            <div class="form-group">
-                <label>Şifre</label>
-                <input type="password" id="sifre" placeholder="••••">
-            </div>
-            <button class="btn" onclick="checkLogin()">Giriş Yap</button>
+            <form onsubmit="event.preventDefault(); checkLogin();">
+                <div class="form-group">
+                    <label for="sicil">Sicil No</label>
+                    <input type="text" id="sicil" placeholder="Örn: 87118" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="sifre">Şifre</label>
+                    <input type="password" id="sifre" placeholder="••••" required autocomplete="off">
+                </div>
+                <button type="submit" class="btn">Giriş Yap</button>
+            </form>
             <div class="error-msg" id="login-error">Hatalı sicil veya şifre! (İpucu: 87118 / 3094)</div>
         </div>
     </div>
 
-    <!-- ANA UYGULAMA -->
     <div id="app-container">
         
-        <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <i class="fa-solid fa-boxes-stacked"></i> DepoYönet
@@ -242,10 +236,8 @@
             </div>
         </aside>
 
-        <!-- Main Content Area -->
         <main class="main-content">
             
-            <!-- Dashboard -->
             <div id="sec-dashboard" class="section active">
                 <h2 class="header-title">Mağaza ve Depo Özeti</h2>
                 <div class="grid-3">
@@ -264,7 +256,6 @@
                 </div>
             </div>
 
-            <!-- 3. Personel Hareketleri -->
             <div id="sec-personel" class="section">
                 <h2 class="header-title">Personel Hareketleri ve Görev Takibi</h2>
                 <div class="card">
@@ -292,7 +283,6 @@
                 </div>
             </div>
 
-            <!-- 4. Excel İçe Aktarım -->
             <div id="sec-excel" class="section">
                 <h2 class="header-title">Sisteme Ürün / Barkod Aktarımı</h2>
                 <div class="card">
@@ -311,12 +301,10 @@
                 </div>
             </div>
 
-            <!-- 5 & 6. Raf ve Etiket Sistemi (Zebra) -->
             <div id="sec-raf" class="section">
                 <h2 class="header-title">Depo Raf Kaydı & Zebra Etiket Baskısı</h2>
                 
                 <div class="grid-2">
-                    <!-- Raf Kayıt Formu -->
                     <div class="card">
                         <h3>Ürün - Raf Eşleştirme</h3>
                         <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Okutulan barkodu belirtilen rafa kaydeder.</p>
@@ -331,7 +319,6 @@
                         <button class="btn" onclick="rafaKaydet()"><i class="fa-solid fa-save"></i> Rafa Kaydet</button>
                     </div>
 
-                    <!-- Zebra Etiket Modülü -->
                     <div class="card">
                         <h3>Raf Etiketi Üret & Yazdır</h3>
                         <div class="form-group">
@@ -342,7 +329,6 @@
                     </div>
                 </div>
 
-                <!-- Yazdırılacak Alan -->
                 <div class="card" id="print-card" style="display:none;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <h3>Zebra Yazıcı Önizlemesi</h3>
@@ -351,14 +337,12 @@
                     <div id="print-area">
                         <div class="label-preview">
                             <h2 style="font-family: Arial, sans-serif; font-size: 24px; margin-bottom: 5px;">DEPO RAF LOKASYONU</h2>
-                            <!-- JsBarcode buraya SVG basacak -->
                             <svg id="barcode"></svg>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 7. Ürün Bulma Alanı -->
             <div id="sec-bul" class="section">
                 <h2 class="header-title">Ürün Arama & Lokasyon Sorgulama</h2>
                 <div class="card">
@@ -369,7 +353,6 @@
                     </div>
 
                     <div id="sorgu_sonuc" style="display: none; padding: 20px; border-radius: 8px; border: 1px solid var(--border); font-size: 18px; text-align: center;">
-                        <!-- JS ile doldurulacak -->
                     </div>
                 </div>
             </div>
@@ -377,39 +360,36 @@
         </main>
     </div>
 
-    <!-- UYGULAMA MANTIĞI (JS) -->
     <script>
-        // --- 1. GİRİŞ EKRANI MANTIĞI ---
         function checkLogin() {
-            const sicil = document.getElementById('sicil').value;
-            const sifre = document.getElementById('sifre').value;
+            // .trim() ile olası boşluklar otomatik silinir
+            const sicil = document.getElementById('sicil').value.trim();
+            const sifre = document.getElementById('sifre').value.trim();
+            const errorDiv = document.getElementById('login-error');
             
-            if(sicil === "87118" && sifre === "3094") {
+            if (sicil === "87118" && sifre === "3094") {
                 document.getElementById('login-screen').style.display = "none";
                 document.getElementById('app-container').style.display = "block";
+                document.getElementById('logged-user').innerText = sicil;
+                errorDiv.style.display = "none";
             } else {
-                document.getElementById('login-error').style.display = "block";
+                errorDiv.style.display = "block";
             }
         }
 
-        // --- SEKMELER ARASI GEÇİŞ ---
         function showSection(sectionId) {
-            // Tüm bölümleri gizle
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-            // Tüm menü linklerinin aktifliğini al
             document.querySelectorAll('.nav-links a').forEach(link => link.classList.remove('active'));
             
-            // Seçileni göster
             document.getElementById(sectionId).classList.add('active');
-            event.currentTarget.classList.add('active');
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
         }
 
-        // --- 4. EXCEL YÜKLEME SİMÜLASYONU ---
         function mockExcelUpload() {
             const file = document.getElementById('excel-file').files[0];
-            if(file) {
-                // Burada normalde SheetJS kullanılarak excel parse edilir.
-                // Simülasyon amaçlı direkt başarılı mesajı gösteriyoruz.
+            if (file) {
                 document.getElementById('upload-success').style.display = "block";
                 setTimeout(() => {
                     document.getElementById('upload-success').style.display = "none";
@@ -417,8 +397,6 @@
             }
         }
 
-        // --- 5 & 6. RAF KAYIT VE BARKOD VERİTABANI (MOCK DB) ---
-        // Uygulama açık kaldığı sürece verileri tutacak dizi.
         const depoVeritabani = [
             { barkod: "8691234567890", raf: "A-101" },
             { barkod: "8690987654321", raf: "B-205" }
@@ -428,15 +406,14 @@
             const rafKodu = document.getElementById('raf_input').value.trim();
             const urunBarkod = document.getElementById('urun_barkod_input').value.trim();
 
-            if(!rafKodu || !urunBarkod) {
+            if (!rafKodu || !urunBarkod) {
                 alert("Lütfen raf kodunu ve ürün barkodunu boş bırakmayın.");
                 return;
             }
 
-            // Veritabanına Ekle/Güncelle
-            const mevcutUrunIndex = depoVeritabani.findIndex(u => u.barkod === urunBarkod);
-            if(mevcutUrunIndex > -1) {
-                depoVeritabani[mevcutUrunIndex].raf = rafKodu; // Yer değiştirme
+            const mevcud = depoVeritabani.find(u => u.barkod === urunBarkod);
+            if (mevcud) {
+                mevcud.raf = rafKodu;
             } else {
                 depoVeritabani.push({ barkod: urunBarkod, raf: rafKodu });
             }
@@ -446,14 +423,12 @@
             document.getElementById('urun_barkod_input').focus();
         }
 
-        // --- ZEBRA ETİKET OLUŞTURMA (JsBarcode) ---
         function etiketOlustur() {
             const etiketVerisi = document.getElementById('etiket_input').value.trim();
-            if(!etiketVerisi) { alert("Lütfen barkoda dönüştürülecek veriyi girin."); return; }
+            if (!etiketVerisi) { alert("Lütfen barkoda dönüştürülecek veriyi girin."); return; }
 
             document.getElementById('print-card').style.display = "block";
             
-            // SVG içine barkodu çiz
             JsBarcode("#barcode", etiketVerisi, {
                 format: "CODE128",
                 lineColor: "#000",
@@ -464,31 +439,29 @@
             });
         }
 
-        // --- 7. ÜRÜN BULMA SORGUSU ---
         function urunSorgula() {
             const sorgu = document.getElementById('sorgu_barkod').value.trim();
             const sonucDiv = document.getElementById('sorgu_sonuc');
             
-            if(!sorgu) return;
+            if (!sorgu) return;
 
             const urun = depoVeritabani.find(u => u.barkod === sorgu);
             
             sonucDiv.style.display = "block";
-            if(urun) {
+            if (urun) {
                 sonucDiv.style.backgroundColor = "#eff6ff";
-                sonucDiv.style.borderColor = var(--primary);
+                sonucDiv.style.borderColor = "var(--primary)";
                 sonucDiv.innerHTML = `
                     <div style="font-size:24px; font-weight:bold; color:#1e40af;">Aranan Barkod: ${urun.barkod}</div>
                     <div style="font-size:36px; margin-top:15px; color:#166534;"><i class="fa-solid fa-location-dot"></i> LOKASYON: <strong>${urun.raf}</strong></div>
                 `;
             } else {
                 sonucDiv.style.backgroundColor = "#fef2f2";
-                sonucDiv.style.borderColor = var(--danger);
+                sonucDiv.style.borderColor = "var(--danger)";
                 sonucDiv.innerHTML = `
                     <div style="color:var(--danger); font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> Sistemde bu koda ait kayıtlı bir raf bulunamadı!</div>
                 `;
             }
-            // Hızlıca bir sonrakini okutmak için içeriği seç
             document.getElementById('sorgu_barkod').select();
         }
     </script>
