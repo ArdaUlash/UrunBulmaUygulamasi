@@ -1,0 +1,3007 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Stock Master WMS | Kurumsal Depo & Stok Platformu</title>
+  
+  <!-- CDN Kütüphaneleri -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #ff5500;
+      --primary-hover: #e04b00;
+      --primary-light: #fff2eb;
+      --bg-page: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --purple: #8b5cf6;
+      --blue: #0284c7;
+      --gold: #d97706;
+      --radius-xl: 24px;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
+      --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.06);
+      --shadow-lg: 0 16px 36px rgba(15, 23, 42, 0.08);
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-family);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    /* ==========================================================================
+       1. KLASİK TÜRKÇE GİRİŞ EKRANI
+       ========================================================================== */
+    #auth-screen-container {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle at 50% 10%, #ffe8de 0%, #f4f6fb 60%, #eef2f8 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      z-index: 999999;
+      overflow-y: auto;
+    }
+
+    .login-brand-area { text-align: center; margin-bottom: 1.5rem; }
+    .login-app-version { font-size: 0.75rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
+    .sm-logo-box {
+      background: var(--primary);
+      color: white;
+      font-size: 2rem;
+      font-weight: 900;
+      font-style: italic;
+      padding: 6px 18px;
+      border-radius: 16px;
+      letter-spacing: -1px;
+      display: inline-block;
+      box-shadow: 0 8px 20px rgba(255, 85, 0, 0.35);
+    }
+    .login-welcome-subtitle { font-size: 1.2rem; font-weight: 800; color: #1e293b; margin-top: 0.75rem; }
+    .login-card-surface {
+      background: var(--card-bg);
+      border-radius: var(--radius-xl);
+      width: 100%;
+      max-width: 420px;
+      padding: 2rem 1.75rem;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+    .login-card-title { font-size: 1.4rem; font-weight: 900; color: #0f172a; text-align: center; margin-bottom: 1.5rem; }
+    .login-btn-primary {
+      width: 100%;
+      height: 52px;
+      border-radius: 26px;
+      background: var(--primary);
+      color: white;
+      font-size: 1.05rem;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(255, 85, 0, 0.35);
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+    .login-btn-primary:active { transform: scale(0.98); }
+
+    .quick-account-chips {
+      margin-top: 1.5rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    .quick-account-chips span { font-size: 0.75rem; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.5rem; }
+    .chip-btn-group { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+    .chip-btn {
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .chip-btn:hover { background: var(--primary-light); color: var(--primary); border-color: #fed7aa; }
+
+    /* ==========================================================================
+       2. ANA UYGULAMA EKRANI
+       ========================================================================== */
+    #main-app-container {
+      display: none;
+      width: 100%;
+      max-width: 480px;
+      min-height: 100vh;
+      background: var(--bg-page);
+      position: relative;
+      padding-bottom: 95px;
+      box-shadow: 0 0 40px rgba(0,0,0,0.03);
+    }
+
+    @media (min-width: 992px) {
+      #main-app-container {
+        max-width: 1050px;
+        padding-bottom: 100px;
+      }
+      .desktop-2-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.25rem;
+      }
+    }
+
+    /* Görsel Flaş Katmanı */
+    #flashOverlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 999999;
+      opacity: 0;
+      transition: opacity 0.15s ease-out;
+    }
+    #flashOverlay.flash-success { background: rgba(16, 185, 129, 0.25); opacity: 1; }
+    #flashOverlay.flash-error { background: rgba(239, 68, 68, 0.35); opacity: 1; }
+
+    /* HIZLI GERİ AL TOAST */
+    #undoToast {
+      position: fixed;
+      bottom: 85px;
+      left: 50%;
+      transform: translateX(-50%) translateY(25px);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      background: #0f172a;
+      color: white;
+      padding: 0.65rem 1rem;
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+      z-index: 99999;
+      transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+      width: 92%;
+      max-width: 440px;
+      border: 1px solid #334155;
+    }
+    #undoToast.show {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Üst Başlık (Header) */
+    .app-header {
+      padding: 1.25rem 1.25rem 0.5rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand-logo-small {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-weight: 900;
+      font-size: 1.2rem;
+      color: var(--primary);
+    }
+
+    .sm-mini-badge {
+      background: var(--primary);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 900;
+      font-style: italic;
+    }
+
+    .user-profile-tag {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: white;
+      padding: 4px 10px 4px 6px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      font-size: 0.8rem;
+      font-weight: 700;
+      box-shadow: var(--shadow-sm);
+    }
+    .user-mini-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 800;
+    }
+
+    .welcome-greeting {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin: 0.4rem 1.25rem 0.85rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* GÖREVİNİZ VAR BİLDİRİM BANNERI */
+    .task-alert-banner {
+      background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+      border: 1.5px solid #fed7aa;
+      border-radius: var(--radius-xl);
+      padding: 1rem 1.25rem;
+      margin: 0 1.25rem 1rem 1.25rem;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      box-shadow: 0 4px 14px rgba(255, 85, 0, 0.1);
+      cursor: pointer;
+      animation: pulseAlert 2s infinite ease-in-out;
+    }
+    @keyframes pulseAlert {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.015); box-shadow: 0 6px 20px rgba(255, 85, 0, 0.18); }
+    }
+
+    /* Dashboard Grid Menüsü */
+    .dashboard-service-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.9rem;
+      padding: 0 1.25rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .service-tile {
+      background: var(--card-bg);
+      border-radius: var(--radius-xl);
+      padding: 1.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 0.5rem;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .service-tile:active { transform: scale(0.97); }
+
+    .tile-icon-box {
+      width: 54px;
+      height: 54px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+    }
+
+    .service-tile b { font-size: 0.92rem; font-weight: 800; color: #1e293b; }
+    .service-tile span { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; }
+    .service-tile-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: var(--danger);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 900;
+      padding: 2px 7px;
+      border-radius: 10px;
+      display: none;
+    }
+
+    /* Dashboard Analitik Metrik Kartları */
+    .metric-grid-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.65rem;
+      margin-bottom: 1rem;
+    }
+    .metric-stat-card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1rem;
+      text-align: center;
+    }
+    .metric-stat-val { font-size: 1.4rem; font-weight: 900; color: var(--primary); }
+    .metric-stat-lbl { font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-top: 2px; }
+
+    /* Şerit Menü Butonları */
+    .strip-action-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-xl);
+      padding: 1rem 1.25rem;
+      margin: 0 1.25rem 0.85rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .strip-action-card:active { transform: scale(0.98); }
+
+    /* Alt Sayfa Geri Tuşu Başlığı */
+    .subpage-back-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .back-btn-pill {
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      padding: 0.45rem 0.85rem;
+      font-size: 0.82rem;
+      font-weight: 800;
+      color: #334155;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.15s;
+    }
+    .back-btn-pill:active { transform: scale(0.95); background: #f1f5f9; }
+
+    /* Segmented Tab Butonları */
+    .tab-pills-container {
+      display: flex;
+      background: #f1f5f9;
+      border-radius: 18px;
+      padding: 4px;
+      margin-bottom: 1.2rem;
+      gap: 4px;
+    }
+    .tab-pill-btn {
+      flex: 1;
+      min-height: 42px;
+      border: none;
+      border-radius: 14px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+    }
+    .tab-pill-btn.active { background: white; color: var(--text-main); box-shadow: var(--shadow-sm); }
+    .tab-pill-btn.active.tab-in { color: var(--success); }
+    .tab-pill-btn.active.tab-out { color: var(--danger); }
+    .tab-pill-btn.active.tab-primary { color: var(--primary); }
+
+    .content-box {
+      background: var(--card-bg);
+      border-radius: var(--radius-xl);
+      padding: 1.25rem;
+      margin: 0 1.25rem 1rem 1.25rem;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+    }
+
+    .box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .box-header h3 { font-size: 1.05rem; font-weight: 800; color: var(--text-main); }
+
+    /* Form Elemanları */
+    .form-item { margin-bottom: 0.9rem; }
+    label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    input, select, textarea {
+      width: 100%;
+      min-height: 48px;
+      background: #f8fafc;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-main);
+      padding: 0.5rem 0.9rem;
+      font-size: 0.95rem;
+      outline: none;
+      transition: all 0.2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      background: white;
+      box-shadow: 0 0 0 3px rgba(255, 85, 0, 0.12);
+    }
+
+    .search-input-wrapper {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+    .search-input-wrapper input {
+      padding-left: 2.75rem;
+      border-radius: 24px;
+      background: white;
+      border: 1.5px solid var(--border);
+    }
+    .search-input-wrapper svg {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      pointer-events: none;
+    }
+
+    .btn {
+      min-height: 48px;
+      padding: 0.65rem 1.25rem;
+      border: none;
+      border-radius: 25px;
+      font-weight: 800;
+      font-size: 0.92rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.15s;
+    }
+    .btn:active { transform: scale(0.98); }
+
+    .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(255, 85, 0, 0.25); }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: #f1f5f9; color: var(--text-main); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-success { background: var(--success); color: white; }
+    .btn-bluetooth { background: #0284c7; color: white; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25); }
+    .btn-bluetooth:hover { background: #0369a1; }
+    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-main); }
+
+    .scanner-active-box {
+      background: #fff5f0 !important;
+      border: 2px solid var(--primary) !important;
+      color: var(--primary) !important;
+      font-size: 1.15rem;
+      font-weight: 900;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    /* Rozetler */
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.55rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+    .badge-primary { background: var(--primary-light); color: var(--primary); }
+    .badge-success { background: #d1fae5; color: #065f46; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
+    .badge-danger { background: #fee2e2; color: #991b1b; }
+    .badge-loc { background: #e0f2fe; color: #0369a1; }
+    .badge-purple { background: #f3e8ff; color: #6b21a8; }
+    .badge-blue { background: #e0f2fe; color: #0284c7; }
+    .badge-special { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-weight: 900; }
+
+    /* Tablolar */
+    .table-container-custom {
+      overflow-x: auto;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    th, td {
+      padding: 0.75rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: #f8fafc;
+      color: var(--text-muted);
+      font-weight: 800;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+    }
+
+    /* Alt Sabit Menü */
+    .bottom-nav-bar {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      height: 75px;
+      background: white;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 1000;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+    }
+
+    @media (min-width: 992px) {
+      .bottom-nav-bar {
+        max-width: 680px;
+        border-radius: 30px 30px 0 0;
+        border: 1px solid var(--border);
+        border-bottom: none;
+        box-shadow: 0 -8px 30px rgba(0,0,0,0.08);
+      }
+    }
+
+    .nav-tab-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      background: none;
+      border: none;
+      position: relative;
+    }
+    .nav-tab-item.active { color: var(--primary); }
+
+    .nav-tab-badge {
+      position: absolute;
+      top: -2px;
+      right: 4px;
+      background: var(--danger);
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 900;
+      padding: 1px 5px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .center-scan-fab {
+      width: 58px;
+      height: 58px;
+      border-radius: 20px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 20px rgba(255, 85, 0, 0.4);
+      cursor: pointer;
+      margin-top: -26px;
+      transition: transform 0.15s;
+    }
+    .center-scan-fab:active { transform: scale(0.92); }
+
+    /* Modallar */
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      padding: 1rem;
+    }
+    .modal-backdrop.active { display: flex; }
+    .modal-card {
+      background: white;
+      border-radius: 28px;
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: var(--shadow-md);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    /* ZPL Önizleme */
+    .zpl-preview-card {
+      width: 280px;
+      height: 168px;
+      background: white;
+      border: 2px dashed #94a3b8;
+      border-radius: 8px;
+      margin: 0 auto 1rem auto;
+      padding: 10px;
+      display: flex;
+      gap: 8px;
+      box-shadow: var(--shadow-sm);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="flashOverlay"></div>
+
+  <!-- ==========================================================================
+       1. KLASİK TÜRKÇE GİRİŞ EKRANI
+       ========================================================================== -->
+  <div id="auth-screen-container">
+    <div class="login-brand-area">
+      <div class="login-app-version">Stock Master v3.6 Pro</div>
+      <div class="login-brand-logo">
+        <span class="sm-logo-box">SM</span>
+      </div>
+      <div class="login-welcome-subtitle">Stock Master'a Hoş Geldiniz!</div>
+    </div>
+
+    <div class="login-card-surface">
+      <h2 class="login-card-title">Kullanıcı Girişi</h2>
+
+      <form id="loginForm" onsubmit="event.preventDefault(); AuthEngine.performLogin();">
+        <div class="form-item">
+          <label for="loginUserInput">Kullanıcı Kodu / Kullanıcı Adı</label>
+          <input type="text" id="loginUserInput" placeholder="Örn: admin veya personel1" autocomplete="username" autofocus required />
+        </div>
+
+        <div class="form-item" style="position:relative;">
+          <label for="loginPasswordInput">Şifre</label>
+          <input type="password" id="loginPasswordInput" placeholder="Şifrenizi giriniz..." autocomplete="current-password" required />
+          <span onclick="AuthEngine.togglePasswordVisibility()" style="position:absolute; right:12px; top:36px; cursor:pointer; font-size:1.1rem; user-select:none;">👁️</span>
+        </div>
+
+        <button type="submit" class="login-btn-primary">
+          <span>Giriş Yap</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
+      </form>
+
+      <div class="quick-account-chips">
+        <span>Hızlı Giriş Hesapları:</span>
+        <div class="chip-btn-group">
+          <button class="chip-btn" type="button" onclick="AuthEngine.fillCredentials('admin', '123')">👤 Yönetici (admin / 123)</button>
+          <button class="chip-btn" type="button" onclick="AuthEngine.fillCredentials('personel1', '123')">👷 Personel 1 (123)</button>
+          <button class="chip-btn" type="button" onclick="AuthEngine.fillCredentials('personel2', '123')">👷 Personel 2 (123)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       2. ANA UYGULAMA EKRANI
+       ========================================================================== -->
+  <div id="main-app-container">
+
+    <!-- Hızlı Geri Al (Undo) Alt Bildirimi -->
+    <div id="undoToast">
+      <div style="flex:1;">
+        <span style="font-size:0.7rem; color:#94a3b8; display:block; font-weight:700;">Son Hareket:</span>
+        <b id="undoToastDesc" style="font-size:0.85rem;">-</b>
+      </div>
+      <button class="btn btn-warning" style="min-height:32px; padding:0 0.75rem; font-size:0.75rem; border-radius:16px;" onclick="MovementEngine.undoLastAction()">↩️ Geri Al</button>
+      <button onclick="MovementEngine.hideToast()" style="background:none; border:none; color:#94a3b8; font-size:1.1rem; cursor:pointer; padding:0 4px;">✕</button>
+    </div>
+
+    <!-- Üst Başlık (Header) -->
+    <div class="app-header">
+      <div class="brand-logo-small">
+        <span class="sm-mini-badge">SM</span>
+        <span>Stock Master</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <div class="user-profile-tag">
+          <div class="user-mini-avatar" id="appHeaderAvatar">A</div>
+          <span id="appHeaderUserName">Arda Ulaş</span>
+        </div>
+        <button class="btn btn-secondary" style="min-height:34px; padding:0 0.65rem; border-radius:17px; font-size:0.75rem;" onclick="AuthEngine.logout()">Çıkış</button>
+      </div>
+    </div>
+
+    <!-- Karşılama Başlığı -->
+    <div class="welcome-greeting">
+      <span>👋</span>
+      <span>Hoş Geldin, <b id="appGreetingName">ARDA ULAŞ</b></span>
+    </div>
+
+    <!-- ==================== GÖRÜNÜM: DASHBOARD ==================== -->
+    <div id="view-dashboard" class="app-view-screen">
+      
+      <!-- Göreviniz Var Bildirim Bannerı (Kişiye özel veya havuz) -->
+      <div class="task-alert-banner" id="dashTaskAlertBanner" onclick="Navigation.openModule('tasks')">
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+          <span style="font-size:1.6rem;">🔔</span>
+          <div>
+            <div style="font-weight:900; font-size:0.95rem; color:#c2410c;" id="dashTaskAlertTitle">Göreviniz Var!</div>
+            <div style="font-size:0.75rem; color:#7c2d12; font-weight:600;" id="dashTaskAlertText">Bekleyen saha görevleriniz bulunmaktadır.</div>
+          </div>
+        </div>
+        <span class="badge badge-danger" id="dashTaskBadgeCount">0 Görev</span>
+      </div>
+
+      <!-- Servis Kutuları Grid -->
+      <div class="dashboard-service-grid">
+        <div class="service-tile" onclick="Navigation.openModule('batch', 'IN')">
+          <div class="tile-icon-box" style="background:#fff0eb; color:var(--primary);">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          </div>
+          <b>Stok İşlemleri</b>
+          <span>Giriş & Çıkış Motoru</span>
+        </div>
+
+        <div class="service-tile" onclick="Navigation.openModule('finder')">
+          <div class="tile-icon-box" style="background:#f0fdf4; color:var(--success);">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </div>
+          <b>Hızlı Ürün Bulucu</b>
+          <span>Sorgula & Stoktan Düş</span>
+        </div>
+
+        <div class="service-tile" onclick="Navigation.openModule('labels')">
+          <div class="tile-icon-box" style="background:#e0f2fe; color:var(--blue);">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M7 7h10v10H7z"></path></svg>
+          </div>
+          <b>Etiket Motoru</b>
+          <span>Zebra ZPL & Bluetooth</span>
+        </div>
+
+        <div class="service-tile" onclick="Navigation.openModule('tasks')">
+          <span class="service-tile-badge" id="tileTaskBadge">0</span>
+          <div class="tile-icon-box" style="background:#fef3c7; color:#d97706;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+          </div>
+          <b>Görev Havuzu</b>
+          <span>Havuz & İş Emirleri</span>
+        </div>
+      </div>
+
+      <!-- YÖNETİCİ DASHBOARD ANALİTİK PANELİ -->
+      <div class="content-box" id="adminDashboardAnalyticsCard">
+        <div class="box-header">
+          <h3>📊 Görev Havuzu & Performans Analitiği</h3>
+          <span class="badge badge-primary">Canlı Özet</span>
+        </div>
+
+        <div class="metric-grid-box">
+          <div class="metric-stat-card">
+            <div class="metric-stat-val" style="color:var(--warning);" id="dashStatPendingTasks">0</div>
+            <div class="metric-stat-lbl">Bekleyen Görev</div>
+          </div>
+          <div class="metric-stat-card">
+            <div class="metric-stat-val" style="color:var(--success);" id="dashStatCompletedTasks">0</div>
+            <div class="metric-stat-lbl">Tamamlanan</div>
+          </div>
+          <div class="metric-stat-card">
+            <div class="metric-stat-val" style="color:var(--danger);" id="dashStatCancelledTasks">0</div>
+            <div class="metric-stat-lbl">İptal Edilen</div>
+          </div>
+          <div class="metric-stat-card">
+            <div class="metric-stat-val" style="color:var(--blue);" id="dashStatTotalTasks">0</div>
+            <div class="metric-stat-lbl">Toplam Görev</div>
+          </div>
+        </div>
+
+        <label style="margin-top:0.75rem; margin-bottom:0.4rem; display:block;">Personel Görev Tamamlama Karnesi</label>
+        <div class="table-container-custom" style="max-height:180px;">
+          <table id="dashStaffTaskLeaderboard">
+            <thead>
+              <tr>
+                <th>Personel</th>
+                <th>Tamamlanan</th>
+                <th>Son İşlem</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Şerit Menü Butonları -->
+      <div class="strip-action-card" onclick="Navigation.openModule('inventory')">
+        <div style="display:flex; align-items:center; gap:0.85rem;">
+          <span style="font-size:1.5rem;">📦</span>
+          <div>
+            <div style="font-weight:800; font-size:0.95rem;">Stok Envanteri & İsim Düzenleme</div>
+            <span style="font-size:0.75rem; color:var(--text-muted);" id="lblDashboardUndefCount">0 Tanımsız Ürün Var</span>
+          </div>
+        </div>
+        <span style="color:var(--primary); font-size:1.2rem; font-weight:bold;">➔</span>
+      </div>
+
+      <div class="strip-action-card" onclick="Navigation.openModule('movements')">
+        <div style="display:flex; align-items:center; gap:0.85rem;">
+          <span style="font-size:1.5rem;">📜</span>
+          <div>
+            <div style="font-weight:800; font-size:0.95rem;">Hareket Defteri & Geri Al (Undo)</div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Görev ve stok hareket kayıtları</span>
+          </div>
+        </div>
+        <span style="color:var(--primary); font-size:1.2rem; font-weight:bold;">➔</span>
+      </div>
+
+      <div class="strip-action-card" id="cardAdminPersonnelSection" onclick="Navigation.openModule('personnel')">
+        <div style="display:flex; align-items:center; gap:0.85rem;">
+          <span style="font-size:1.5rem;">👥</span>
+          <div>
+            <div style="font-weight:800; font-size:0.95rem;">Personel & Görev Yetkileri</div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Şifre, rol ve yetki düzenleme</span>
+          </div>
+        </div>
+        <span style="color:var(--primary); font-size:1.2rem; font-weight:bold;">➔</span>
+      </div>
+
+      <div class="strip-action-card" onclick="Navigation.openModule('import')">
+        <div style="display:flex; align-items:center; gap:0.85rem;">
+          <span style="font-size:1.5rem;">📥</span>
+          <div>
+            <div style="font-weight:800; font-size:0.95rem;">Excel / CSV Veri İçe Aktar</div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Toplu stok ve ürün yükleme</span>
+          </div>
+        </div>
+        <span style="color:var(--primary); font-size:1.2rem; font-weight:bold;">➔</span>
+      </div>
+    </div>
+
+    <!-- ==================== GÖRÜNÜM 1: BİRLEŞTİRİLMİŞ STOK İŞLEMLERİ ==================== -->
+    <div id="view-batch" class="app-view-screen" style="display:none;">
+      <div class="subpage-back-bar">
+        <button class="back-btn-pill" onclick="Navigation.openModule('dashboard')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <span>Geri (Dashboard)</span>
+        </button>
+      </div>
+
+      <div class="content-box">
+        <div class="tab-pills-container">
+          <button class="tab-pill-btn active tab-in" id="btnTabModeIn" onclick="BatchEngine.setMode('IN')">📥 Seri Raflama (Giriş)</button>
+          <button class="tab-pill-btn tab-out" id="btnTabModeOut" onclick="BatchEngine.setMode('OUT')">📤 Seri Toplama (Çıkış)</button>
+        </div>
+
+        <div class="box-header">
+          <h3 id="batchViewTitle">📥 Seri Raflama (Giriş)</h3>
+          <span class="badge badge-primary" id="batchCountBadge">0 İşlem</span>
+        </div>
+
+        <div style="background:#fff5f0; border:1px solid #fed7aa; border-radius:var(--radius-lg); padding:0.85rem 1rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-size:0.7rem; color:var(--primary); font-weight:800;">HEDEF LOKASYON / RAF</div>
+            <div id="batchActiveShelf" style="font-size:1.3rem; font-weight:900; color:var(--text-main);">RAF OKUTUNUZ</div>
+          </div>
+          <button class="btn btn-secondary" style="min-height:34px; padding:0 0.75rem; font-size:0.75rem;" onclick="BatchEngine.unlockShelf()">Değiştir</button>
+        </div>
+
+        <div class="form-item">
+          <label>El Terminali / Barkod Okutma</label>
+          <input type="text" id="batchBarcodeInput" class="scanner-active-box" placeholder="Raf veya Barkod Okutun..." autocomplete="off" autofocus />
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">Okutma Başına Adet:</span>
+          <input type="number" id="batchStepQty" value="1" min="1" style="width:80px; min-height:38px; text-align:center; font-weight:bold;" />
+        </div>
+
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-secondary" style="flex:1;" onclick="BatchEngine.clearInput()">Temizle</button>
+          <button class="btn btn-danger" id="btnFlushShelf" style="display:none; flex:1;" onclick="BatchEngine.flushShelf()">Raftan Boşalt</button>
+        </div>
+      </div>
+
+      <div class="content-box">
+        <div class="box-header">
+          <h3>Son Okutulanlar</h3>
+          <button class="btn btn-secondary" style="min-height:28px; padding:0 0.5rem; font-size:0.75rem;" onclick="BatchEngine.clearFeed()">Temizle</button>
+        </div>
+        <div class="table-container-custom" style="max-height:260px;">
+          <table id="batchLiveTable">
+            <thead><tr><th>Saat</th><th>Ürün</th><th>İşlem</th><th>Kalan</th></tr></thead>
+            <tbody><tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Henüz okutma yapılmadı.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== GÖRÜNÜM 2: HIZLI ÜRÜN BULUCU & ÇIKIŞ ==================== -->
+    <div id="view-finder" class="app-view-screen" style="display:none;">
+      <div class="subpage-back-bar">
+        <button class="back-btn-pill" onclick="Navigation.openModule('dashboard')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <span>Geri (Dashboard)</span>
+        </button>
+      </div>
+
+      <div class="content-box">
+        <div class="box-header"><h3>🔍 Hızlı Ürün Bulucu & Çıkış</h3></div>
+        
+        <div class="form-item">
+          <label>Barkod veya Raf Kodu Okutun</label>
+          <input type="text" id="finderSearchInput" class="scanner-active-box" placeholder="Barkod veya Raf Okutunuz..." autocomplete="off" oninput="FinderEngine.handleInput(this.value)" autofocus />
+        </div>
+
+        <div id="finderProductCard" style="display:none; background:#f8fafc; border:1.5px solid var(--border); border-radius:var(--radius-lg); padding:1.25rem; margin-top:1rem;">
+          <h3 id="fpName" style="color:var(--primary); font-size:1.15rem; margin-bottom:0.25rem;">-</h3>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">Barkod: <code id="fpBarcode" style="font-weight:bold;">-</code></p>
+          
+          <div style="display:flex; justify-content:space-between; background:white; padding:0.75rem; border-radius:var(--radius-md); border:1px solid var(--border); margin-bottom:1rem;">
+            <div>
+              <span style="font-size:0.7rem; color:var(--text-muted); display:block; font-weight:700;">LOKASYON / RAF</span>
+              <span id="fpShelf" class="badge badge-loc" style="font-size:0.9rem; margin-top:2px;">-</span>
+            </div>
+            <div style="text-align:right;">
+              <span style="font-size:0.7rem; color:var(--text-muted); display:block; font-weight:700;">KALAN STOK</span>
+              <span id="fpStock" class="badge badge-success" style="font-size:1rem; margin-top:2px;">0</span>
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">
+            <label style="margin:0; font-size:0.8rem;">Çıkılacak Adet:</label>
+            <input type="number" id="finderOutQty" value="1" min="1" style="width:80px; min-height:42px; text-align:center; font-weight:bold;" />
+          </div>
+
+          <div style="display:flex; gap:0.5rem;">
+            <button class="btn btn-danger" style="flex:2;" onclick="FinderEngine.executeQuickStockOut()">📤 Stoktan Çıkar & Sıfırla</button>
+            <button class="btn btn-success" style="flex:1;" onclick="FinderEngine.executeQuickStockIn()">📥 Ekle (+1)</button>
+          </div>
+        </div>
+
+        <div id="finderShelfList" style="display:none; margin-top:1rem;">
+          <h4 style="margin-bottom:0.5rem; color:var(--primary);">📍 Raftaki Ürünler: <span id="fsShelfCode"></span></h4>
+          <div class="table-container-custom">
+            <table id="finderShelfTable">
+              <thead><tr><th>Barkod</th><th>Ürün Adı</th><th>Stok</th><th>İşlem</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== GÖRÜNÜM 3: ZEBRA ZPL ETİKET MOTORU ==================== -->
+    <div id="view-labels" class="app-view-screen" style="display:none;">
+      <div class="subpage-back-bar">
+        <button class="back-btn-pill" onclick="Navigation.openModule('dashboard')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <span>Geri (Dashboard)</span>
+        </button>
+      </div>
+
+      <div class="content-box">
+        <div class="tab-pills-container">
+          <button class="tab-pill-btn active tab-primary" id="btnLabelTabSingle" onclick="ZplEngine.setSubTab('SINGLE')">🏷️ Tekli Etiket Bas</button>
+          <button class="tab-pill-btn tab-primary" id="btnLabelTabBatch" onclick="ZplEngine.setSubTab('BATCH')">📚 Toplu Raf Aralığı</button>
+        </div>
+
+        <div class="box-header">
+          <h3 id="lblFactoryHeaderTitle">🏷️ Tekli Zebra ZPL Etiket</h3>
+          <span class="badge" id="btStatusBadge" style="background:#f1f5f9; color:#64748b;">BT: Bağlantı Yok</span>
+        </div>
+
+        <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:var(--radius-lg); padding:0.85rem 1rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-size:0.75rem; color:#0369a1; font-weight:800;">BLUETOOTH TERMAL YAZICI</div>
+            <div id="btDeviceName" style="font-size:0.95rem; font-weight:800; color:#0c4a6e;">Bağlı Cihaz Yok</div>
+          </div>
+          <button class="btn btn-bluetooth" style="min-height:36px; padding:0 0.85rem; font-size:0.8rem;" onclick="BluetoothPrinter.toggleConnection()">
+            <span id="btBtnText">🔵 Yazıcıya Bağlan</span>
+          </button>
+        </div>
+
+        <!-- TEKLİ ALAN -->
+        <div id="subtab-label-single">
+          <div class="form-item">
+            <label>Lokasyon Formatı (Örn: A-01 veya A-01-1)</label>
+            <input type="text" id="zplLocInput" value="A-01" placeholder="Örn: A-01 veya B-04-2" oninput="ZplEngine.renderSingle()" />
+          </div>
+
+          <div class="zpl-preview-card">
+            <div id="zplQrContainer" style="width:85px; display:flex; align-items:center; justify-content:center;"></div>
+            <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+              <div id="lblLargeText" style="font-size:24px; font-weight:900; color:#000;">A-01</div>
+              <div style="font-size:12px; font-weight:bold; color:#64748b;">LOKASYON QR</div>
+            </div>
+          </div>
+
+          <div class="form-item">
+            <label>Ham ZPL Kodu (203 DPI - 50x30mm)</label>
+            <textarea id="zplRawOutput" rows="3" readonly style="font-family:monospace; font-size:0.75rem;"></textarea>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:0.5rem;">
+            <button class="btn btn-bluetooth" style="width:100%; font-size:1rem;" onclick="BluetoothPrinter.printZpl(document.getElementById('zplRawOutput').value)">
+              🖨️ Bluetooth ile Direkt Yazdır
+            </button>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-primary" style="flex:1;" onclick="ZplEngine.downloadZpl()">💾 .zpl İndir</button>
+              <button class="btn btn-secondary" style="flex:1;" onclick="ZplEngine.copyZpl()">📋 Kopyala</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TOPLU ARALIK ALANI -->
+        <div id="subtab-label-batch" style="display:none;">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.6rem; margin-bottom:0.75rem;">
+            <div class="form-item">
+              <label>Başlangıç Bloğu</label>
+              <input type="text" id="batchStartBlock" value="A" maxlength="2" style="text-transform:uppercase; font-weight:bold;" />
+            </div>
+            <div class="form-item">
+              <label>Bitiş Bloğu</label>
+              <input type="text" id="batchEndBlock" value="A" maxlength="2" style="text-transform:uppercase; font-weight:bold;" />
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.6rem; margin-bottom:0.75rem;">
+            <div class="form-item">
+              <label>Başlangıç Rafı</label>
+              <input type="number" id="batchStartRack" value="1" min="1" max="999" />
+            </div>
+            <div class="form-item">
+              <label>Bitiş Rafı</label>
+              <input type="number" id="batchEndRack" value="10" min="1" max="999" />
+            </div>
+          </div>
+
+          <div class="form-item">
+            <label>Kat Aralığı (Opsiyonel / Boş Bırakılabilir)</label>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.6rem;">
+              <input type="number" id="batchStartShelf" placeholder="Örn: 1" />
+              <input type="number" id="batchEndShelf" placeholder="Örn: 3" />
+            </div>
+          </div>
+
+          <button class="btn btn-primary" style="width:100%; margin-bottom:1rem;" onclick="ZplEngine.generateRangeBatch()">
+            ⚡ Toplu Etiketleri Üret (<span id="batchGenCountLabel">10</span> Adet)
+          </button>
+
+          <div class="form-item">
+            <label>Üretilen Toplu ZPL Kodu</label>
+            <textarea id="zplBatchRawOutput" rows="4" readonly style="font-family:monospace; font-size:0.75rem;"></textarea>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:0.5rem;">
+            <button class="btn btn-bluetooth" style="width:100%; font-size:1rem;" onclick="BluetoothPrinter.printZpl(document.getElementById('zplBatchRawOutput').value)">
+              🖨️ Toplu ZPL'i Bluetooth ile Yazdır
+            </button>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-primary" style="flex:1;" onclick="ZplEngine.downloadBatchZpl()">💾 Toplu .zpl İndir</button>
+              <button class="btn btn-secondary" style="flex:1;" onclick="ZplEngine.copyBatchZpl()">📋 Kopyala</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==================== GÖRÜNÜM 4: STOK ENVANTERİ ==================== -->
+    <div id="view-inventory" class="app-view-screen" style="display:none;">
+      <div class="subpage-back-bar">
+        <button class="back-btn-pill" onclick="Navigation.openModule('dashboard')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <span>Geri (Dashboard)</span>
+        </button>
+      </div>
+
+      <div class="content-box">
+        <div class="box-header">
+          <h3>📦 Depo Envanter Listesi</h3>
+          <button class="btn btn-secondary" style="min-height:32px; padding:0 0.65rem; font-size:0.75rem;" onclick="InventoryEngine.toggleUndefinedFilter()">⚠️ Sadece Tanımsızlar</button>
+        </div>
+
+        <div class="search-input-wrapper">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="invFilterInput" placeholder="Ürün Adı, Barkod, Kategori veya Raf ara..." oninput="InventoryEngine.render()" />
+        </div>
+
+        <div class="table-container-custom" style="max-height:460px;">
+          <table id="inventoryTable">
+            <thead>
+              <tr>
+                <th>Barkod</th>
+                <th>Ürün Adı</th>
+                <th>Raf</th>
+                <th>Stok</th>
+                <th>İşlem</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== GÖRÜNÜM 5: GÖREV HAVUZU (ÖZEL PERSONEL + HAVUZ & OTOMATİK BAŞLIK) ==================== -->
+    <div id="view-tasks" class="app-view-screen" style="display:none;">
+      <div class="subpage-back-bar">
+        <button class="back-btn-pill" onclick="Navigation.openModule('dashboard')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <span>Geri (Dashboard)</span>
+        </button>
+      </div>
+
+      <!-- Yeni Görev Atama (Yetkili Amirler İçin) -->
+      <div class="content-box" id="taskCreateCard">
+        <div class="box-header"><h3>📋 Yeni Saha Görevi Ata</h3></div>
+
+        <div class="form-item">
+          <label>Ürün Barkodu Sorgula (Otomatik Raf & Bilgi Getirir)</label>
+          <input type="text" id="taskBarcodeLookup" placeholder="Barkod okutun veya yazın..." oninput="TaskEngine.autoLookup(this.value)" />
+        </div>
+
+        <div id="taskAutoCard" style="display:none; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:var(--radius-lg); padding:0.75rem 1rem; margin-bottom:0.85rem;">
+          <b id="taskFoundName" style="color:var(--success); font-size:0.95rem;">-</b>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+            Mevcut Raf: <span id="taskFoundShelf" class="badge badge-loc">-</span> | Stok: <span id="taskFoundStock">0</span>
+          </div>
+        </div>
+
+        <div class="form-item">
+          <label>Görev Başlığı (Boş bırakılırsa "Ürün Talebi" atanır)</label>
+          <input type="text" id="taskTitleInput" placeholder="Örn: 01 Nolu Raf Tam Sayımı veya Ürün Toplama" />
+        </div>
+
+        <div class="form-item">
+          <label>Hedef Raf</label>
+          <input type="text" id="taskShelfInput" placeholder="Örn: A-01" />
+        </div>
+
+        <!-- Havuz ve Personel Seçim Alanı -->
+        <div class="form-item">
+          <label>Atama Hedefi (Havuz veya Özel Personel)</label>
+          <select id="taskAssigneeSelect">
+            <option value="HAVUZ">🌐 Ortak Görev Havuzu (Tüm Personel)</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;" onclick="TaskEngine.create()">✓ Görevi Ata / Havuza Gönder</button>
+      </div>
+
+      <!-- Görev Havuzu Listesi -->
+      <div class="content-box">
+        <div class="box-header">
+          <h3>📋 Görev Havuzu & Atamalar</h3>
+          <span class="badge badge-primary" id="lblTaskPoolCount">0 Bekleyen</span>
+        </div>
+        <div class="table-container-custom">
+          <table id="tasksListTable">
+            <thead>
+              <tr>
+                <th>Görev & Hedef</th>
+                <th>Atanan</th>
+                <th>Durum</th>
+                <th>Tamamlayan / Saat</th>
+                <th>İşlem</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== GÖRÜNÜM 6: HAREKET DEFTERİ & AUDIT LOG ==================== -->
+    <div id="view-movements" class="app-view-screen" style="display:none;">
+      <div class="subpage-back-bar">
+        <button class="back-btn-pill" onclick="Navigation.openModule('dashboard')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <span>Geri (Dashboard)</span>
+        </button>
+      </div>
+
+      <div class="content-box">
+        <div class="box-header"><h3>📜 Hareket Defteri & Denetim Günlüğü</h3></div>
+        <div class="table-container-custom" style="max-height:480px;">
+          <table id="movementsTable">
+            <thead>
+              <tr>
+                <th>Saat</th>
+                <th>İşlem</th>
+                <th>Barkod / Nesne</th>
+                <th>Miktar</th>
+                <th>Personel</th>
+                <th>Detay / Geri Al</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== GÖRÜNÜM 7: PERSONEL & DETAYLI YETKİ VE ŞİFRE DÜZENLEME ==================== -->
+    <div id="view-personnel" class="app-view-screen" style="display:none;">
+      <div class="subpage-back-bar">
+        <button class="back-btn-pill" onclick="Navigation.openModule('dashboard')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <span>Geri (Dashboard)</span>
+        </button>
+      </div>
+
+      <div class="content-box">
+        <div class="box-header">
+          <h3 id="staffFormTitle">👥 Yeni Personel Ekle</h3>
+          <button class="btn btn-secondary" id="btnCancelStaffEdit" style="display:none; min-height:28px; padding:0 0.5rem; font-size:0.75rem;" onclick="PersonnelEngine.cancelEdit()">Vazgeç</button>
+        </div>
+        
+        <div class="form-item">
+          <label>Kullanıcı Kodu (Giriş ID)</label>
+          <input type="text" id="staffUsername" placeholder="Örn: mehmet.kaya veya p03" />
+        </div>
+
+        <div class="form-item">
+          <label>Ad Soyad</label>
+          <input type="text" id="staffFullName" placeholder="Örn: Mehmet Kaya" />
+        </div>
+
+        <div class="form-item">
+          <label>Giriş Şifresi</label>
+          <input type="password" id="staffPassword" placeholder="Şifre belirleyin..." />
+        </div>
+
+        <div class="form-item">
+          <label>Rol</label>
+          <select id="staffRole" onchange="PersonnelEngine.handleRoleChange()">
+            <option value="STAFF">Depo / Saha Personeli</option>
+            <option value="SUPERVISOR">Vardiya Amiri</option>
+            <option value="ADMIN">Tam Yetkili Yönetici (Admin)</option>
+          </select>
+        </div>
+
+        <label style="margin-top:1rem; margin-bottom:0.5rem; display:block;">Detaylı İzin Matrisi</label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; background:#f8fafc; padding:0.85rem; border-radius:var(--radius-lg); border:1px solid var(--border); margin-bottom:1rem;">
+          <label><input type="checkbox" id="perm_in" checked /> Stok Girişi (Raflama)</label>
+          <label><input type="checkbox" id="perm_out" checked /> Stok Çıkışı (Toplama)</label>
+          <label><input type="checkbox" id="perm_undo" checked /> Geri Al (Undo)</label>
+          <label><input type="checkbox" id="perm_zpl" checked /> ZPL Etiket & Bluetooth</label>
+          <label><input type="checkbox" id="perm_edit_prod" checked /> Ürün İsmi Düzenleme</label>
+          <label><input type="checkbox" id="perm_tasks_view" checked /> Görevleri Görebilir / Tamamlar</label>
+          <label><input type="checkbox" id="perm_tasks_assign" /> <b>Yeni Görev Atayabilir</b></label>
+          <label><input type="checkbox" id="perm_import" /> Excel İçe Aktarma</label>
+          <label><input type="checkbox" id="perm_admin" /> Personel Yönetimi</label>
+        </div>
+
+        <button class="btn btn-primary" id="btnSaveStaff" style="width:100%;" onclick="PersonnelEngine.savePersonnel()">✓ Personeli Kaydet</button>
+      </div>
+
+      <div class="content-box">
+        <div class="box-header"><h3>Kayıtlı Personel Listesi</h3></div>
+        <div class="table-container-custom">
+          <table id="staffListTable">
+            <thead>
+              <tr>
+                <th>Ad Soyad</th>
+                <th>Kullanıcı Kodu</th>
+                <th>Rol</th>
+                <th>İşlemler</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== GÖRÜNÜM 8: EXCEL / CSV İÇE AKTARMA ==================== -->
+    <div id="view-import" class="app-view-screen" style="display:none;">
+      <div class="subpage-back-bar">
+        <button class="back-btn-pill" onclick="Navigation.openModule('dashboard')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <span>Geri (Dashboard)</span>
+        </button>
+      </div>
+
+      <div class="content-box">
+        <div class="box-header"><h3>📥 Excel / CSV Yükleme</h3></div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
+          Beklenen sütunlar: <code>Barkod</code>, <code>UrunAdi</code>, <code>Kategori</code>, <code>Lokasyon</code>, <code>StokAdedi</code>
+        </p>
+        <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv, .txt" style="margin-bottom:1rem;" />
+        <button class="btn btn-primary" style="width:100%;" onclick="ImportEngine.process()">Dosyayı Çözümle ve Yükle</button>
+      </div>
+    </div>
+
+    <!-- ==================== ALT SABİT NAVİGASYON ==================== -->
+    <div class="bottom-nav-bar">
+      <button class="nav-tab-item active" id="navHome" onclick="Navigation.openModule('dashboard')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 6"></polyline></svg>
+        <span>Ana Sayfa</span>
+      </button>
+
+      <button class="nav-tab-item" id="navInventory" onclick="Navigation.openModule('inventory')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+        <span>Stoklar</span>
+      </button>
+
+      <!-- Ortadaki Turuncu FAB Barkod Butonu -> HIZLI ÜRÜN BULUCU / ÇIKAR -->
+      <button class="center-scan-fab" onclick="Navigation.openModule('finder')">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><line x1="7" y1="8" x2="7" y2="16"></line><line x1="11" y1="8" x2="11" y2="16"></line><line x1="15" y1="8" x2="15" y2="16"></line><line x1="17" y1="8" x2="17" y2="16"></line></svg>
+      </button>
+
+      <button class="nav-tab-item" id="navTasks" onclick="Navigation.openModule('tasks')">
+        <span class="nav-tab-badge" id="bottomNavTaskBadge">0</span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        <span>Görevler</span>
+      </button>
+
+      <button class="nav-tab-item" id="navMovements" onclick="Navigation.openModule('movements')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <span>Log/Undo</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- GÖREV DOĞRULAMA MODALI (RAF OKUT + ÜRÜN OKUT + STOK DÜŞÜMÜ) -->
+  <div class="modal-backdrop" id="taskVerifyModal">
+    <div class="modal-card">
+      <h3 style="margin-bottom:0.5rem; color:var(--primary); font-weight:900;">📋 Görev Doğrulama & Stok Düşümü</h3>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
+        Görevi tamamlamak için hedef rafı ve ürün barkodunu okutarak doğrulayınız.
+      </p>
+
+      <div style="background:#f8fafc; border:1px solid var(--border); border-radius:var(--radius-md); padding:0.85rem; margin-bottom:1rem;">
+        <div style="font-size:0.95rem; font-weight:900; color:var(--text-main);" id="tvTaskTitle">-</div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">
+          Hedef Raf: <span class="badge badge-loc" id="tvTargetShelf">-</span> | Beklenen Barkod: <code id="tvTargetBarcode" style="font-weight:bold;">-</code>
+        </div>
+      </div>
+
+      <div class="form-item">
+        <label for="tvScanShelf">1. Raf QR Kodunu Okutun</label>
+        <input type="text" id="tvScanShelf" class="scanner-active-box" placeholder="Hedef Rafı Okutun..." autocomplete="off" />
+      </div>
+
+      <div class="form-item">
+        <label for="tvScanBarcode">2. Ürün Barkodunu Okutun</label>
+        <input type="text" id="tvScanBarcode" class="scanner-active-box" placeholder="Ürün Barkodunu Okutun..." autocomplete="off" />
+      </div>
+
+      <div style="display:flex; gap:0.5rem; margin-top:1.25rem;">
+        <button class="btn btn-secondary" style="flex:1;" onclick="TaskEngine.closeVerifyModal()">İptal</button>
+        <button class="btn btn-success" style="flex:2;" onclick="TaskEngine.executeVerification()">✓ Doğrula & Stoğu Düş</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÜRÜN İSİM DÜZENLEME MODALI -->
+  <div class="modal-backdrop" id="editProductModal">
+    <div class="modal-card">
+      <h3 style="margin-bottom:1rem; color:var(--primary); font-weight:900;">✏️ Ürün İsmi & Bilgi Düzenle</h3>
+      <div class="form-item">
+        <label>Barkod</label>
+        <input type="text" id="editBarcode" readonly style="font-weight:bold; background:#f1f5f9;" />
+      </div>
+      <div class="form-item">
+        <label>Ürün Adı</label>
+        <input type="text" id="editName" placeholder="Doğru ürün adını giriniz..." />
+      </div>
+      <div class="form-item">
+        <label>Kategori / Beden</label>
+        <input type="text" id="editCategory" />
+      </div>
+      <div class="form-item">
+        <label>Raf / Lokasyon</label>
+        <input type="text" id="editLocation" />
+      </div>
+      <div style="display:flex; gap:0.5rem; margin-top:1.25rem;">
+        <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('editProductModal').classList.remove('active')">İptal</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="InventoryEngine.saveEdit()">Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       JAVASCRIPT ÇEKİRDEK MOTORU
+       ========================================================================== -->
+  <script>
+    /**
+     * SES VE TİTREŞİM MOTORU
+     */
+    const AudioEngine = {
+      ctx: null,
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+      },
+      flash(ok) {
+        const f = document.getElementById('flashOverlay');
+        f.className = ok ? 'flash-success' : 'flash-error';
+        setTimeout(() => { f.className = ''; }, 140);
+      },
+      beepSuccess() {
+        this.init();
+        this.flash(true);
+        if (navigator.vibrate) navigator.vibrate(70);
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(900, now);
+        osc.frequency.exponentialRampToValueAtTime(1800, now + 0.1);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(now); osc.stop(now + 0.1);
+      },
+      beepError() {
+        this.init();
+        this.flash(false);
+        if (navigator.vibrate) navigator.vibrate([120, 50, 120]);
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, now);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(now); osc.stop(now + 0.25);
+      }
+    };
+
+    /**
+     * BLUETOOTH YAZICI MOTORU (DIRECT WEB BLUETOOTH)
+     */
+    const BluetoothPrinter = {
+      device: null,
+      characteristic: null,
+      connected: false,
+
+      async toggleConnection() {
+        if (this.connected) this.disconnect();
+        else await this.connect();
+      },
+
+      async connect() {
+        if (!navigator.bluetooth) {
+          AudioEngine.beepError();
+          alert('Tarayıcınız Web Bluetooth desteklemiyor. Lütfen Google Chrome kullanınız.');
+          return false;
+        }
+
+        try {
+          this.device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [
+              '38eb4a80-c570-11e3-9507-0002a5d5c51b',
+              '000018f0-0000-1000-8000-00805f9b34fb',
+              '0000ff00-0000-1000-8000-00805f9b34fb',
+              'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+              '00001101-0000-1000-8000-00805f9b34fb',
+              0x18f0,
+              0xff00
+            ]
+          });
+
+          this.device.addEventListener('gattserverdisconnected', () => {
+            this.connected = false;
+            this.characteristic = null;
+            this.updateUI();
+          });
+
+          const server = await this.device.gatt.connect();
+          const services = await server.getPrimaryServices();
+
+          for (const service of services) {
+            const characteristics = await service.getCharacteristics();
+            for (const char of characteristics) {
+              if (char.properties.write || char.properties.writeWithoutResponse) {
+                this.characteristic = char;
+                break;
+              }
+            }
+            if (this.characteristic) break;
+          }
+
+          if (!this.characteristic) {
+            throw new Error('Yazıcıda yazılabilir bir Bluetooth karakteristiği bulunamadı.');
+          }
+
+          this.connected = true;
+          this.updateUI();
+          AudioEngine.beepSuccess();
+          alert(`✓ Bluetooth Yazıcı Bağlandı: ${this.device.name || 'Termal Yazıcı'}`);
+          return true;
+        } catch (err) {
+          this.connected = false;
+          this.updateUI();
+          if (err.name !== 'NotFoundError') {
+            AudioEngine.beepError();
+            alert(`Bluetooth bağlantı hatası: ${err.message}`);
+          }
+          return false;
+        }
+      },
+
+      disconnect() {
+        if (this.device && this.device.gatt.connected) {
+          this.device.gatt.disconnect();
+        }
+        this.connected = false;
+        this.characteristic = null;
+        this.updateUI();
+        alert('Bluetooth yazıcı bağlantısı kesildi.');
+      },
+
+      updateUI() {
+        const badge = document.getElementById('btStatusBadge');
+        const devName = document.getElementById('btDeviceName');
+        const btnText = document.getElementById('btBtnText');
+
+        if (this.connected && this.device) {
+          badge.className = 'badge badge-success';
+          badge.innerText = 'BT: Bağlı ✓';
+          devName.innerText = this.device.name || 'Bluetooth Yazıcı';
+          btnText.innerText = '🔴 Bağlantıyı Kes';
+        } else {
+          badge.className = 'badge';
+          badge.style.background = '#f1f5f9';
+          badge.style.color = '#64748b';
+          badge.innerText = 'BT: Bağlantı Yok';
+          devName.innerText = 'Bağlı Cihaz Yok';
+          btnText.innerText = '🔵 Yazıcıya Bağlan';
+        }
+      },
+
+      async printZpl(zplCode) {
+        if (!AuthEngine.hasPerm('zpl')) return alert('Etiket basma yetkiniz bulunmamaktadır!');
+        if (!zplCode) return alert('Basılacak ZPL kodu bulunamadı.');
+
+        if (!this.connected || !this.characteristic) {
+          const ok = await this.connect();
+          if (!ok) return;
+        }
+
+        try {
+          const encoder = new TextEncoder();
+          const data = encoder.encode(zplCode);
+
+          const chunkSize = 100;
+          for (let i = 0; i < data.length; i += chunkSize) {
+            const chunk = data.slice(i, i + chunkSize);
+            if (this.characteristic.properties.write) {
+              await this.characteristic.writeValueWithResponse(chunk);
+            } else {
+              await this.characteristic.writeValue(chunk);
+            }
+            await new Promise(r => setTimeout(r, 20));
+          }
+
+          AudioEngine.beepSuccess();
+          alert('✓ ZPL Etiketi Bluetooth ile başarıyla yazdırıldı!');
+        } catch (err) {
+          AudioEngine.beepError();
+          alert(`Baskı gönderim hatası: ${err.message}`);
+        }
+      }
+    };
+
+    /**
+     * INDEXEDDB VERİ TABANI KATMANI
+     */
+    class DBAdapter {
+      constructor() { this.db = null; }
+      async init() {
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open('StockMasterDB_v3_6', 1);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('products')) {
+              const p = db.createObjectStore('products', { keyPath: 'barcode' });
+              p.createIndex('location', 'location', { unique: false });
+            }
+            if (!db.objectStoreNames.contains('movements')) {
+              db.createObjectStore('movements', { keyPath: 'id', autoIncrement: true });
+            }
+            if (!db.objectStoreNames.contains('tasks')) {
+              db.createObjectStore('tasks', { keyPath: 'id', autoIncrement: true });
+            }
+            if (!db.objectStoreNames.contains('users')) {
+              db.createObjectStore('users', { keyPath: 'username' });
+            }
+          };
+          req.onsuccess = (e) => { this.db = e.target.result; resolve(); };
+          req.onerror = (e) => reject(e);
+        });
+      }
+      async get(s, k) {
+        return new Promise((res) => {
+          const req = this.db.transaction(s, 'readonly').objectStore(s).get(k);
+          req.onsuccess = () => res(req.result);
+        });
+      }
+      async getAll(s) {
+        return new Promise((res) => {
+          const req = this.db.transaction(s, 'readonly').objectStore(s).getAll();
+          req.onsuccess = () => res(req.result || []);
+        });
+      }
+      async put(s, item) {
+        return new Promise((res) => {
+          const tx = this.db.transaction(s, 'readwrite');
+          const req = tx.objectStore(s).put(item);
+          req.onsuccess = () => res(req.result);
+        });
+      }
+      async delete(s, k) {
+        return new Promise((res) => {
+          const tx = this.db.transaction(s, 'readwrite');
+          const req = tx.objectStore(s).delete(k);
+          req.onsuccess = () => res(true);
+        });
+      }
+      async batchPut(s, items) {
+        return new Promise((res) => {
+          const tx = this.db.transaction(s, 'readwrite');
+          const store = tx.objectStore(s);
+          items.forEach(i => store.put(i));
+          tx.oncomplete = () => res();
+        });
+      }
+      async queryIndex(s, idx, val) {
+        return new Promise((res) => {
+          const req = this.db.transaction(s, 'readonly').objectStore(s).index(idx).getAll(val);
+          req.onsuccess = () => res(req.result || []);
+        });
+      }
+    }
+    const DB = new DBAdapter();
+
+    /**
+     * KİMLİK DOĞRULAMA (AUTH & RBAC)
+     */
+    const AuthEngine = {
+      currentUser: null,
+
+      async init() {
+        const users = await DB.getAll('users');
+        if (users.length === 0) {
+          const defaultAdmin = {
+            username: 'admin',
+            fullName: 'Arda Ulaş',
+            password: '123',
+            role: 'ADMIN',
+            permissions: { in: true, out: true, undo: true, zpl: true, edit_prod: true, tasks_view: true, tasks_assign: true, import: true, admin: true }
+          };
+          const defaultStaff1 = {
+            username: 'personel1',
+            fullName: 'Mehmet Demir',
+            password: '123',
+            role: 'STAFF',
+            permissions: { in: true, out: true, undo: true, zpl: false, edit_prod: false, tasks_view: true, tasks_assign: false, import: false, admin: false }
+          };
+          const defaultStaff2 = {
+            username: 'personel2',
+            fullName: 'Ayşe Kaya',
+            password: '123',
+            role: 'STAFF',
+            permissions: { in: true, out: true, undo: true, zpl: true, edit_prod: true, tasks_view: true, tasks_assign: false, import: false, admin: false }
+          };
+          await DB.put('users', defaultAdmin);
+          await DB.put('users', defaultStaff1);
+          await DB.put('users', defaultStaff2);
+        }
+
+        const session = sessionStorage.getItem('stockmaster_session_v3_6');
+        if (session) {
+          this.currentUser = JSON.parse(session);
+          this.mountApp();
+        } else {
+          this.unmountApp();
+        }
+      },
+
+      fillCredentials(user, pass) {
+        document.getElementById('loginUserInput').value = user;
+        document.getElementById('loginPasswordInput').value = pass;
+        this.performLogin();
+      },
+
+      togglePasswordVisibility() {
+        const inp = document.getElementById('loginPasswordInput');
+        inp.type = inp.type === 'password' ? 'text' : 'password';
+      },
+
+      async performLogin() {
+        const userInput = document.getElementById('loginUserInput').value.trim().toLowerCase();
+        const passInput = document.getElementById('loginPasswordInput').value.trim();
+
+        if (!userInput || !passInput) {
+          AudioEngine.beepError();
+          return alert('Lütfen Kullanıcı Kodu ve Şifrenizi giriniz.');
+        }
+
+        const users = await DB.getAll('users');
+        const matched = users.find(u => u.username.toLowerCase() === userInput);
+
+        if (matched && matched.password === passInput) {
+          this.currentUser = matched;
+          sessionStorage.setItem('stockmaster_session_v3_6', JSON.stringify(this.currentUser));
+          AudioEngine.beepSuccess();
+          this.mountApp();
+        } else {
+          AudioEngine.beepError();
+          alert('Hatalı Kullanıcı Kodu veya Şifre! Lütfen kontrol ediniz.');
+        }
+      },
+
+      async mountApp() {
+        document.getElementById('auth-screen-container').style.display = 'none';
+        document.getElementById('main-app-container').style.display = 'block';
+
+        document.getElementById('appHeaderUserName').innerText = this.currentUser.fullName;
+        document.getElementById('appGreetingName').innerText = this.currentUser.fullName.toUpperCase();
+        document.getElementById('appHeaderAvatar').innerText = this.currentUser.fullName.charAt(0).toUpperCase();
+
+        document.getElementById('cardAdminPersonnelSection').style.display = this.currentUser.role === 'ADMIN' ? 'flex' : 'none';
+
+        Navigation.openModule('dashboard');
+        await TaskEngine.populateAssignees();
+        TaskEngine.checkUserTasks();
+        TaskEngine.renderDashboardAnalytics();
+        PersonnelEngine.renderList();
+        InventoryEngine.render();
+      },
+
+      unmountApp() {
+        document.getElementById('main-app-container').style.display = 'none';
+        document.getElementById('auth-screen-container').style.display = 'flex';
+        document.getElementById('loginPasswordInput').value = '';
+        setTimeout(() => document.getElementById('loginUserInput').focus(), 100);
+      },
+
+      logout() {
+        sessionStorage.removeItem('stockmaster_session_v3_6');
+        this.currentUser = null;
+        this.unmountApp();
+      },
+
+      hasPerm(permKey) {
+        if (!this.currentUser) return false;
+        if (this.currentUser.role === 'ADMIN') return true;
+        return !!this.currentUser.permissions?.[permKey];
+      }
+    };
+
+    /**
+     * PERSONEL BİLGİ, ŞİFRE VE YETKİ DÜZENLEME MOTORU
+     */
+    const PersonnelEngine = {
+      editingUsername: null,
+
+      handleRoleChange() {
+        const role = document.getElementById('staffRole').value;
+        const isAdmin = role === 'ADMIN';
+        const isSuper = role === 'SUPERVISOR';
+
+        document.getElementById('perm_in').checked = true;
+        document.getElementById('perm_out').checked = true;
+        document.getElementById('perm_undo').checked = true;
+        document.getElementById('perm_zpl').checked = isAdmin || isSuper;
+        document.getElementById('perm_edit_prod').checked = isAdmin || isSuper;
+        document.getElementById('perm_tasks_view').checked = true;
+        document.getElementById('perm_tasks_assign').checked = isAdmin || isSuper;
+        document.getElementById('perm_import').checked = isAdmin || isSuper;
+        document.getElementById('perm_admin').checked = isAdmin;
+      },
+
+      async loadToEdit(username) {
+        const user = await DB.get('users', username);
+        if (!user) return;
+
+        this.editingUsername = username;
+        document.getElementById('staffFormTitle').innerText = `✏️ Personel Düzenle: ${user.fullName}`;
+        document.getElementById('staffUsername').value = user.username;
+        document.getElementById('staffUsername').disabled = true;
+        document.getElementById('staffFullName').value = user.fullName;
+        document.getElementById('staffPassword').value = user.password;
+        document.getElementById('staffRole').value = user.role;
+
+        document.getElementById('perm_in').checked = !!user.permissions?.in;
+        document.getElementById('perm_out').checked = !!user.permissions?.out;
+        document.getElementById('perm_undo').checked = !!user.permissions?.undo;
+        document.getElementById('perm_zpl').checked = !!user.permissions?.zpl;
+        document.getElementById('perm_edit_prod').checked = !!user.permissions?.edit_prod;
+        document.getElementById('perm_tasks_view').checked = !!user.permissions?.tasks_view;
+        document.getElementById('perm_tasks_assign').checked = !!user.permissions?.tasks_assign;
+        document.getElementById('perm_import').checked = !!user.permissions?.import;
+        document.getElementById('perm_admin').checked = !!user.permissions?.admin;
+
+        document.getElementById('btnSaveStaff').innerText = '✓ Değişiklikleri Kaydet';
+        document.getElementById('btnCancelStaffEdit').style.display = 'inline-block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      },
+
+      cancelEdit() {
+        this.editingUsername = null;
+        document.getElementById('staffFormTitle').innerText = '👥 Yeni Personel Ekle';
+        document.getElementById('staffUsername').value = '';
+        document.getElementById('staffUsername').disabled = false;
+        document.getElementById('staffFullName').value = '';
+        document.getElementById('staffPassword').value = '';
+        document.getElementById('staffRole').value = 'STAFF';
+        this.handleRoleChange();
+
+        document.getElementById('btnSaveStaff').innerText = '✓ Personeli Kaydet';
+        document.getElementById('btnCancelStaffEdit').style.display = 'none';
+      },
+
+      async savePersonnel() {
+        if (!AuthEngine.hasPerm('admin')) return alert('Bu işlem için Yönetici yetkisi gereklidir!');
+
+        const username = document.getElementById('staffUsername').value.trim().toLowerCase();
+        const fullName = document.getElementById('staffFullName').value.trim();
+        const password = document.getElementById('staffPassword').value.trim();
+        const role = document.getElementById('staffRole').value;
+
+        if (!username || !fullName || !password) return alert('Lütfen tüm alanları doldurunuz.');
+
+        const permissions = {
+          in: document.getElementById('perm_in').checked,
+          out: document.getElementById('perm_out').checked,
+          undo: document.getElementById('perm_undo').checked,
+          zpl: document.getElementById('perm_zpl').checked,
+          edit_prod: document.getElementById('perm_edit_prod').checked,
+          tasks_view: document.getElementById('perm_tasks_view').checked,
+          tasks_assign: document.getElementById('perm_tasks_assign').checked,
+          import: document.getElementById('perm_import').checked,
+          admin: document.getElementById('perm_admin').checked
+        };
+
+        await DB.put('users', { username, fullName, password, role, permissions });
+        AudioEngine.beepSuccess();
+        alert(`✓ ${fullName} (${username}) personeli başarıyla kaydedildi / güncellendi.`);
+
+        this.cancelEdit();
+        this.renderList();
+        TaskEngine.populateAssignees();
+      },
+
+      async renderList() {
+        const users = await DB.getAll('users');
+        const tbody = document.querySelector('#staffListTable tbody');
+        tbody.innerHTML = users.map(u => `
+          <tr>
+            <td><b>${u.fullName}</b></td>
+            <td><code>${u.username}</code></td>
+            <td><span class="badge ${u.role === 'ADMIN' ? 'badge-primary' : 'badge-purple'}">${u.role}</span></td>
+            <td>
+              <div style="display:flex; gap:4px;">
+                <button class="btn btn-secondary" style="min-height:26px; padding:0 0.5rem; font-size:0.7rem;" onclick="PersonnelEngine.loadToEdit('${u.username}')">✏️ Düzenle</button>
+                <button class="btn btn-secondary" style="min-height:26px; padding:0 0.5rem; font-size:0.7rem; color:var(--danger);" onclick="PersonnelEngine.deleteUser('${u.username}')">Sil</button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      },
+
+      async deleteUser(username) {
+        if (username === 'admin' || username === AuthEngine.currentUser?.username) {
+          return alert('Aktif yönetici hesabı silinemez!');
+        }
+        if (!confirm(`${username} kullanıcısını silmek istediğinize emin misiniz?`)) return;
+        await DB.delete('users', username);
+        AudioEngine.beepSuccess();
+        this.renderList();
+        TaskEngine.populateAssignees();
+      }
+    };
+
+    /**
+     * HAREKET DEFTERİ & AUDIT LOG
+     */
+    const MovementEngine = {
+      lastId: null,
+      toastTimer: null,
+
+      async log(type, barcode, qty, fromLoc, toLoc, note = '') {
+        const entry = {
+          time: new Date().toISOString(),
+          type,
+          barcode,
+          qty,
+          fromLoc: fromLoc || '-',
+          toLoc: toLoc || '-',
+          user: AuthEngine.currentUser?.fullName || 'Bilinmeyen',
+          note,
+          isReversed: false
+        };
+        const id = await DB.put('movements', entry);
+        this.lastId = id;
+        
+        if (['STOK_GIRIS', 'STOK_CIKIS'].includes(type)) {
+          this.showToast(`${type}: ${barcode} (${qty > 0 ? '+' : ''}${qty})`);
+        }
+        this.render();
+      },
+
+      showToast(desc) {
+        if (this.toastTimer) {
+          clearTimeout(this.toastTimer);
+          this.toastTimer = null;
+        }
+
+        const toast = document.getElementById('undoToast');
+        document.getElementById('undoToastDesc').innerText = desc;
+        toast.classList.add('show');
+
+        this.toastTimer = setTimeout(() => {
+          this.hideToast();
+        }, 2200);
+      },
+
+      hideToast() {
+        const toast = document.getElementById('undoToast');
+        toast.classList.remove('show');
+        if (this.toastTimer) {
+          clearTimeout(this.toastTimer);
+          this.toastTimer = null;
+        }
+      },
+
+      async undoLastAction() {
+        if (!this.lastId) return;
+        await this.rollback(this.lastId);
+        this.hideToast();
+      },
+
+      async rollback(id) {
+        if (!AuthEngine.hasPerm('undo')) {
+          AudioEngine.beepError();
+          return alert('İşlemi geri alma (Undo) yetkiniz bulunmamaktadır!');
+        }
+
+        const m = await DB.get('movements', id);
+        if (!m || m.isReversed) return alert('İşlem geri alınamaz veya daha önce alındı.');
+
+        const p = await DB.get('products', m.barcode);
+        if (!p) return alert('Ürün sistemde bulunamadı.');
+
+        if (m.type === 'STOK_GIRIS') {
+          p.stock = Math.max(0, p.stock - m.qty);
+        } else if (m.type === 'STOK_CIKIS') {
+          p.stock += Math.abs(m.qty);
+        }
+        await DB.put('products', p);
+
+        m.isReversed = true;
+        await DB.put('movements', m);
+
+        AudioEngine.beepSuccess();
+        alert('İşlem başarıyla geri alındı, stok eski haline getirildi.');
+        this.render();
+        InventoryEngine.render();
+      },
+
+      async render() {
+        const logs = await DB.getAll('movements');
+        logs.sort((a,b) => b.id - a.id);
+        const tbody = document.querySelector('#movementsTable tbody');
+        if (!logs.length) {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Kayıt yok.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = logs.slice(0, 60).map(l => {
+          let badgeClass = 'badge-primary';
+          let sign = '';
+
+          if (l.type === 'STOK_GIRIS') { badgeClass = 'badge-success'; sign = '+'; }
+          else if (l.type === 'STOK_CIKIS') { badgeClass = 'badge-danger'; sign = '-'; }
+          else if (l.type === 'GOREV_ATAMA') { badgeClass = 'badge-blue'; }
+          else if (l.type === 'GOREV_TAMAMLANDI') { badgeClass = 'badge-success'; }
+          else if (l.type === 'GOREV_IPTAL') { badgeClass = 'badge-danger'; }
+
+          const canUndo = !l.isReversed && ['STOK_GIRIS', 'STOK_CIKIS'].includes(l.type);
+
+          return `
+            <tr style="${l.isReversed ? 'opacity:0.4; text-decoration:line-through;' : ''}">
+              <td style="font-size:0.75rem;">${new Date(l.time).toLocaleTimeString('tr-TR')}</td>
+              <td><span class="badge ${badgeClass}">${l.type}</span></td>
+              <td><b>${l.barcode}</b></td>
+              <td><b>${l.qty ? sign + Math.abs(l.qty) : '-'}</b></td>
+              <td>${l.user}</td>
+              <td style="font-size:0.75rem;">
+                ${l.note ? `<span style="color:var(--text-muted); display:block; margin-bottom:2px;">${l.note}</span>` : ''}
+                ${canUndo ? `<button class="btn btn-secondary" style="min-height:24px; padding:0 0.4rem; font-size:0.7rem;" onclick="MovementEngine.rollback(${l.id})">Geri Al</button>` : ''}
+                ${l.isReversed ? '<span style="color:var(--danger); font-size:0.7rem;">Geri Alındı</span>' : ''}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    };
+
+    /**
+     * BİRLEŞTİRİLMİŞ STOK İŞLEMLERİ
+     */
+    const BatchEngine = {
+      mode: 'IN',
+      shelf: null,
+      count: 0,
+
+      init() {
+        const inp = document.getElementById('batchBarcodeInput');
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.handleScan(inp.value.trim());
+          }
+        });
+      },
+
+      setMode(m) {
+        this.mode = m;
+        document.getElementById('btnTabModeIn').className = `tab-pill-btn tab-in ${m === 'IN' ? 'active' : ''}`;
+        document.getElementById('btnTabModeOut').className = `tab-pill-btn tab-out ${m === 'OUT' ? 'active' : ''}`;
+        document.getElementById('batchViewTitle').innerText = m === 'IN' ? '📥 Seri Raflama (Giriş)' : '📤 Seri Toplama (Çıkış)';
+        document.getElementById('btnFlushShelf').style.display = (m === 'OUT' && this.shelf) ? 'inline-flex' : 'none';
+        this.clearInput();
+      },
+
+      clearInput() {
+        const i = document.getElementById('batchBarcodeInput');
+        i.value = '';
+        i.focus();
+      },
+
+      unlockShelf() {
+        this.shelf = null;
+        document.getElementById('batchActiveShelf').innerText = 'RAF OKUTUNUZ';
+        document.getElementById('btnFlushShelf').style.display = 'none';
+        this.clearInput();
+      },
+
+      isLocationCode(c) {
+        return /^[A-Za-z0-9]+-\d+.*$/i.test(c);
+      },
+
+      async handleScan(code) {
+        if (!code) return;
+        this.clearInput();
+
+        if (this.isLocationCode(code)) {
+          this.shelf = code.toUpperCase();
+          document.getElementById('batchActiveShelf').innerText = this.shelf;
+          if (this.mode === 'OUT') document.getElementById('btnFlushShelf').style.display = 'inline-flex';
+          AudioEngine.beepSuccess();
+          this.appendFeed('RAF SEÇİLDİ', this.shelf, '-', '-');
+          return;
+        }
+
+        const stepQty = parseInt(document.getElementById('batchStepQty').value, 10) || 1;
+
+        if (this.mode === 'IN') {
+          if (!AuthEngine.hasPerm('in')) return alert('Stok girişi yetkiniz bulunmamaktadır!');
+          if (!this.shelf) {
+            AudioEngine.beepError();
+            return alert('Lütfen önce bir Raf QR okutunuz (Örn: A-01 veya A-01-1)!');
+          }
+
+          let product = await DB.get('products', code);
+
+          if (!product) {
+            product = {
+              barcode: code,
+              name: `Tanımsız Ürün (${code})`,
+              isUndefined: true,
+              category: 'Genel',
+              location: this.shelf,
+              stock: stepQty
+            };
+            await DB.put('products', product);
+            await MovementEngine.log('STOK_GIRIS', code, stepQty, '-', this.shelf, 'Yeni ürün tanımlandı.');
+          } else {
+            product.stock += stepQty;
+            const oldLoc = product.location || '-';
+            product.location = this.shelf;
+            await DB.put('products', product);
+            await MovementEngine.log('STOK_GIRIS', code, stepQty, oldLoc, this.shelf, 'Stok artırıldı.');
+          }
+
+          this.count += stepQty;
+          document.getElementById('batchCountBadge').innerText = `${this.count} İşlem`;
+          this.appendFeed('GİRİŞ (+)', product.name, `+${stepQty}`, product.stock);
+          AudioEngine.beepSuccess();
+          InventoryEngine.updateBadge();
+        } else {
+          if (!AuthEngine.hasPerm('out')) return alert('Stok çıkışı yetkiniz bulunmamaktadır!');
+          const product = await DB.get('products', code);
+          if (!product || product.stock < stepQty) {
+            AudioEngine.beepError();
+            return alert('Yetersiz stok veya ürün bulunamadı!');
+          }
+          product.stock -= stepQty;
+          await DB.put('products', product);
+          await MovementEngine.log('STOK_CIKIS', code, -stepQty, product.location, '-', 'Stok düşüldü.');
+
+          this.count += stepQty;
+          document.getElementById('batchCountBadge').innerText = `${this.count} İşlem`;
+          this.appendFeed('ÇIKIŞ (-)', product.name, `-${stepQty}`, product.stock);
+          AudioEngine.beepSuccess();
+        }
+      },
+
+      async flushShelf() {
+        if (!this.shelf) return;
+        if (!confirm(`${this.shelf} rafındaki TÜM ürünler boşaltılsın mı?`)) return;
+        const products = await DB.queryIndex('products', 'location', this.shelf);
+        for (const p of products) {
+          const q = p.stock;
+          p.stock = 0;
+          await DB.put('products', p);
+          await MovementEngine.log('STOK_CIKIS', p.barcode, -q, this.shelf, '-', 'Toplu raf boşaltma.');
+        }
+        AudioEngine.beepSuccess();
+        alert('Raf boşaltıldı.');
+        InventoryEngine.render();
+      },
+
+      appendFeed(action, name, delta, rem) {
+        const tbody = document.querySelector('#batchLiveTable tbody');
+        if (tbody.children[0]?.children.length === 1) tbody.innerHTML = '';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="font-size:0.75rem;">${new Date().toLocaleTimeString('tr-TR')}</td>
+          <td><b>${name.substring(0, 18)}</b></td>
+          <td><span class="badge ${action.includes('+') ? 'badge-success' : 'badge-danger'}">${action}</span></td>
+          <td><b>${rem}</b></td>
+        `;
+        tbody.prepend(tr);
+      },
+
+      clearFeed() {
+        document.querySelector('#batchLiveTable tbody').innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Temizlendi.</td></tr>`;
+      }
+    };
+
+    /**
+     * HIZLI ÜRÜN BULUCU (FINDER ENGINE)
+     */
+    const FinderEngine = {
+      activeProduct: null,
+
+      init() {
+        const inp = document.getElementById('finderSearchInput');
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.handleInput(inp.value.trim());
+          }
+        });
+      },
+
+      resetScreen() {
+        this.activeProduct = null;
+        const inp = document.getElementById('finderSearchInput');
+        inp.value = '';
+        document.getElementById('finderProductCard').style.display = 'none';
+        document.getElementById('finderShelfList').style.display = 'none';
+        setTimeout(() => inp.focus(), 50);
+      },
+
+      async handleInput(val) {
+        val = val.trim();
+        const pCard = document.getElementById('finderProductCard');
+        const sList = document.getElementById('finderShelfList');
+
+        if (!val) {
+          pCard.style.display = 'none';
+          sList.style.display = 'none';
+          this.activeProduct = null;
+          return;
+        }
+
+        if (/^[A-Za-z0-9]+-\d+.*$/i.test(val)) {
+          pCard.style.display = 'none';
+          const products = await DB.queryIndex('products', 'location', val.toUpperCase());
+          document.getElementById('fsShelfCode').innerText = val.toUpperCase();
+          sList.style.display = 'block';
+
+          const tbody = document.querySelector('#finderShelfTable tbody');
+          if (!products.length) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Bu rafta ürün bulunmamaktadır.</td></tr>`;
+          } else {
+            tbody.innerHTML = products.map(p => `
+              <tr>
+                <td><b>${p.barcode}</b></td>
+                <td>${p.name}</td>
+                <td><span class="badge badge-success">${p.stock}</span></td>
+                <td>
+                  <button class="btn btn-danger" style="min-height:28px; padding:0 0.5rem; font-size:0.75rem;" onclick="FinderEngine.quickShelfDeduct('${p.barcode}')">-1 Düş</button>
+                </td>
+              </tr>
+            `).join('');
+          }
+          AudioEngine.beepSuccess();
+          return;
+        }
+
+        sList.style.display = 'none';
+        const product = await DB.get('products', val);
+        if (product) {
+          this.activeProduct = product;
+          document.getElementById('fpName').innerText = product.name;
+          document.getElementById('fpBarcode').innerText = product.barcode;
+          document.getElementById('fpShelf').innerText = product.location || 'TANIMSIZ';
+          document.getElementById('fpStock').innerText = `${product.stock} Adet`;
+          pCard.style.display = 'block';
+          AudioEngine.beepSuccess();
+        } else {
+          pCard.style.display = 'none';
+          this.activeProduct = null;
+        }
+      },
+
+      async executeQuickStockOut() {
+        if (!AuthEngine.hasPerm('out')) return alert('Stok çıkışı yetkiniz bulunmamaktadır!');
+        if (!this.activeProduct) return;
+
+        const qty = parseInt(document.getElementById('finderOutQty').value, 10) || 1;
+        if (this.activeProduct.stock < qty) {
+          AudioEngine.beepError();
+          return alert(`Yetersiz stok! Mevcut: ${this.activeProduct.stock}`);
+        }
+
+        this.activeProduct.stock -= qty;
+        await DB.put('products', this.activeProduct);
+        await MovementEngine.log('STOK_CIKIS', this.activeProduct.barcode, -qty, this.activeProduct.location, '-', 'Hızlı bulucudan düşüldü.');
+
+        AudioEngine.beepSuccess();
+        InventoryEngine.render();
+        this.resetScreen();
+      },
+
+      async executeQuickStockIn() {
+        if (!AuthEngine.hasPerm('in')) return alert('Stok girişi yetkiniz bulunmamaktadır!');
+        if (!this.activeProduct) return;
+
+        this.activeProduct.stock += 1;
+        await DB.put('products', this.activeProduct);
+        await MovementEngine.log('STOK_GIRIS', this.activeProduct.barcode, 1, '-', this.activeProduct.location, 'Hızlı bulucudan eklendi.');
+
+        AudioEngine.beepSuccess();
+        InventoryEngine.render();
+        this.resetScreen();
+      },
+
+      async quickShelfDeduct(barcode) {
+        if (!AuthEngine.hasPerm('out')) return alert('Stok çıkışı yetkiniz bulunmamaktadır!');
+        const p = await DB.get('products', barcode);
+        if (p && p.stock > 0) {
+          p.stock -= 1;
+          await DB.put('products', p);
+          await MovementEngine.log('STOK_CIKIS', p.barcode, -1, p.location, '-', 'Raftan hızlı düşüldü.');
+          AudioEngine.beepSuccess();
+          this.handleInput(document.getElementById('finderSearchInput').value);
+          InventoryEngine.render();
+        } else {
+          alert('Stok yetersiz!');
+        }
+      }
+    };
+
+    /**
+     * ZEBRA ZPL ETİKET MOTORU
+     */
+    const ZplEngine = {
+      subTab: 'SINGLE',
+
+      setSubTab(tab) {
+        this.subTab = tab;
+        document.getElementById('btnLabelTabSingle').className = `tab-pill-btn tab-primary ${tab === 'SINGLE' ? 'active' : ''}`;
+        document.getElementById('btnLabelTabBatch').className = `tab-pill-btn tab-primary ${tab === 'BATCH' ? 'active' : ''}`;
+
+        document.getElementById('subtab-label-single').style.display = tab === 'SINGLE' ? 'block' : 'none';
+        document.getElementById('subtab-label-batch').style.display = tab === 'BATCH' ? 'block' : 'none';
+        document.getElementById('lblFactoryHeaderTitle').innerText = tab === 'SINGLE' ? '🏷️ Tekli Zebra ZPL Etiket' : '📚 Toplu Raf Aralığı Basımı';
+
+        if (tab === 'SINGLE') this.renderSingle();
+        else this.generateRangeBatch();
+      },
+
+      renderSingle() {
+        const loc = (document.getElementById('zplLocInput').value || 'A-01').toUpperCase().trim();
+        document.getElementById('lblLargeText').innerText = loc;
+
+        const qrBox = document.getElementById('zplQrContainer');
+        qrBox.innerHTML = '';
+        if (window.QRCode) {
+          new QRCode(qrBox, { text: loc, width: 80, height: 80 });
+        }
+
+        const zpl = `^XA
+^PW400
+^LL240
+^PON
+^FO30,35^BQN,2,4^FDQA,${loc}^FS
+^FO170,60^A0N,50,45^FD${loc}^FS
+^FO170,130^A0N,28,24^FDLOKASYON QR^FS
+^XZ`;
+        document.getElementById('zplRawOutput').value = zpl;
+      },
+
+      generateRangeBatch() {
+        const startBlock = (document.getElementById('batchStartBlock').value || 'A').toUpperCase().trim();
+        const endBlock = (document.getElementById('batchEndBlock').value || 'A').toUpperCase().trim();
+
+        const startRack = parseInt(document.getElementById('batchStartRack').value, 10) || 1;
+        const endRack = parseInt(document.getElementById('batchEndRack').value, 10) || 10;
+
+        const startShelfVal = document.getElementById('batchStartShelf').value;
+        const endShelfVal = document.getElementById('batchEndShelf').value;
+
+        const hasShelf = startShelfVal !== '' && endShelfVal !== '';
+        const startShelf = parseInt(startShelfVal, 10) || 1;
+        const endShelf = parseInt(endShelfVal, 10) || 1;
+
+        let totalZpl = '';
+        let count = 0;
+
+        const startChar = startBlock.charCodeAt(0);
+        const endChar = endBlock.charCodeAt(0);
+
+        for (let b = startChar; b <= endChar; b++) {
+          const currentBlock = String.fromCharCode(b);
+          for (let r = startRack; r <= endRack; r++) {
+            const rackStr = String(r).padStart(2, '0');
+
+            if (hasShelf) {
+              for (let s = startShelf; s <= endShelf; s++) {
+                const locCode = `${currentBlock}-${rackStr}-${s}`;
+                totalZpl += `^XA\n^PW400\n^LL240\n^PON\n^FO30,35^BQN,2,4^FDQA,${locCode}^FS\n^FO170,60^A0N,50,45^FD${locCode}^FS\n^FO170,130^A0N,28,24^FDLOKASYON QR^FS\n^XZ\n`;
+                count++;
+              }
+            } else {
+              const locCode = `${currentBlock}-${rackStr}`;
+              totalZpl += `^XA\n^PW400\n^LL240\n^PON\n^FO30,35^BQN,2,4^FDQA,${locCode}^FS\n^FO170,60^A0N,50,45^FD${locCode}^FS\n^FO170,130^A0N,28,24^FDLOKASYON QR^FS\n^XZ\n`;
+              count++;
+            }
+          }
+        }
+
+        document.getElementById('batchGenCountLabel').innerText = count;
+        document.getElementById('zplBatchRawOutput').value = totalZpl;
+      },
+
+      downloadZpl() {
+        const z = document.getElementById('zplRawOutput').value;
+        const b = new Blob([z], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(b);
+        a.download = `Lokasyon_${Date.now()}.zpl`;
+        a.click();
+      },
+
+      copyZpl() {
+        navigator.clipboard.writeText(document.getElementById('zplRawOutput').value).then(() => {
+          AudioEngine.beepSuccess();
+          alert('ZPL Kodu panoya kopyalandı.');
+        });
+      },
+
+      downloadBatchZpl() {
+        const z = document.getElementById('zplBatchRawOutput').value;
+        const b = new Blob([z], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(b);
+        a.download = `Toplu_Raf_Etiketleri_${Date.now()}.zpl`;
+        a.click();
+      },
+
+      copyBatchZpl() {
+        navigator.clipboard.writeText(document.getElementById('zplBatchRawOutput').value).then(() => {
+          AudioEngine.beepSuccess();
+          alert('Toplu ZPL Kodları kopyalandı.');
+        });
+      }
+    };
+
+    /**
+     * STOK ENVANTERİ
+     */
+    const InventoryEngine = {
+      onlyUndefined: false,
+
+      async render() {
+        const products = await DB.getAll('products');
+        const q = (document.getElementById('invFilterInput')?.value || '').toLowerCase().trim();
+        this.updateBadge(products);
+
+        let list = products.filter(p => 
+          p.name.toLowerCase().includes(q) || 
+          p.barcode.toLowerCase().includes(q) || 
+          (p.category && p.category.toLowerCase().includes(q)) ||
+          (p.location && p.location.toLowerCase().includes(q))
+        );
+
+        if (this.onlyUndefined) {
+          list = list.filter(p => p.isUndefined || p.name.startsWith('Tanımsız'));
+        }
+
+        const tbody = document.querySelector('#inventoryTable tbody');
+        if (!list.length) {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:1.5rem;">Aradığınız kriterlere uygun ürün bulunamadı.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = list.map(p => `
+          <tr>
+            <td><b>${p.barcode}</b></td>
+            <td>
+              ${p.name.startsWith('Tanımsız') ? `<span class="badge badge-warning">Tanımsız</span> ` : ''}
+              ${p.name}
+            </td>
+            <td><span class="badge badge-loc">${p.location || '-'}</span></td>
+            <td><b>${p.stock}</b></td>
+            <td>
+              <button class="btn btn-secondary" style="min-height:28px; padding:0 0.5rem; font-size:0.75rem;" onclick="InventoryEngine.openEdit('${p.barcode}')">Düzenle</button>
+            </td>
+          </tr>
+        `).join('');
+      },
+
+      toggleUndefinedFilter() {
+        this.onlyUndefined = !this.onlyUndefined;
+        this.render();
+      },
+
+      async updateBadge(products) {
+        const list = products || await DB.getAll('products');
+        const undefCount = list.filter(p => p.isUndefined || p.name.startsWith('Tanımsız')).length;
+        document.getElementById('lblDashboardUndefCount').innerText = `${undefCount} Tanımsız Ürün Var`;
+      },
+
+      async openEdit(barcode) {
+        if (!AuthEngine.hasPerm('edit_prod')) return alert('Ürün düzenleme yetkiniz bulunmamaktadır!');
+        const p = await DB.get('products', barcode);
+        if (!p) return;
+
+        document.getElementById('editBarcode').value = p.barcode;
+        document.getElementById('editName').value = p.name.startsWith('Tanımsız') ? '' : p.name;
+        document.getElementById('editCategory').value = p.category || 'Genel';
+        document.getElementById('editLocation').value = p.location || 'A-01';
+        document.getElementById('editProductModal').classList.add('active');
+        setTimeout(() => document.getElementById('editName').focus(), 100);
+      },
+
+      async saveEdit() {
+        const barcode = document.getElementById('editBarcode').value;
+        const name = document.getElementById('editName').value.trim() || `Ürün ${barcode}`;
+        const p = await DB.get('products', barcode);
+        if (!p) return;
+
+        p.name = name;
+        p.category = document.getElementById('editCategory').value.trim();
+        p.location = document.getElementById('editLocation').value.trim().toUpperCase();
+        p.isUndefined = false;
+
+        await DB.put('products', p);
+        AudioEngine.beepSuccess();
+        document.getElementById('editProductModal').classList.remove('active');
+        this.render();
+      }
+    };
+
+    /**
+     * GÖREV HAVUZU (ÖZEL PERSONEL + HAVUZ & OTOMATİK BAŞLIK + DOĞRULAMA & STOK DÜŞÜMÜ)
+     */
+    const TaskEngine = {
+      currentVerifyingTaskId: null,
+
+      updatePermissionsUI() {
+        const canAssign = AuthEngine.hasPerm('tasks_assign');
+        document.getElementById('taskCreateCard').style.display = canAssign ? 'block' : 'none';
+      },
+
+      async checkUserTasks() {
+        if (!AuthEngine.currentUser) return;
+        const tasks = await DB.getAll('tasks');
+        
+        // 1. Kullanıcıya ÖZEL atanmış bekleyen görevler
+        const myPersonalPending = tasks.filter(t => 
+          t.status === 'BEKLİYOR' && 
+          (t.assignedTo === AuthEngine.currentUser.username || t.assignedFullName === AuthEngine.currentUser.fullName)
+        );
+
+        // 2. Ortak Havuzda bekleyen görevler
+        const poolPending = tasks.filter(t => t.status === 'BEKLİYOR' && t.assignedTo === 'HAVUZ');
+
+        const totalPending = myPersonalPending.length + poolPending.length;
+
+        const banner = document.getElementById('dashTaskAlertBanner');
+        const titleEl = document.getElementById('dashTaskAlertTitle');
+        const textEl = document.getElementById('dashTaskAlertText');
+        const badge1 = document.getElementById('dashTaskBadgeCount');
+        const badge2 = document.getElementById('tileTaskBadge');
+        const badge3 = document.getElementById('bottomNavTaskBadge');
+        const poolCountLbl = document.getElementById('lblTaskPoolCount');
+
+        if (poolCountLbl) poolCountLbl.innerText = `${totalPending} Bekleyen`;
+
+        if (totalPending > 0) {
+          banner.style.display = 'flex';
+          badge1.innerText = `${totalPending} Görev`;
+          badge2.style.display = 'inline-block';
+          badge2.innerText = totalPending;
+          badge3.style.display = 'inline-block';
+          badge3.innerText = totalPending;
+
+          if (myPersonalPending.length > 0) {
+            titleEl.innerText = '⭐ Size Özel Görev Var!';
+            textEl.innerText = `Adınıza atanmış ${myPersonalPending.length} adet öncelikli görev bulunmaktadır!`;
+          } else {
+            titleEl.innerText = '🌐 Havuzda Açık Görev Var!';
+            textEl.innerText = `Ortak havuzda tamamlanmayı bekleyen ${poolPending.length} adet görev var.`;
+          }
+        } else {
+          banner.style.display = 'none';
+          badge2.style.display = 'none';
+          badge3.style.display = 'none';
+        }
+      },
+
+      async populateAssignees() {
+        const users = await DB.getAll('users');
+        const sel = document.getElementById('taskAssigneeSelect');
+        if (!sel) return;
+        sel.innerHTML = `
+          <option value="HAVUZ">🌐 Ortak Görev Havuzu (Tüm Personel)</option>
+          ${users.map(u => `<option value="${u.username}">👤 ${u.fullName} (${u.username} - ${u.role})</option>`).join('')}
+        `;
+      },
+
+      async autoLookup(barcode) {
+        barcode = barcode.trim();
+        const card = document.getElementById('taskAutoCard');
+        if (!barcode) { card.style.display = 'none'; return; }
+
+        const p = await DB.get('products', barcode);
+        if (p) {
+          card.style.display = 'block';
+          document.getElementById('taskFoundName').innerText = p.name;
+          document.getElementById('taskFoundShelf').innerText = p.location || 'A-01';
+          document.getElementById('taskFoundStock').innerText = `${p.stock} Adet`;
+
+          document.getElementById('taskShelfInput').value = p.location || 'A-01';
+          document.getElementById('taskTitleInput').value = `${p.name} - Ürün Talebi`;
+          AudioEngine.beepSuccess();
+        } else {
+          card.style.display = 'none';
+        }
+      },
+
+      async create() {
+        if (!AuthEngine.hasPerm('tasks_assign')) return alert('Görev atama yetkiniz bulunmamaktadır!');
+        
+        let title = document.getElementById('taskTitleInput').value.trim();
+        if (!title) title = 'Ürün Talebi';
+
+        const target = document.getElementById('taskShelfInput').value.trim() || 'A-01';
+        const assignedVal = document.getElementById('taskAssigneeSelect').value;
+        const barcode = document.getElementById('taskBarcodeLookup').value.trim() || '-';
+
+        let assignedFullName = 'Ortak Görev Havuzu';
+        if (assignedVal !== 'HAVUZ') {
+          const u = await DB.get('users', assignedVal);
+          assignedFullName = u ? u.fullName : assignedVal;
+        }
+
+        const task = { 
+          title, 
+          target: target.toUpperCase(), 
+          targetBarcode: barcode,
+          status: 'BEKLİYOR',
+          assignedTo: assignedVal,
+          assignedFullName: assignedFullName,
+          createdBy: AuthEngine.currentUser.fullName,
+          createdAt: new Date().toISOString()
+        };
+
+        await DB.put('tasks', task);
+
+        // GÖREV ATAMA HAREKETİNİ LOGLA
+        await MovementEngine.log(
+          'GOREV_ATAMA',
+          barcode !== '-' ? barcode : title,
+          0,
+          '-',
+          target.toUpperCase(),
+          `Görev atandı: "${title}" ➔ ${assignedFullName}`
+        );
+
+        AudioEngine.beepSuccess();
+        document.getElementById('taskTitleInput').value = '';
+        document.getElementById('taskBarcodeLookup').value = '';
+        document.getElementById('taskShelfInput').value = '';
+        document.getElementById('taskAutoCard').style.display = 'none';
+        
+        this.render();
+        this.checkUserTasks();
+        this.renderDashboardAnalytics();
+      },
+
+      async render() {
+        this.updatePermissionsUI();
+        const tasks = await DB.getAll('tasks');
+        const tbody = document.querySelector('#tasksListTable tbody');
+        if (!tasks.length) {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:1.5rem;">Görev bulunmamaktadır.</td></tr>`;
+          return;
+        }
+
+        const myUsername = AuthEngine.currentUser?.username;
+        const myFullName = AuthEngine.currentUser?.fullName;
+        const isAdmin = AuthEngine.currentUser?.role === 'ADMIN';
+
+        // Önceliklendirme Sıralaması:
+        // 1. Kullanıcıya özel atanmış bekleyen görevler (En üstte)
+        // 2. Havuzdaki bekleyen görevler
+        // 3. Başkasına atanmış bekleyen görevler
+        // 4. Tamamlanan / İptal edilenler (En altta)
+        tasks.sort((a, b) => {
+          const aIsMine = (a.assignedTo === myUsername || a.assignedFullName === myFullName) && a.status === 'BEKLİYOR';
+          const bIsMine = (b.assignedTo === myUsername || b.assignedFullName === myFullName) && b.status === 'BEKLİYOR';
+          if (aIsMine && !bIsMine) return -1;
+          if (!aIsMine && bIsMine) return 1;
+
+          const aIsPending = a.status === 'BEKLİYOR';
+          const bIsPending = b.status === 'BEKLİYOR';
+          if (aIsPending && !bIsPending) return -1;
+          if (!aIsPending && bIsPending) return 1;
+
+          return b.id - a.id;
+        });
+
+        tbody.innerHTML = tasks.map(t => {
+          let statusBadge = '<span class="badge badge-warning">Bekliyor</span>';
+          if (t.status === 'TAMAMLANDI') statusBadge = '<span class="badge badge-success">Tamamlandı ✓</span>';
+          else if (t.status === 'IPTAL') statusBadge = '<span class="badge badge-danger">İptal Edildi</span>';
+
+          const isSpecificallyMine = (t.assignedTo === myUsername || t.assignedFullName === myFullName) && t.status === 'BEKLİYOR';
+
+          return `
+            <tr style="${isSpecificallyMine ? 'background:#fff7ed; border-left:4px solid var(--gold);' : (t.status === 'BEKLİYOR' ? 'background:#fcfdff;' : '')}">
+              <td>
+                <b>${t.title}</b>
+                ${isSpecificallyMine ? '<span class="badge badge-special" style="display:block; width:max-content; margin-top:3px;">⭐ SİZE ÖZEL GÖREV</span>' : ''}
+                <span class="badge badge-loc" style="font-size:0.75rem; margin-top:2px;">📍 ${t.target}</span>
+              </td>
+              <td>
+                <span class="badge ${t.assignedTo === 'HAVUZ' ? 'badge-primary' : 'badge-purple'}">
+                  ${t.assignedTo === 'HAVUZ' ? '🌐 Ortak Havuz' : `👤 ${t.assignedFullName || t.assignedTo}`}
+                </span>
+              </td>
+              <td>${statusBadge}</td>
+              <td style="font-size:0.8rem;">
+                ${t.status === 'TAMAMLANDI' ? `<b>${t.completedBy}</b><br/><span style="color:var(--text-muted); font-size:0.7rem;">${new Date(t.completedAt).toLocaleTimeString('tr-TR')}</span>` : (t.status === 'IPTAL' ? `<span style="color:var(--danger);">${t.cancelledBy}</span>` : '<span style="color:var(--text-muted);">-</span>')}
+              </td>
+              <td>
+                <div style="display:flex; gap:4px;">
+                  ${t.status === 'BEKLİYOR' ? `<button class="btn btn-success" style="min-height:28px; padding:0 0.6rem; font-size:0.75rem;" onclick="TaskEngine.openVerifyModal(${t.id})">✓ Doğrula & Tamamla</button>` : ''}
+                  ${(t.status === 'BEKLİYOR' && isAdmin) ? `<button class="btn btn-secondary" style="min-height:28px; padding:0 0.5rem; font-size:0.75rem; color:var(--danger);" onclick="TaskEngine.cancelTask(${t.id})">✕ İptal</button>` : ''}
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      },
+
+      async openVerifyModal(taskId) {
+        const t = await DB.get('tasks', taskId);
+        if (!t) return;
+
+        this.currentVerifyingTaskId = taskId;
+        document.getElementById('tvTaskTitle').innerText = t.title;
+        document.getElementById('tvTargetShelf').innerText = t.target;
+        document.getElementById('tvTargetBarcode').innerText = t.targetBarcode && t.targetBarcode !== '-' ? t.targetBarcode : '(İsteğe Bağlı / Tanımsız)';
+        
+        document.getElementById('tvScanShelf').value = '';
+        document.getElementById('tvScanBarcode').value = '';
+
+        document.getElementById('taskVerifyModal').classList.add('active');
+        setTimeout(() => document.getElementById('tvScanShelf').focus(), 100);
+      },
+
+      closeVerifyModal() {
+        this.currentVerifyingTaskId = null;
+        document.getElementById('taskVerifyModal').classList.remove('active');
+      },
+
+      async executeVerification() {
+        if (!this.currentVerifyingTaskId) return;
+        const task = await DB.get('tasks', this.currentVerifyingTaskId);
+        if (!task || task.status !== 'BEKLİYOR') return this.closeVerifyModal();
+
+        const scannedShelf = document.getElementById('tvScanShelf').value.trim().toUpperCase();
+        const scannedBarcode = document.getElementById('tvScanBarcode').value.trim();
+
+        if (!scannedShelf) {
+          AudioEngine.beepError();
+          return alert('Lütfen Raf QR kodunu okutunuz!');
+        }
+
+        // 1. Raf Doğrulaması
+        if (scannedShelf !== task.target.toUpperCase()) {
+          AudioEngine.beepError();
+          return alert(`Hatalı Raf! Beklenen Raf: ${task.target}, Okutulan: ${scannedShelf}`);
+        }
+
+        // 2. Barkod Doğrulaması (Eğer görevde belirli bir barkod tanımlıysa)
+        if (task.targetBarcode && task.targetBarcode !== '-' && scannedBarcode !== task.targetBarcode) {
+          AudioEngine.beepError();
+          return alert(`Hatalı Ürün Barkodu! Beklenen: ${task.targetBarcode}, Okutulan: ${scannedBarcode}`);
+        }
+
+        // 3. STOKTAN DÜŞME İŞLEMİ (MANTIKSAL OTOMATİK ÇIKIŞ)
+        const targetBarcodeToDeduct = scannedBarcode || (task.targetBarcode !== '-' ? task.targetBarcode : null);
+        if (targetBarcodeToDeduct) {
+          const product = await DB.get('products', targetBarcodeToDeduct);
+          if (product) {
+            if (product.stock > 0) {
+              product.stock -= 1;
+              await DB.put('products', product);
+              await MovementEngine.log(
+                'STOK_CIKIS',
+                product.barcode,
+                -1,
+                task.target,
+                '-',
+                `Görev tamamlandı (${task.title}), stoktan 1 adet düşüldü.`
+              );
+            } else {
+              alert('Uyarı: Ürün stoğu 0 olduğu için stok negatif düşürülmedi ancak görev onaylandı.');
+            }
+          }
+        }
+
+        // 4. GÖREVİ TAMAMLA
+        task.status = 'TAMAMLANDI';
+        task.completedBy = AuthEngine.currentUser.fullName;
+        task.completedAt = new Date().toISOString();
+        await DB.put('tasks', task);
+
+        // GÖREV LOGU
+        await MovementEngine.log(
+          'GOREV_TAMAMLANDI',
+          targetBarcodeToDeduct || task.title,
+          0,
+          task.target,
+          '-',
+          `Görev doğrulandı & tamamlandı: "${task.title}" (${AuthEngine.currentUser.fullName})`
+        );
+
+        AudioEngine.beepSuccess();
+        alert('✓ Görev başarıyla doğrulandı, tamamlandı ve 1 adet stok çıkışı yapıldı!');
+        this.closeVerifyModal();
+        this.render();
+        this.checkUserTasks();
+        this.renderDashboardAnalytics();
+        InventoryEngine.render();
+      },
+
+      async cancelTask(id) {
+        if (!AuthEngine.hasPerm('admin') && !AuthEngine.hasPerm('tasks_assign')) return alert('Görevi iptal etme yetkiniz yok!');
+        const t = await DB.get('tasks', id);
+        if (t && t.status === 'BEKLİYOR') {
+          t.status = 'IPTAL';
+          t.cancelledBy = AuthEngine.currentUser.fullName;
+          t.cancelledAt = new Date().toISOString();
+          await DB.put('tasks', t);
+
+          await MovementEngine.log(
+            'GOREV_IPTAL',
+            t.targetBarcode && t.targetBarcode !== '-' ? t.targetBarcode : t.title,
+            0,
+            t.target,
+            '-',
+            `Görev iptal edildi: "${t.title}" (${AuthEngine.currentUser.fullName})`
+          );
+
+          AudioEngine.beepSuccess();
+          this.render();
+          this.checkUserTasks();
+          this.renderDashboardAnalytics();
+        }
+      },
+
+      async renderDashboardAnalytics() {
+        const tasks = await DB.getAll('tasks');
+        const pending = tasks.filter(t => t.status === 'BEKLİYOR').length;
+        const completed = tasks.filter(t => t.status === 'TAMAMLANDI').length;
+        const cancelled = tasks.filter(t => t.status === 'IPTAL').length;
+
+        document.getElementById('dashStatPendingTasks').innerText = pending;
+        document.getElementById('dashStatCompletedTasks').innerText = completed;
+        document.getElementById('dashStatCancelledTasks').innerText = cancelled;
+        document.getElementById('dashStatTotalTasks').innerText = tasks.length;
+
+        const userStats = {};
+        tasks.filter(t => t.status === 'TAMAMLANDI').forEach(t => {
+          const user = t.completedBy || 'Bilinmeyen';
+          if (!userStats[user]) userStats[user] = { count: 0, lastTime: t.completedAt };
+          userStats[user].count += 1;
+          if (new Date(t.completedAt) > new Date(userStats[user].lastTime)) {
+            userStats[user].lastTime = t.completedAt;
+          }
+        });
+
+        const tbody = document.querySelector('#dashStaffTaskLeaderboard tbody');
+        const sortedStaff = Object.keys(userStats).sort((a,b) => userStats[b].count - userStats[a].count);
+
+        if (sortedStaff.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:0.75rem;">Henüz tamamlanan görev yok.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = sortedStaff.map(u => `
+          <tr>
+            <td><b>${u}</b></td>
+            <td><span class="badge badge-success">${userStats[u].count} Görev</span></td>
+            <td style="font-size:0.75rem; color:var(--text-muted);">${new Date(userStats[u].lastTime).toLocaleTimeString('tr-TR')}</td>
+          </tr>
+        `).join('');
+      }
+    };
+
+    /**
+     * TOPLU İÇE AKTARMA (EXCEL / CSV)
+     */
+    const ImportEngine = {
+      async process() {
+        if (!AuthEngine.hasPerm('import')) return alert('Veri içe aktarma yetkiniz bulunmamaktadır!');
+        const fileInput = document.getElementById('excelFileInput');
+        if (!fileInput.files.length) return alert('Lütfen dosya seçiniz.');
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, { type: 'array' });
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+
+            const items = json.map(r => ({
+              barcode: String(r.Barkod || r.BARKOD || r.barcode).trim(),
+              name: String(r.UrunAdi || r.URUN_ADI || r.name || 'Tanımsız Ürün').trim(),
+              category: String(r.Kategori || r.category || 'Genel').trim(),
+              location: String(r.Lokasyon || r.location || 'A-01').toUpperCase().trim(),
+              stock: parseInt(r.StokAdedi || r.stock || 0, 10),
+              isUndefined: false
+            }));
+
+            await DB.batchPut('products', items);
+            AudioEngine.beepSuccess();
+            alert(`${items.length} adet stok kaydı başarıyla aktarıldı.`);
+            Navigation.openModule('inventory');
+          } catch (err) {
+            AudioEngine.beepError();
+            alert('Dosya okunurken hata oluştu: ' + err.message);
+          }
+        };
+        reader.readAsArrayBuffer(fileInput.files[0]);
+      }
+    };
+
+    /**
+     * SPA NAVİGASYON VE GERİ TUŞU YÖNETİMİ
+     */
+    const Navigation = {
+      openModule(viewId, param = null) {
+        document.querySelectorAll('.app-view-screen').forEach(v => v.style.display = 'none');
+        document.querySelectorAll('.nav-tab-item').forEach(n => n.classList.remove('active'));
+
+        const target = document.getElementById(`view-${viewId}`);
+        if (target) target.style.display = 'block';
+
+        if (viewId !== 'dashboard') {
+          history.pushState({ view: viewId }, '', `#${viewId}`);
+        } else {
+          history.replaceState({ view: 'dashboard' }, '', '#dashboard');
+        }
+
+        if (viewId === 'batch') {
+          BatchEngine.setMode(param || 'IN');
+          setTimeout(() => document.getElementById('batchBarcodeInput').focus(), 100);
+        } else if (viewId === 'finder') {
+          setTimeout(() => document.getElementById('finderSearchInput').focus(), 100);
+        } else if (viewId === 'labels') {
+          ZplEngine.setSubTab('SINGLE');
+          BluetoothPrinter.updateUI();
+        } else if (viewId === 'inventory') {
+          document.getElementById('navInventory')?.classList.add('active');
+          InventoryEngine.render();
+          setTimeout(() => document.getElementById('invFilterInput').focus(), 100);
+        } else if (viewId === 'tasks') {
+          document.getElementById('navTasks')?.classList.add('active');
+          TaskEngine.populateAssignees();
+          TaskEngine.render();
+        } else if (viewId === 'movements') {
+          document.getElementById('navMovements')?.classList.add('active');
+          MovementEngine.render();
+        } else if (viewId === 'personnel') {
+          PersonnelEngine.renderList();
+        } else if (viewId === 'dashboard') {
+          document.getElementById('navHome')?.classList.add('active');
+          InventoryEngine.updateBadge();
+          TaskEngine.checkUserTasks();
+          TaskEngine.renderDashboardAnalytics();
+        }
+      }
+    };
+
+    window.addEventListener('popstate', (e) => {
+      if (document.getElementById('main-app-container').style.display === 'block') {
+        const stateView = e.state?.view || 'dashboard';
+        Navigation.openModule(stateView);
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await DB.init();
+      await AuthEngine.init();
+      BatchEngine.init();
+      FinderEngine.init();
+      ZplEngine.renderSingle();
+    });
+  </script>
+</body>
+</html>
