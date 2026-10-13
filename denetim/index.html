@@ -38,7 +38,7 @@
 <body class="bg-slate-100 text-slate-900 min-h-screen select-none transition-colors duration-300" id="appBody">
 
   <!-- İNCE ÜST BAR -->
-  <header class="bg-slate-900 text-white h-11 px-3 flex items-center justify-between sticky top-0 z-40 shadow-xs">
+  <header class="bg-slate-900 text-white h-11 px-3 flex items-center justify-between sticky top-0 z-40 shadow-sm">
     <div class="flex items-center gap-2">
       <span class="w-2 h-2 rounded-full bg-emerald-400" id="netDot"></span>
       <span class="font-extrabold text-sm tracking-tight">Label</span>
@@ -61,7 +61,7 @@
   <main class="max-w-md mx-auto p-2.5 space-y-2.5">
 
     <!-- 1. FİYAT & TRANSFER UYARI KARTI -->
-    <div id="priceCard" class="bg-white rounded-xl p-3.5 shadow-xs border border-slate-200 text-center transition-all duration-200">
+    <div id="priceCard" class="bg-white rounded-xl p-3.5 shadow-sm border border-slate-200 text-center transition-all duration-200">
       <div id="transferBanner" class="hidden mb-1.5 py-1 px-3 rounded-lg bg-white/20 text-white font-black text-xs tracking-widest uppercase flex items-center justify-center gap-2">
         <i class="fa-solid fa-truck-fast"></i>
         <span>TRANSFER</span>
@@ -72,7 +72,7 @@
     </div>
 
     <!-- 2. ÜRÜN BİLGİSİ & ETİKET GÖRÜNÜMÜ -->
-    <div class="bg-white rounded-xl p-3 shadow-xs border border-slate-200 space-y-2.5">
+    <div class="bg-white rounded-xl p-3 shadow-sm border border-slate-200 space-y-2.5">
       <!-- Özet Satırı -->
       <div class="flex items-center justify-between border-b border-slate-100 pb-2">
         <div id="roName" class="text-sm font-extrabold text-slate-900 truncate pr-2">SUET ÇANTA</div>
@@ -100,7 +100,7 @@
 
       <!-- 5x2 Etiket Önizlemesi -->
       <div class="flex justify-center bg-slate-50/70 py-2 rounded-lg border border-slate-200/80">
-        <div class="label-preview bg-white border border-slate-300 rounded px-2.5 py-1.5 shadow-2xs flex flex-col justify-between relative overflow-hidden">
+        <div class="label-preview bg-white border border-slate-300 rounded px-2.5 py-1.5 shadow-sm flex flex-col justify-between relative overflow-hidden">
           <!-- Üst: Ürün Adı -->
           <div id="lblPreviewName" class="text-[11px] font-black uppercase tracking-tight text-slate-900 leading-none truncate">
             SUET ÇANTA
@@ -143,7 +143,7 @@
     </div>
 
     <!-- 3. BARKOD OKUTMA ALANI -->
-    <div class="bg-white rounded-xl p-3 shadow-xs border border-slate-200">
+    <div class="bg-white rounded-xl p-3 shadow-sm border border-slate-200">
       <div class="relative flex items-center">
         <input type="text" id="barcodeInput" autofocus inputmode="numeric"
                placeholder="Barkod okutun..."
@@ -169,20 +169,22 @@
     </div>
 
     <!-- 4. YAZDIR & DİREKT YAZDIR -->
-    <div class="bg-white rounded-xl p-3 shadow-xs border border-slate-200 space-y-2.5">
-      <div class="flex items-center justify-between px-1">
-        <!-- Direkt Yazdır -->
-        <label class="flex items-center gap-2.5 cursor-pointer">
-          <input type="checkbox" id="directPrintToggle" class="sr-only peer" checked>
-          <div class="w-10 h-5.5 bg-slate-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4.5 after:w-4.5 after:transition-all relative peer-checked:bg-emerald-600"></div>
+    <div class="bg-white rounded-xl p-3 shadow-sm border border-slate-200 space-y-2.5">
+      <div class="flex items-center justify-between">
+        <!-- Direkt Yazdır Butonu / Switch -->
+        <label for="directPrintToggle" class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer active:scale-[0.99] transition">
+          <div class="relative inline-flex items-center">
+            <input type="checkbox" id="directPrintToggle" class="sr-only peer" checked>
+            <div class="w-11 h-6 bg-slate-300 rounded-full peer peer-checked:bg-emerald-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
+          </div>
           <span class="text-xs font-bold text-slate-800">Direkt Yazdır</span>
         </label>
 
         <!-- Baskı Adedi -->
-        <div class="flex items-center gap-1.5 bg-slate-100 rounded-lg p-1">
-          <button onclick="changeQty(-1)" class="w-6 h-6 rounded bg-white shadow-2xs text-xs font-bold text-slate-700 active:scale-95">-</button>
-          <span id="printQty" class="text-xs font-mono font-bold w-5 text-center">1</span>
-          <button onclick="changeQty(1)" class="w-6 h-6 rounded bg-white shadow-2xs text-xs font-bold text-slate-700 active:scale-95">+</button>
+        <div class="flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-lg p-1">
+          <button type="button" onclick="changeQty(-1)" class="w-7 h-7 rounded bg-white shadow-sm text-xs font-bold text-slate-700 active:scale-95">-</button>
+          <span id="printQty" class="text-xs font-mono font-bold w-6 text-center">1</span>
+          <button type="button" onclick="changeQty(1)" class="w-7 h-7 rounded bg-white shadow-sm text-xs font-bold text-slate-700 active:scale-95">+</button>
         </div>
       </div>
 
@@ -195,7 +197,7 @@
   </main>
 
   <!-- GİRİŞ MODALI -->
-  <div id="loginModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+  <div id="loginModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-xs w-full p-5 space-y-4 shadow-xl">
       <div class="flex items-center justify-between border-b pb-2.5">
         <h3 class="font-extrabold text-sm text-slate-800">Yönetici Girişi</h3>
@@ -224,7 +226,7 @@
 
   <!-- YÖNETİM PANELİ -->
   <div id="adminPanelModal" class="hidden fixed inset-0 z-50 bg-slate-100 overflow-y-auto">
-    <div class="bg-slate-900 text-white sticky top-0 z-20 px-4 h-12 flex items-center justify-between shadow-xs">
+    <div class="bg-slate-900 text-white sticky top-0 z-20 px-4 h-12 flex items-center justify-between shadow-sm">
       <div class="flex items-center gap-2">
         <span class="font-extrabold text-sm">Label Yönetim</span>
         <span class="text-[11px] text-slate-400 border-l border-slate-700 pl-2" id="adminUserBadge"></span>
@@ -721,7 +723,7 @@
         transferBanner.classList.remove('hidden');
         appBody.className = "bg-emerald-500 text-slate-900 min-h-screen select-none transition-colors duration-300";
       } else {
-        priceCard.className = "bg-white rounded-xl p-3.5 shadow-xs border border-slate-200 text-center transition-all duration-200";
+        priceCard.className = "bg-white rounded-xl p-3.5 shadow-sm border border-slate-200 text-center transition-all duration-200";
         priceDisplay.className = "text-3xl font-black tracking-tight text-slate-900";
         transferBanner.classList.add('hidden');
         appBody.className = "bg-slate-100 text-slate-900 min-h-screen select-none transition-colors duration-300";
@@ -755,11 +757,9 @@
     }
 
     function triggerTransferAlert() {
-      // Titreşim
       if (navigator.vibrate) {
         navigator.vibrate([250, 100, 250, 100, 350]);
       }
-      // Belirgin Üçlü Uyarı Sesi
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         [0, 0.14, 0.28].forEach((offset, idx) => {
@@ -802,7 +802,7 @@
       }
     }
 
-    // 5x2 ZPL ÜRETİMİ (SAĞ ALT KÖŞE YERLİ ÜRETİM LOGOLU) VE BLUETOOTH BASKI
+    // 5x2 ZPL ÜRETİMİ VE BLUETOOTH BASKI
     let bleDevice = null;
     let bleCharacteristic = null;
 
@@ -850,7 +850,6 @@
         ? `^FO80,58^BY2^BEN,44,Y,N^FD${cleanBarcode}^FS`
         : `^FO70,58^BY1.8^BCN,44,Y,N,N^FD${cleanBarcode}^FS`;
 
-      // Sağ alt köşe Yerli Üretim kutusu ve sembolü
       const domesticZpl = isDomestic
         ? `^FO302,122^GB86,32,2^FS^FO308,126^A0N,12,12^FDYERLI^FS^FO308,139^A0N,12,12^FDURETIM^FS`
         : '';
