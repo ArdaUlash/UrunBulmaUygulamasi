@@ -1,935 +1,1260 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Profesyonel İzin Planlayıcı</title>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- html2pdf.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Stock-Master | 5x2 ZPL Etiket & Bulut Sistemi</title>
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f1f5f9;
-            color: #334155;
-            -webkit-tap-highlight-color: transparent;
-            margin: 0; padding: 0;
-        }
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-        /* BEYAZ SAYFA KESİN ÇÖZÜMÜ: */
-        body.is-app {
-            overflow: hidden !important; 
-            width: 100vw !important;
-            height: 100vh !important;
-            height: 100dvh !important;
-            position: fixed !important;
-            top: 0; left: 0;
-        }
+  <!-- JsBarcode, HTML5-QRCode, SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-        body.is-pdf {
-            overflow: visible !important;
-            height: auto !important;
-            position: relative !important;
-            background-color: #ffffff !important;
-        }
+  <!-- Firebase v10 Compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        #app-wrapper {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            width: 100vw;
-        }
-
-        .app-main-content {
-            flex: 1;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding: 16px;
-            padding-bottom: 120px;
-        }
-
-        .app-bottom-bar {
-            flex-shrink: 0;
-            background-color: #ffffff;
-            border-top: 1px solid #e2e8f0;
-            padding-bottom: env(safe-area-inset-bottom, 0px);
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
-            z-index: 20;
-        }
-
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, minmax(0, 1fr));
-            gap: 1px;
-            background-color: #e2e8f0;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.75rem;
-            overflow: hidden;
-        }
-
-        .calendar-cell {
-            background-color: #ffffff;
-            min-height: 85px;
-            padding: 4px;
-            display: flex;
-            flex-direction: column;
-            cursor: pointer;
-            transition: background-color 0.15s ease;
-            user-select: none;
-            overflow: visible; 
-        }
-
-        @media (min-width: 768px) {
-            .calendar-cell { min-height: 110px; padding: 8px; }
-        }
-
-        .calendar-cell:active { background-color: #f8fafc; }
-        .calendar-cell.is-empty { background-color: #f8fafc; cursor: default; }
-
-        .badges-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-        }
-
-        .emp-avatar {
-            width: 44px; height: 44px;
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: 700; font-size: 15px;
-            border: 3px solid transparent;
-            transition: all 0.2s;
-            flex-shrink: 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .emp-avatar.active {
-            transform: translateY(-4px) scale(1.1);
-            border-color: #10b981;
-            box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
-        }
-
-        /* PDF GÖRÜNÜMÜ */
-        #pdf-render-canvas {
-            display: none; 
-            width: 1122px; 
-            min-width: 1122px;
-            max-width: 1122px;
-            background-color: #ffffff;
-            padding: 40px;
-            box-sizing: border-box;
-            margin: 0;
-        }
-
-        .pdf-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            border-top: 1px solid #cbd5e1;
-            border-left: 1px solid #cbd5e1;
-            gap: 1px;
-            background-color: #cbd5e1;
-        }
-        .pdf-cell {
-            background-color: #ffffff;
-            padding: 6px;
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-            min-height: 85px;
-            overflow: visible; 
-        }
-        .pdf-header {
-            background-color: #f1f5f9;
-            text-align: center;
-            font-weight: 700;
-            font-size: 12px;
-            padding: 8px 0;
-            color: #475569;
-        }
-        
-        .avoid-page-break {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-            display: block;
-        }
-    </style>
+  <style>
+    .et-vertical-text {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+    /* 5x2 cm (50mm x 20mm) -> 2.5 : 1 Oranlı Etiket Önizleme Kutusu */
+    .label-5x2-box {
+      width: 320px;
+      height: 128px;
+    }
+  </style>
 </head>
-<body class="is-app">
+<body class="bg-slate-100 text-slate-800 min-h-screen select-none pb-12">
 
-    <div id="app-wrapper">
-        <header class="bg-white shadow-sm shrink-0 z-20">
-            <div class="max-w-[1200px] mx-auto px-4 h-16 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-indigo-200">
-                        <i class="fa-solid fa-layer-group"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-sm sm:text-base font-extrabold text-slate-800 leading-tight">İzin Planlayıcı</h1>
-                        <p class="text-[10px] text-slate-500 font-semibold tracking-wide">PROAKTİF MOD</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 sm:gap-3">
-                    <button onclick="toggleSettings()" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center transition">
-                        <i class="fa-solid fa-gear"></i>
-                    </button>
-                    <button onclick="triggerPDF()" class="px-3 sm:px-5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs sm:text-sm font-bold rounded-full shadow-md shadow-indigo-200 transition flex items-center gap-2">
-                        <i class="fa-solid fa-file-pdf"></i> <span class="hidden sm:inline">PDF Çıktı Al</span>
-                    </button>
-                </div>
-            </div>
-        </header>
+  <!-- ÜST BAR (Yalnızca Durum, Bluetooth ve Yönetici Girişi) -->
+  <header class="bg-slate-900 text-white shadow-md sticky top-0 z-40">
+    <div class="max-w-xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" id="netDot" title="Sunucu Bağlantısı"></div>
+        <div>
+          <h1 class="font-bold text-sm tracking-wide leading-none">STOCK-MASTER ETİKET</h1>
+          <span class="text-[10px] text-slate-400 font-mono" id="syncStatusText">Sunucu: Senkronize (5x2 cm)</span>
+        </div>
+      </div>
 
-        <main class="app-main-content" id="main-scroll">
-            <div class="max-w-[1200px] mx-auto">
-                <div class="flex justify-between items-center bg-white p-2.5 sm:p-4 rounded-2xl shadow-sm border border-slate-100 mb-5">
-                    <button onclick="changeMonth(-1)" class="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center transition"><i class="fa-solid fa-chevron-left"></i></button>
-                    <div class="flex gap-2 items-center">
-                        <select id="ui-month" class="bg-transparent text-sm sm:text-lg font-bold text-slate-800 outline-none cursor-pointer text-center" onchange="renderApp()"></select>
-                        <input type="number" id="ui-year" class="bg-transparent text-sm sm:text-lg font-bold text-slate-800 w-16 text-center outline-none" onchange="renderApp()">
-                    </div>
-                    <button onclick="changeMonth(1)" class="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center transition"><i class="fa-solid fa-chevron-right"></i></button>
-                </div>
+      <div class="flex items-center gap-2">
+        <!-- Bluetooth Yazıcı Bağlantısı -->
+        <button id="btnConnectBle" onclick="connectBluetooth()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 flex items-center gap-1.5 transition">
+          <i class="fa-brands fa-bluetooth-b"></i>
+          <span id="bleStatusText">Yazıcı</span>
+        </button>
 
-                <div class="calendar-grid shadow-sm" id="ui-calendar"></div>
+        <!-- Yönetim Giriş Yap / Panel Butonu -->
+        <button id="btnAuthAction" onclick="handleAuthButtonClick()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-user-shield text-amber-400"></i>
+          <span id="authBtnText">Giriş Yap</span>
+        </button>
+      </div>
+    </div>
+  </header>
 
-                <div class="mt-5 text-center px-4 pb-4">
-                    <p class="text-[11px] sm:text-xs text-slate-400 font-medium bg-slate-200/50 inline-block px-4 py-2 rounded-full">
-                        <i class="fa-solid fa-hand-pointer text-amber-500 mr-1.5"></i> Alttan personeli seçip takvimdeki günlere dokunarak izin atayabilirsiniz.
-                    </p>
-                </div>
-            </div>
-        </main>
+  <!-- ANA EKRAN (Sadece Operasyonel Kullanım - Veri Değişimi ve Raporlama Yok) -->
+  <main class="max-w-xl mx-auto px-4 pt-4 space-y-3">
 
-        <footer class="app-bottom-bar px-2 py-3">
-            <div class="max-w-[1200px] mx-auto flex items-center gap-3 sm:gap-4">
-                <div class="flex flex-col gap-1 shrink-0 bg-slate-100 p-1 rounded-xl">
-                    <button onclick="setPaintType('YI')" id="btn-type-yi" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition bg-white shadow-sm text-indigo-600">Yİ</button>
-                    <button onclick="setPaintType('HT')" id="btn-type-ht" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition text-slate-500 hover:text-orange-500">HT</button>
-                </div>
-                <div class="w-px h-12 bg-slate-200 shrink-0"></div>
-                <div class="flex-1 overflow-x-auto flex items-center gap-4 no-scrollbar py-2 px-1" id="paint-employees-container"></div>
-                <button onclick="setActiveEmp(null)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 hover:bg-red-100 hover:text-red-500 shrink-0 flex items-center justify-center transition" title="Seçimi Kaldır">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-        </footer>
+    <!-- 1. SIRA: FİYAT ALANI -->
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 text-center">
+      <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400 block">Perakende Satış Fiyatı (PSF)</span>
+      <div id="mainPriceDisplay" class="text-4xl font-black text-slate-900 tracking-tight mt-1">
+        3299,00 TL
+      </div>
     </div>
 
+    <!-- 2. SIRA: ÜRÜN BİLGİSİ VE 5x2 CM ETİKET ÖNİZLEMESİ (SALT OKUNUR) -->
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Ürün Bilgisi (Salt Okunur)</span>
+        <span id="mainBarcodeBadge" class="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">3561000010248</span>
+      </div>
 
-    <div id="pdf-render-canvas">
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1e293b; padding-bottom: 15px; margin-bottom: 25px;">
-            <div>
-                <h2 id="pdf-store-title" style="font-size: 26px; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.5px;">Mağaza Adı</h2>
-                <p style="font-size: 15px; color: #64748b; margin: 6px 0 0 0; font-weight: 600; text-transform: uppercase;">Personel Yıllık İzin ve Çalışma Planı</p>
+      <!-- Salt Okunur Ürün Bilgileri Özeti -->
+      <div class="grid grid-cols-4 gap-2 text-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+        <div class="col-span-4 border-b border-slate-200 pb-1.5 mb-1">
+          <div class="text-[10px] text-slate-400 font-semibold">ÜRÜN ADI</div>
+          <div id="roName" class="text-sm font-black text-slate-800 truncate">SUET ÇANTA</div>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 font-semibold">MODEL</div>
+          <div id="roModel" class="text-xs font-bold text-slate-800">RY01</div>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 font-semibold">RENK</div>
+          <div id="roColor" class="text-xs font-bold text-slate-800">Siyah</div>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 font-semibold">BEDEN</div>
+          <div id="roSize" class="text-xs font-bold text-slate-800">STD</div>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 font-semibold">TARİH</div>
+          <div id="roDate" class="text-xs font-mono font-bold text-slate-700">22.09.20</div>
+        </div>
+      </div>
+
+      <!-- 5x2 cm (50mm x 20mm) Gerçek Oranlı Termal Etiket Önizlemesi -->
+      <div class="flex flex-col items-center justify-center bg-slate-50 border border-dashed border-slate-300 rounded-xl py-3">
+        <div class="text-[10px] text-slate-400 font-mono mb-1">5x2 cm (50x20 mm) Baskı Önizlemesi</div>
+        <div class="label-5x2-box bg-white border border-slate-300 rounded-md px-3 py-1.5 shadow-sm flex flex-col justify-between overflow-hidden">
+          <!-- Üst Satır: Ürün Adı -->
+          <div id="lblPreviewName" class="text-[11px] font-black uppercase tracking-tight text-slate-900 leading-none truncate">
+            SUET ÇANTA
+          </div>
+
+          <!-- 2. Satır: Model - Renk - Beden -->
+          <div class="flex items-center justify-between text-[10px] font-bold text-slate-800 leading-none">
+            <span id="lblPreviewModel" class="font-extrabold">RY01</span>
+            <span id="lblPreviewColor">Siyah</span>
+            <span id="lblPreviewSize">STD</span>
+          </div>
+
+          <!-- Orta Satır: Dikey Tarih + Barkod -->
+          <div class="flex items-center justify-between my-0.5">
+            <div class="w-4 flex items-center justify-center">
+              <span id="lblPreviewDate" class="et-vertical-text text-[8px] font-mono font-bold text-slate-600 leading-none">22.09.20</span>
             </div>
-            <div id="pdf-date-title" style="font-size: 20px; font-weight: 800; color: #4338ca; background: #e0e7ff; padding: 8px 20px; border-radius: 8px;">Ağustos 2026</div>
+            <div class="flex-1 flex justify-center overflow-hidden">
+              <svg id="barcodeCanvas" class="max-h-[42px]"></svg>
+            </div>
+          </div>
+
+          <!-- Alt Satır: PSF Fiyat -->
+          <div class="text-center text-[11px] font-black tracking-tight text-slate-900 leading-none border-t border-slate-100 pt-0.5">
+            PSF : <span id="lblPreviewPrice">3299,00 TL</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. SIRA: BARKOD OKUTMA ALANI (KAMERA İLE TARAMA ÖZELLİKLİ) -->
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+        Barkod Okutma Alanı
+      </label>
+      <div class="relative flex items-center">
+        <input type="text" id="barcodeInput" autofocus inputmode="numeric"
+               placeholder="Barkodu okutun veya yazın..."
+               class="w-full text-base font-mono font-bold px-3.5 py-3 bg-slate-50 border-2 border-slate-200 focus:border-blue-600 focus:bg-white rounded-xl outline-none transition pr-24"
+               onkeydown="if(event.key==='Enter') searchAndHandleBarcode()">
+        <div class="absolute right-1.5 flex items-center gap-1">
+          <button onclick="toggleCameraScanner()" class="p-2 bg-slate-200 hover:bg-blue-600 hover:text-white text-slate-700 rounded-lg transition" title="Kamera ile Barkod Tara">
+            <i class="fa-solid fa-camera text-base"></i>
+          </button>
+          <button onclick="searchAndHandleBarcode()" class="p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition" title="Sorgula">
+            <i class="fa-solid fa-magnifying-glass text-base"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Kamera Tarama Kutusu -->
+      <div id="cameraModal" class="hidden mt-3 p-2.5 bg-slate-900 rounded-xl">
+        <div id="interactiveScanner" class="w-full h-48 rounded-lg overflow-hidden bg-black"></div>
+        <button onclick="toggleCameraScanner()" class="w-full mt-2 py-2 bg-red-600 text-white rounded-lg text-xs font-bold">
+          Kamerayı Kapat
+        </button>
+      </div>
+
+      <div id="scanNotice" class="mt-2 text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+        <i class="fa-solid fa-bolt text-amber-500"></i>
+        <span id="scanNoticeText">Hazır. El terminali, okuyucu veya kamera ile okutabilirsiniz.</span>
+      </div>
+    </div>
+
+    <!-- 4. SIRA: YAZDIR VE DİREKT YAZDIR ÖZELLİĞİ -->
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
+      <!-- Direkt Yazdır Şalteri -->
+      <div class="flex items-center justify-between bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200">
+        <div>
+          <span class="text-xs font-extrabold text-slate-800 block">Direkt Yazdır (Otomatik Baskı)</span>
+          <span class="text-[10px] text-slate-500">Barkod okutulur okutulmaz beklemeden 5x2 etiket basılır</span>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="directPrintToggle" class="sr-only peer" checked>
+          <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+        </label>
+      </div>
+
+      <!-- Büyük Yazdır Butonu -->
+      <button onclick="manualPrintTrigger()" class="w-full py-4 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white font-black rounded-xl text-base flex items-center justify-center gap-2.5 shadow-lg transition">
+        <i class="fa-solid fa-print text-amber-400 text-lg"></i>
+        <span>ETİKET YAZDIR (5x2 ZPL)</span>
+      </button>
+    </div>
+
+  </main>
+
+  <!-- GİRİŞ YAP (STOCK-MASTER KULLANICI DOĞRULAMA) MODALI -->
+  <div id="loginModal" class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between border-b pb-3">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-shield-halved text-amber-500 text-lg"></i>
+          <h3 class="font-black text-sm uppercase tracking-wider text-slate-800">Stock-Master Yönetim Girişi</h3>
+        </div>
+        <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="font-bold text-slate-600 block mb-1">Kullanıcı Adı</label>
+          <input type="text" id="loginUsername" placeholder="Örn: arda.ulas" class="w-full px-3 py-2.5 border rounded-xl font-mono focus:border-blue-600 outline-none">
+        </div>
+        <div>
+          <label class="font-bold text-slate-600 block mb-1">Şifre</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" class="w-full px-3 py-2.5 border rounded-xl font-mono focus:border-blue-600 outline-none" onkeydown="if(event.key==='Enter') performLogin()">
+        </div>
+        <div id="loginErrorMsg" class="hidden text-red-600 font-bold text-[11px] bg-red-50 p-2 rounded-lg"></div>
+      </div>
+
+      <button onclick="performLogin()" id="btnLoginSubmit" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow">
+        Sunucu İle Doğrula & Giriş Yap
+      </button>
+    </div>
+  </div>
+
+  <!-- YÖNETİM PANELİ TAM EKRAN MODALI (SADECE YETKİLİ GİRİŞİYLE AÇILIR) -->
+  <div id="adminPanelModal" class="hidden fixed inset-0 z-50 bg-slate-100 overflow-y-auto">
+    <!-- Yönetim Üst Bar -->
+    <div class="bg-slate-900 text-white sticky top-0 z-20 px-4 py-3 shadow flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <i class="fa-solid fa-sliders text-amber-400 text-lg"></i>
+        <div>
+          <h2 class="font-black text-sm tracking-wide">STOCK-MASTER YÖNETİM & ANALİZ PANELİ</h2>
+          <p class="text-[11px] text-slate-400" id="adminUserBadge">Yetkili: -</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="logoutAdmin()" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg text-xs font-bold flex items-center gap-1.5">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          Çıkış Yap
+        </button>
+        <button onclick="closeAdminPanel()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-bold flex items-center gap-1.5">
+          <i class="fa-solid fa-arrow-left"></i>
+          Ana Ekrana Dön
+        </button>
+      </div>
+    </div>
+
+    <!-- Yönetim Sekmeleri -->
+    <div class="max-w-6xl mx-auto px-4 pt-4">
+      <div class="flex flex-wrap gap-2 border-b border-slate-300 pb-3">
+        <button onclick="switchAdminTab('tabAnalytics')" id="btnTabAnalytics" class="px-4 py-2 rounded-xl text-xs font-black bg-slate-900 text-white flex items-center gap-2">
+          <i class="fa-solid fa-chart-pie text-amber-400"></i>
+          Analiz & Etiket Raporları
+        </button>
+        <button onclick="switchAdminTab('tabData')" id="btnTabData" class="px-4 py-2 rounded-xl text-xs font-black bg-white text-slate-700 hover:bg-slate-200 flex items-center gap-2">
+          <i class="fa-solid fa-database text-emerald-600"></i>
+          Excel & Tekil Ürün Yönetimi
+        </button>
+        <button onclick="switchAdminTab('tabUsers')" id="btnTabUsers" class="px-4 py-2 rounded-xl text-xs font-black bg-white text-slate-700 hover:bg-slate-200 flex items-center gap-2">
+          <i class="fa-solid fa-users-gear text-blue-600"></i>
+          Users & Roller (Stock-Master)
+        </button>
+      </div>
+
+      <!-- SEKME 1: ANALİZ VE ETİKETLEME RAPORLARI -->
+      <div id="tabAnalytics" class="py-5 space-y-5">
+        <!-- Özet KPI Kartları -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <span class="text-[11px] font-bold text-slate-400 uppercase">Toplam Etiket İşlemi</span>
+            <div id="statTotalLogs" class="text-2xl font-black text-slate-900 mt-1">0</div>
+          </div>
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <span class="text-[11px] font-bold text-emerald-600 uppercase">Direkt (Otomatik) Baskı</span>
+            <div id="statAutoPrints" class="text-2xl font-black text-emerald-700 mt-1">0</div>
+          </div>
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <span class="text-[11px] font-bold text-blue-600 uppercase">Manuel Buton Baskı</span>
+            <div id="statManualPrints" class="text-2xl font-black text-blue-700 mt-1">0</div>
+          </div>
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <span class="text-[11px] font-bold text-amber-600 uppercase">Sadece Sorgulama</span>
+            <div id="statScanOnly" class="text-2xl font-black text-amber-600 mt-1">0</div>
+          </div>
         </div>
 
-        <div id="pdf-grid-container" style="display: flex; flex-direction: column; flex: 1;"></div>
-
-        <div class="avoid-page-break" style="margin-top: 25px; border-top: 2px solid #e2e8f0; padding-top: 15px;">
-            <h4 style="font-size: 13px; font-weight: 800; color: #334155; margin: 0 0 12px 0; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
-                Dönem Özeti (Kalan Yİ Bakiyeleri)
+        <!-- En Çok Etiket Basılan Ürünler + Filtreleme -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <h4 class="text-xs font-black uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-1.5">
+              <i class="fa-solid fa-ranking-star text-amber-500"></i>
+              En Çok Basılan / Okutulan Ürünler
             </h4>
-            <div id="pdf-notes-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 11px;"></div>
-        </div>
+            <div id="topProductsList" class="space-y-2 text-xs"></div>
+          </div>
 
-        <div class="avoid-page-break" style="margin-top: 35px; display: flex; justify-content: space-between; font-size: 13px; padding-bottom: 10px;">
-            <div style="display: flex; gap: 50px;">
-                <div><strong style="color: #475569;">Düzenleyen / Onaylayan:</strong> <span id="pdf-manager-label" style="font-weight: 800; text-transform: uppercase; color: #0f172a; margin-left: 6px;">Arda Ulaş</span></div>
-                <div><strong style="color: #475569;">Tarih:</strong> <span style="color: #94a3b8; margin-left: 6px;">..... / ..... / 20...</span></div>
+          <!-- Detaylı Canlı Etiketleme Log Tablosu -->
+          <div class="lg:col-span-2 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h4 class="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <i class="fa-solid fa-list-check text-blue-600"></i>
+                Sunucu Etiketleme ve Baskı Kayıtları (label_logs)
+              </h4>
+              <div class="flex items-center gap-2">
+                <input type="text" id="logFilterInput" oninput="renderAnalyticsView()" placeholder="Barkod veya ürün filtrele..." class="text-xs px-2.5 py-1.5 border rounded-lg outline-none">
+                <button onclick="exportLogsToExcel()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+                  <i class="fa-solid fa-file-excel"></i>
+                  Raporu İndir
+                </button>
+              </div>
             </div>
-            <div style="font-weight: 800; color: #475569;">İmza: __________________________</div>
+
+            <div class="overflow-x-auto max-h-80 overflow-y-auto border border-slate-100 rounded-xl">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 text-slate-500 font-bold sticky top-0 border-b">
+                  <tr>
+                    <th class="p-2.5">Tarih / Saat</th>
+                    <th class="p-2.5">Barkod</th>
+                    <th class="p-2.5">Ürün Adı</th>
+                    <th class="p-2.5">Model / Renk</th>
+                    <th class="p-2.5">Fiyat</th>
+                    <th class="p-2.5">İşlem Türü</th>
+                    <th class="p-2.5">Kullanıcı</th>
+                  </tr>
+                </thead>
+                <tbody id="adminLogTableBody" class="divide-y divide-slate-100 font-mono text-[11px]"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <!-- SEKME 2: EXCEL VE TEKİL ÜRÜN VERİ YÖNETİMİ -->
+      <div id="tabData" class="hidden py-5 space-y-5">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          
+          <!-- Tekil Ürün Ekle / Güncelle Kartı (5 Kolon) -->
+          <div class="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-box-open text-amber-500"></i>
+              Tekil Ürün Ekle / Sunucuda Güncelle
+            </h3>
+
+            <div class="grid grid-cols-2 gap-2.5 text-xs">
+              <div class="col-span-2">
+                <label class="font-bold text-slate-500">Barkod Numarası (Doc ID)</label>
+                <input type="text" id="admBarcode" placeholder="3561000010248" class="w-full p-2 border rounded-lg font-mono font-bold">
+              </div>
+              <div class="col-span-2">
+                <label class="font-bold text-slate-500">Ürün Adı</label>
+                <input type="text" id="admName" placeholder="SUET ÇANTA" class="w-full p-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="font-bold text-slate-500">Model Kodu</label>
+                <input type="text" id="admModel" placeholder="RY01" class="w-full p-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="font-bold text-slate-500">Renk</label>
+                <input type="text" id="admColor" placeholder="Siyah" class="w-full p-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="font-bold text-slate-500">Beden</label>
+                <input type="text" id="admSize" placeholder="STD" class="w-full p-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="font-bold text-slate-500">Etiket Tarihi</label>
+                <input type="text" id="admDate" placeholder="22.09.20" class="w-full p-2 border rounded-lg font-mono">
+              </div>
+              <div class="col-span-2">
+                <label class="font-bold text-slate-500">PSF Fiyat</label>
+                <input type="text" id="admPrice" placeholder="3299,00 TL" class="w-full p-2 border rounded-lg font-bold text-emerald-700">
+              </div>
+            </div>
+
+            <button onclick="saveSingleProductToServer()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2">
+              <i class="fa-solid fa-cloud-arrow-up text-amber-400"></i>
+              Ürünü Sunucuya Kaydet
+            </button>
+          </div>
+
+          <!-- Excel Toplu Veri Aktarım & Sunucu Ürün Listesi (7 Kolon) -->
+          <div class="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+              <div>
+                <h3 class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                  <i class="fa-solid fa-file-excel text-emerald-600"></i>
+                  Excel İle Sunucuya Toplu Ürün Aktarımı
+                </h3>
+                <p class="text-[11px] text-slate-500">Yüklenen Excel verileri paketler halinde doğrudan Stock-Master Firestore sunucusuna yazılır.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleAdminExcelUpload(event)">
+                <button onclick="document.getElementById('excelFileInput').click()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5">
+                  <i class="fa-solid fa-upload"></i>
+                  Excel Seç & Sunucuya Bas
+                </button>
+                <button onclick="downloadSampleExcel()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs">
+                  Şablon İndir
+                </button>
+              </div>
+            </div>
+
+            <div id="excelUploadStatus" class="hidden text-xs font-bold p-2.5 rounded-xl bg-blue-50 text-blue-800"></div>
+
+            <!-- Sunucudaki Ürünleri Arama ve Önbellek Tablosu -->
+            <div class="flex items-center justify-between gap-2">
+              <input type="text" id="admProductSearch" oninput="renderAdminProductTable()" placeholder="Sunucu önbelleğinde barkod veya ürün ara..." class="w-full text-xs px-3 py-2 border rounded-xl outline-none">
+              <button onclick="fetchInitialProductsFromServer(true)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold shrink-0">
+                <i class="fa-solid fa-rotate"></i> Yenile
+              </button>
+            </div>
+
+            <div class="overflow-x-auto max-h-64 overflow-y-auto border border-slate-100 rounded-xl">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 text-slate-500 font-bold sticky top-0 border-b">
+                  <tr>
+                    <th class="p-2">Barkod</th>
+                    <th class="p-2">Ürün Adı</th>
+                    <th class="p-2">Model/Renk/Beden</th>
+                    <th class="p-2">Fiyat</th>
+                    <th class="p-2 text-right">Düzenle</th>
+                  </tr>
+                </thead>
+                <tbody id="admProductTableBody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SEKME 3: STOCK-MASTER USERS VE ROLLER EŞZAMANLAMA -->
+      <div id="tabUsers" class="hidden py-5 space-y-5">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <!-- Kullanıcı Ekle / Güncelle (4 Kolon) -->
+          <div class="lg:col-span-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-user-plus text-blue-600"></i>
+              Stock-Master Kullanıcı & Rol Tanımla
+            </h3>
+            <div class="space-y-2.5 text-xs">
+              <div>
+                <label class="font-bold text-slate-500">Kullanıcı Adı (username)</label>
+                <input type="text" id="usrUsername" placeholder="ornek.kullanici" class="w-full p-2 border rounded-lg font-mono">
+              </div>
+              <div>
+                <label class="font-bold text-slate-500">Şifre (password)</label>
+                <input type="text" id="usrPassword" placeholder="••••••" class="w-full p-2 border rounded-lg font-mono">
+              </div>
+              <div>
+                <label class="font-bold text-slate-500">Rol (role)</label>
+                <select id="usrRole" class="w-full p-2 border rounded-lg font-bold">
+                  <option value="SUPERUSER">SUPERUSER (Tam Yetki)</option>
+                  <option value="ADMIN">ADMIN (Yönetim & Veri)</option>
+                  <option value="MANAGER">MANAGER (Mağaza Yöneticisi)</option>
+                  <option value="STAFF">STAFF (Personel)</option>
+                </select>
+              </div>
+              <button onclick="saveUserToStockMaster()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs">
+                Kullanıcıyı Eşzamanlı Kaydet
+              </button>
+            </div>
+          </div>
+
+          <!-- Eşzamanlı Users, AdminUsers ve Roles Listesi (8 Kolon) -->
+          <div class="lg:col-span-8 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-black uppercase tracking-wider text-slate-800">
+                Stock-Master Eşzamanlı Kullanıcılar (`users` & `adminUsers`) ve Roller (`roles`)
+              </h3>
+              <span id="usersCountBadge" class="text-[11px] bg-blue-50 text-blue-700 font-bold px-2.5 py-0.5 rounded-full">0 Kayıt</span>
+            </div>
+
+            <div class="overflow-x-auto max-h-72 overflow-y-auto border border-slate-100 rounded-xl">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 text-slate-500 font-bold sticky top-0 border-b">
+                  <tr>
+                    <th class="p-2.5">Kullanıcı Adı</th>
+                    <th class="p-2.5">Koleksiyon</th>
+                    <th class="p-2.5">Rol</th>
+                    <th class="p-2.5">Yetkiler</th>
+                  </tr>
+                </thead>
+                <tbody id="admUsersTableBody" class="divide-y divide-slate-100 font-mono text-[11px]"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
+  </div>
 
+  <!-- UYGULAMA ÇEKİRDEK MANTIĞI -->
+  <script>
+    /*************************************************************************
+     * 1. STOCK-MASTER (urun-bulucu) FIRESTORE BAĞLANTISI & OFFLINE ÖNBELLEK
+     *************************************************************************/
+    const STOCK_MASTER_FIREBASE_CONFIG = {
+      apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
+      authDomain: "urun-bulucu.firebaseapp.com",
+      projectId: "urun-bulucu",
+      storageBucket: "urun-bulucu.firebasestorage.app"
+    };
 
-    <div id="settings-modal" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center opacity-0 invisible transition-all duration-200 p-4">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-transform duration-200 flex flex-col" id="settings-content" style="max-height: 90vh;">
-            <div class="bg-slate-800 px-6 py-4 flex justify-between items-center shrink-0">
-                <h3 class="text-white font-bold tracking-wide"><i class="fa-solid fa-gear mr-2"></i> Yönetim Paneli</h3>
-                <button onclick="toggleSettings()" class="text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+    let db = null;
+    // Maksimum hız için RAM önbelleği (Minimum veri tüketimi)
+    const productRamCache = new Map();
+    let currentProduct = {
+      barcode: "3561000010248",
+      name: "SUET ÇANTA",
+      model: "RY01",
+      color: "Siyah",
+      size: "STD",
+      date: "22.09.20",
+      price: "3299,00 TL"
+    };
+
+    // Oturum ve Yetki Durumu
+    let currentUser = null;
+    let syncedUsersMap = new Map();
+    let syncedRolesMap = new Map();
+    let analyticsLogs = [];
+    let unsubLogs = null;
+
+    function initStockMasterServer() {
+      try {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(STOCK_MASTER_FIREBASE_CONFIG);
+        }
+        db = firebase.firestore();
+
+        // Zayıf internette maksimum hız için yerel IndexedDB önbelleğini aktif et
+        db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+
+        // Varsayılan ürünü RAM'e koy
+        productRamCache.set(currentProduct.barcode, currentProduct);
+
+        // Stock-Master Users, AdminUsers ve Roles eşzamanlamasını başlat
+        syncStockMasterUsersAndRoles();
+
+        // İlk açılışta ürünleri hafif önbelleğe çek
+        fetchInitialProductsFromServer(false);
+
+        // Kayıtlı yönetici oturumu varsa geri yükle
+        const savedSession = sessionStorage.getItem('sm_active_user');
+        if (savedSession) {
+          currentUser = JSON.parse(savedSession);
+          updateAuthUI();
+        }
+      } catch (err) {
+        console.error("Sunucu başlatma hatası:", err);
+        document.getElementById('syncStatusText').innerText = "Sunucu: Çevrimdışı Önbellek";
+        document.getElementById('netDot').classList.replace('bg-emerald-400', 'bg-amber-400');
+      }
+    }
+
+    /*************************************************************************
+     * 2. USERS, ADMINUSERS VE ROLLERİN EŞZAMANLI SENKRONİZASYONU
+     *************************************************************************/
+    function syncStockMasterUsersAndRoles() {
+      if (!db) return;
+
+      // 1) 'adminUsers' koleksiyonu dinleyicisi
+      db.collection('adminUsers').onSnapshot(snap => {
+        snap.forEach(doc => {
+          const d = doc.data();
+          const uname = d.username || doc.id;
+          syncedUsersMap.set(uname, {
+            username: uname,
+            password: String(d.password || ''),
+            role: d.role || 'SUPERUSER',
+            permissions: d.permissions || ['ALL'],
+            source: 'adminUsers'
+          });
+        });
+        renderSyncedUsersTable();
+      });
+
+      // 2) 'users' koleksiyonu dinleyicisi
+      db.collection('users').onSnapshot(snap => {
+        snap.forEach(doc => {
+          const d = doc.data();
+          const uname = d.username || doc.id;
+          syncedUsersMap.set(uname, {
+            username: uname,
+            password: String(d.password || ''),
+            role: d.role || 'ADMIN',
+            permissions: d.permissions || ['PRINT', 'MANAGE'],
+            source: 'users'
+          });
+        });
+        renderSyncedUsersTable();
+      });
+
+      // 3) 'roles' koleksiyonu dinleyicisi
+      db.collection('roles').onSnapshot(snap => {
+        snap.forEach(doc => {
+          syncedRolesMap.set(doc.id, doc.data());
+        });
+      });
+    }
+
+    function handleAuthButtonClick() {
+      if (currentUser) {
+        openAdminPanel();
+      } else {
+        document.getElementById('loginModal').classList.remove('hidden');
+        document.getElementById('loginUsername').focus();
+      }
+    }
+
+    function closeLoginModal() {
+      document.getElementById('loginModal').classList.add('hidden');
+      document.getElementById('loginErrorMsg').classList.add('hidden');
+    }
+
+    async function performLogin() {
+      const uname = document.getElementById('loginUsername').value.trim();
+      const pass = document.getElementById('loginPassword').value.trim();
+      const errBox = document.getElementById('loginErrorMsg');
+
+      if (!uname || !pass) {
+        errBox.innerText = "Kullanıcı adı ve şifre giriniz.";
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      // 1. Önce senkronize RAM haritasından kontrol et (0ms hız)
+      let matched = syncedUsersMap.get(uname);
+
+      // 2. Haritada henüz yoksa doğrudan sunucudan (adminUsers ve users) tekil sorgula
+      if (!matched && db) {
+        try {
+          const admDoc = await db.collection('adminUsers').doc(uname).get();
+          if (admDoc.exists) {
+            const d = admDoc.data();
+            matched = { username: uname, password: String(d.password || ''), role: d.role || 'SUPERUSER', source: 'adminUsers' };
+          } else {
+            const usrDoc = await db.collection('users').doc(uname).get();
+            if (usrDoc.exists) {
+              const d = usrDoc.data();
+              matched = { username: uname, password: String(d.password || ''), role: d.role || 'ADMIN', source: 'users' };
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (matched && matched.password === pass) {
+        currentUser = matched;
+        sessionStorage.setItem('sm_active_user', JSON.stringify(currentUser));
+        updateAuthUI();
+        closeLoginModal();
+        openAdminPanel();
+      } else {
+        errBox.innerText = "Hatalı kullanıcı adı veya şifre! (Stock-Master yetkinizi kontrol edin)";
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    function updateAuthUI() {
+      const btnText = document.getElementById('authBtnText');
+      if (currentUser) {
+        btnText.innerText = `Yönetim (${currentUser.username})`;
+        document.getElementById('adminUserBadge').innerText = `Yetkili: ${currentUser.username} | Rol: ${currentUser.role}`;
+      } else {
+        btnText.innerText = "Giriş Yap";
+      }
+    }
+
+    function logoutAdmin() {
+      currentUser = null;
+      sessionStorage.removeItem('sm_active_user');
+      updateAuthUI();
+      closeAdminPanel();
+    }
+
+    /*************************************************************************
+     * 3. MİNİMUM VERİ İLE MAKSİMUM HIZDA BARKOD SORGULAMA VE BASKI
+     *************************************************************************/
+    async function searchAndHandleBarcode() {
+      const inputEl = document.getElementById('barcodeInput');
+      const rawBarcode = inputEl.value.trim();
+      if (!rawBarcode) return;
+
+      inputEl.value = '';
+      inputEl.focus();
+      playBeep();
+
+      const noticeEl = document.getElementById('scanNoticeText');
+      noticeEl.innerText = `Sorgulanıyor: ${rawBarcode}...`;
+
+      let foundProduct = null;
+
+      // ADIM 1: Önce RAM Önbelleğine bak (0ms, sıfır internet kullanımı)
+      if (productRamCache.has(rawBarcode)) {
+        foundProduct = productRamCache.get(rawBarcode);
+      }
+
+      // ADIM 2: RAM'de yoksa Firestore'dan doğrudan Doc ID ile çek (<300 byte paket)
+      if (!foundProduct && db) {
+        try {
+          const docRef = db.collection('products').doc(rawBarcode);
+          // Önce yerel IndexedDB önbelleğinden dene, yoksa sunucudan al
+          let docSnap = await docRef.get({ source: 'cache' }).catch(() => null);
+          if (!docSnap || !docSnap.exists) {
+            docSnap = await docRef.get();
+          }
+          if (docSnap && docSnap.exists) {
+            foundProduct = docSnap.data();
+            productRamCache.set(rawBarcode, foundProduct);
+          }
+        } catch (err) {
+          console.warn("Hızlı sorgu uyarısı:", err);
+        }
+      }
+
+      if (foundProduct) {
+        currentProduct = foundProduct;
+        renderMainScreenProduct(foundProduct);
+        noticeEl.innerText = `Bulundu: ${foundProduct.name} (${foundProduct.price})`;
+
+        const isDirectPrint = document.getElementById('directPrintToggle').checked;
+        if (isDirectPrint) {
+          // Asenkron (bloklamayan) baskı + arka plan sunucu raporu
+          sendZplToPrinter(foundProduct);
+          logEventToServerAsync(foundProduct, 'DIRECT_PRINT');
+        } else {
+          logEventToServerAsync(foundProduct, 'SCAN_ONLY');
+        }
+      } else {
+        noticeEl.innerText = `Sunucuda bulunamadı: ${rawBarcode}`;
+      }
+    }
+
+    function renderMainScreenProduct(p) {
+      // 1. Fiyat
+      document.getElementById('mainPriceDisplay').innerText = p.price || '0,00 TL';
+      // 2. Salt Okunur Ürün Bilgisi
+      document.getElementById('mainBarcodeBadge').innerText = p.barcode || '-';
+      document.getElementById('roName').innerText = p.name || '-';
+      document.getElementById('roModel').innerText = p.model || '-';
+      document.getElementById('roColor').innerText = p.color || '-';
+      document.getElementById('roSize').innerText = p.size || '-';
+      document.getElementById('roDate').innerText = p.date || '-';
+
+      // 3. 5x2 cm Önizleme Kartı
+      document.getElementById('lblPreviewName').innerText = p.name || '';
+      document.getElementById('lblPreviewModel').innerText = p.model || '';
+      document.getElementById('lblPreviewColor').innerText = p.color || '';
+      document.getElementById('lblPreviewSize').innerText = p.size || '';
+      document.getElementById('lblPreviewDate').innerText = p.date || '';
+      document.getElementById('lblPreviewPrice').innerText = p.price || '';
+
+      drawCompactBarcode(p.barcode || '3561000010248');
+    }
+
+    function drawCompactBarcode(barcode) {
+      const cleanCode = String(barcode).trim();
+      const isEAN13 = (cleanCode.length === 13 && /^\d+$/.test(cleanCode));
+      try {
+        JsBarcode("#barcodeCanvas", cleanCode, {
+          format: isEAN13 ? "EAN13" : "CODE128",
+          width: 1.35,
+          height: 26,
+          displayValue: true,
+          font: "monospace",
+          fontSize: 10,
+          textMargin: 1,
+          margin: 0
+        });
+      } catch (e) {
+        JsBarcode("#barcodeCanvas", cleanCode, {
+          format: "CODE128",
+          width: 1.3,
+          height: 26,
+          displayValue: true,
+          fontSize: 10,
+          margin: 0
+        });
+      }
+    }
+
+    /*************************************************************************
+     * 4. 5x2 CM (50mm x 20mm) ZPL ÜRETİMİ VE BLUETOOTH AKTARIMI
+     *************************************************************************/
+    let bleDevice = null;
+    let bleCharacteristic = null;
+
+    async function connectBluetooth() {
+      try {
+        document.getElementById('bleStatusText').innerText = "Aranıyor...";
+        bleDevice = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [
+            '000018f0-0000-1000-8000-00805f9b34fb',
+            '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+            '6e400001-b5a3-f393-e0a9-e50e24dcca9e'
+          ]
+        });
+
+        const server = await bleDevice.gatt.connect();
+        const services = await server.getPrimaryServices();
+
+        for (const service of services) {
+          const chars = await service.getCharacteristics();
+          for (const ch of chars) {
+            if (ch.properties.write || ch.properties.writeWithoutResponse) {
+              bleCharacteristic = ch;
+              break;
+            }
+          }
+          if (bleCharacteristic) break;
+        }
+
+        if (bleCharacteristic) {
+          document.getElementById('bleStatusText').innerText = "Hazır";
+          document.getElementById('btnConnectBle').classList.replace('bg-blue-600', 'bg-emerald-600');
+        }
+      } catch (err) {
+        document.getElementById('bleStatusText').innerText = "Yazıcı";
+        alert("Bluetooth yazıcı bağlantısı kurulamadı: " + err.message);
+      }
+    }
+
+    function generate5x2ZPL(p) {
+      // 50mm x 20mm (203 DPI -> 400 dots genişlik x 160 dots yükseklik)
+      const cleanBarcode = String(p.barcode || '').trim();
+      const isEAN13 = (cleanBarcode.length === 13 && /^\d+$/.test(cleanBarcode));
+      const barcodeCmd = isEAN13
+        ? `^FO85,60^BY2^BEN,45,Y,N^FD${cleanBarcode}^FS`
+        : `^FO75,60^BY1.8^BCN,45,Y,N,N^FD${cleanBarcode}^FS`;
+
+      return `^XA
+^PW400
+^LL160
+^CI28
+^FO20,10^A0N,20,20^FD${p.name || ''}^FS
+^FO20,34^A0N,18,18^FD${p.model || ''}^FS
+^FO175,34^A0N,18,18^FD${p.color || ''}^FS
+^FO320,34^A0N,18,18^FD${p.size || ''}^FS
+^FO20,62^A0B,15,15^FD${p.date || ''}^FS
+${barcodeCmd}
+^FO75,130^A0N,22,22^FDPSF : ${p.price || ''}^FS
+^XZ`;
+    }
+
+    function manualPrintTrigger() {
+      sendZplToPrinter(currentProduct);
+      logEventToServerAsync(currentProduct, 'MANUAL_PRINT');
+    }
+
+    async function sendZplToPrinter(product) {
+      const zpl = generate5x2ZPL(product);
+      if (!bleCharacteristic) {
+        console.log("5x2 ZPL Çıktısı:\n", zpl);
+        document.getElementById('scanNoticeText').innerText = "Simülasyon: 5x2 ZPL hazırlandı (Yazıcı bağlı değil).";
+        playSuccessTone();
+        return;
+      }
+
+      try {
+        const encoder = new TextEncoder();
+        const bytes = encoder.encode(zpl);
+        const chunkSize = 120;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          const slice = bytes.slice(i, i + chunkSize);
+          if (bleCharacteristic.properties.writeWithoutResponse) {
+            await bleCharacteristic.writeValueWithoutResponse(slice);
+          } else {
+            await bleCharacteristic.writeValue(slice);
+          }
+        }
+        playSuccessTone();
+      } catch (e) {
+        alert("Yazıcıya veri gönderilemedi: " + e.message);
+      }
+    }
+
+    /*************************************************************************
+     * 5. ARKA PLAN SESSİZ LOGLAMA VE YÖNETİM ANALİZ PANELİ
+     *************************************************************************/
+    function logEventToServerAsync(product, actionType) {
+      if (!db) return;
+      // Fire-and-forget: Zayıf internette bile kullanıcıyı bekletmez, kuyruğa atar
+      db.collection('label_logs').add({
+        barcode: String(product.barcode || ''),
+        productName: String(product.name || ''),
+        model: String(product.model || ''),
+        color: String(product.color || ''),
+        size: String(product.size || ''),
+        price: String(product.price || ''),
+        action: actionType, // 'DIRECT_PRINT', 'MANUAL_PRINT', 'SCAN_ONLY'
+        user: currentUser ? currentUser.username : 'Saha-Terminali',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        clientTime: new Date().toLocaleString('tr-TR')
+      }).catch(() => {});
+    }
+
+    function openAdminPanel() {
+      if (!currentUser) return;
+      document.getElementById('adminPanelModal').classList.remove('hidden');
+
+      // Analiz loglarını yalnızca yönetim ekranı açıldığında dinle (Ana ekranda sıfır veri yükü)
+      if (!unsubLogs && db) {
+        unsubLogs = db.collection('label_logs')
+          .orderBy('createdAt', 'desc')
+          .limit(300)
+          .onSnapshot(snap => {
+            analyticsLogs = [];
+            snap.forEach(doc => analyticsLogs.push(doc.data()));
+            renderAnalyticsView();
+          });
+      }
+      renderAdminProductTable();
+      renderSyncedUsersTable();
+    }
+
+    function closeAdminPanel() {
+      document.getElementById('adminPanelModal').classList.add('hidden');
+    }
+
+    function switchAdminTab(tabId) {
+      ['tabAnalytics', 'tabData', 'tabUsers'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+
+      const mapBtn = {
+        tabAnalytics: 'btnTabAnalytics',
+        tabData: 'btnTabData',
+        tabUsers: 'btnTabUsers'
+      };
+      Object.values(mapBtn).forEach(btnId => {
+        document.getElementById(btnId).className = "px-4 py-2 rounded-xl text-xs font-black bg-white text-slate-700 hover:bg-slate-200 flex items-center gap-2";
+      });
+      document.getElementById(mapBtn[tabId]).className = "px-4 py-2 rounded-xl text-xs font-black bg-slate-900 text-white flex items-center gap-2";
+    }
+
+    function renderAnalyticsView() {
+      const filterQ = (document.getElementById('logFilterInput')?.value || '').toLowerCase();
+      let autoCount = 0;
+      let manualCount = 0;
+      let scanCount = 0;
+      const productCounter = {};
+
+      const tbody = document.getElementById('adminLogTableBody');
+      tbody.innerHTML = '';
+
+      analyticsLogs.forEach(log => {
+        if (log.action === 'DIRECT_PRINT') autoCount++;
+        else if (log.action === 'MANUAL_PRINT') manualCount++;
+        else scanCount++;
+
+        const key = `${log.barcode} - ${log.productName || ''}`;
+        productCounter[key] = (productCounter[key] || 0) + 1;
+
+        const match = !filterQ ||
+          (log.barcode && log.barcode.toLowerCase().includes(filterQ)) ||
+          (log.productName && log.productName.toLowerCase().includes(filterQ));
+
+        if (match) {
+          const badge = log.action === 'DIRECT_PRINT'
+            ? '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">DİREKT BASKI</span>'
+            : (log.action === 'MANUAL_PRINT'
+              ? '<span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">MANUEL BASKI</span>'
+              : '<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">SORGULAMA</span>');
+
+          tbody.insertAdjacentHTML('beforeend', `
+            <tr class="hover:bg-slate-50">
+              <td class="p-2.5 text-slate-500">${log.clientTime || '-'}</td>
+              <td class="p-2.5 font-bold">${log.barcode}</td>
+              <td class="p-2.5 font-sans font-bold text-slate-800">${log.productName || '-'}</td>
+              <td class="p-2.5 font-sans">${log.model || ''} / ${log.color || ''}</td>
+              <td class="p-2.5 font-bold text-emerald-700">${log.price || ''}</td>
+              <td class="p-2.5">${badge}</td>
+              <td class="p-2.5 text-slate-500">${log.user || '-'}</td>
+            </tr>
+          `);
+        }
+      });
+
+      document.getElementById('statTotalLogs').innerText = analyticsLogs.length;
+      document.getElementById('statAutoPrints').innerText = autoCount;
+      document.getElementById('statManualPrints').innerText = manualCount;
+      document.getElementById('statScanOnly').innerText = scanCount;
+
+      // En çok işlem gören ilk 5 ürün
+      const topList = document.getElementById('topProductsList');
+      topList.innerHTML = '';
+      Object.entries(productCounter)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .forEach(([title, count]) => {
+          topList.insertAdjacentHTML('beforeend', `
+            <div class="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+              <span class="font-bold text-slate-700 truncate pr-2">${title}</span>
+              <span class="bg-slate-900 text-white text-[10px] font-mono px-2 py-0.5 rounded-full shrink-0">${count} işlem</span>
             </div>
-            
-            <div class="overflow-y-auto p-6 space-y-6 flex-1">
-                <div>
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Belge Başlık Bilgileri</h4>
-                    <div class="space-y-3">
-                        <input type="text" id="inp-store" placeholder="Kurum/Mağaza Adı" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-500 transition" oninput="saveSettings()">
-                        <input type="text" id="inp-manager" placeholder="Yönetici Adı" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-500 transition" oninput="saveSettings()">
-                    </div>
-                </div>
-                
-                <div class="pt-5 border-t border-slate-100">
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Özel Gün / Resmi Tatil Ekle</h4>
-                    <div class="flex gap-2">
-                        <div class="flex-1 flex flex-col gap-2">
-                            <input type="text" id="inp-hol-name" placeholder="Tatil Adı (Örn: Zafer Bayramı)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500">
-                            <input type="date" id="inp-hol-date" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500">
-                        </div>
-                        <div class="flex flex-col shrink-0 justify-end">
-                            <button onclick="addSpecialDay()" class="w-12 h-12 rounded-xl bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center transition shadow-sm mb-1">
-                                <i class="fa-solid fa-plus"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div id="settings-hol-list" class="space-y-2 mt-3 empty:hidden"></div>
-                </div>
+          `);
+        });
+    }
 
-                <div class="pt-5 border-t border-slate-100">
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Yeni Personel Ekle</h4>
-                    <div class="flex gap-2">
-                        <div class="flex-1 flex flex-col gap-2">
-                            <input type="text" id="inp-new-emp" placeholder="Ad Soyad" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500">
-                            <input type="number" id="inp-new-quota" placeholder="Yıllık İzin Hakkı (Gün)" value="14" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500">
-                        </div>
-                        <div class="flex flex-col gap-2 shrink-0">
-                            <input type="color" id="inp-new-color" class="w-12 h-12 rounded-xl border border-slate-200 cursor-pointer p-1 bg-white">
-                            <button onclick="addEmployee()" class="w-12 h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center transition shadow-sm">
-                                <i class="fa-solid fa-plus"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
+    function exportLogsToExcel() {
+      if (!analyticsLogs.length) return alert("İndirilecek kayıt bulunamadı.");
+      const rows = analyticsLogs.map(l => ({
+        "Tarih Saat": l.clientTime || '',
+        "Barkod": l.barcode,
+        "Ürün Adı": l.productName,
+        "Model": l.model,
+        "Renk": l.color,
+        "Beden": l.size,
+        "Fiyat": l.price,
+        "İşlem": l.action,
+        "Kullanıcı": l.user
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Etiket_Raporu");
+      XLSX.writeFile(wb, `etiket_analiz_raporu_${Date.now()}.xlsx`);
+    }
 
-                <div>
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Kayıtlı Ekip</h4>
-                    <div id="settings-emp-list" class="space-y-2"></div>
-                </div>
+    /*************************************************************************
+     * 6. YÖNETİM PANELİ: EXCEL VE TEKİL ÜRÜN SUNUCU AKTARIMI
+     *************************************************************************/
+    async function fetchInitialProductsFromServer(forceServer = false) {
+      if (!db) return;
+      try {
+        const snap = await db.collection('products').limit(500).get(forceServer ? { source: 'server' } : undefined);
+        snap.forEach(doc => {
+          productRamCache.set(doc.id, doc.data());
+        });
+        renderAdminProductTable();
+      } catch (e) {}
+    }
 
-                <div class="pt-5 border-t border-slate-100 grid grid-cols-2 gap-3">
-                    <button onclick="document.getElementById('file-upload-2').click()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-upload"></i> İçe Aktar
-                    </button>
-                    <input type="file" id="file-upload-2" class="hidden" accept=".json" onchange="importData(event)">
-                    
-                    <button onclick="exportData()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-download"></i> Dışa Aktar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    async function saveSingleProductToServer() {
+      const p = {
+        barcode: document.getElementById('admBarcode').value.trim(),
+        name: document.getElementById('admName').value.trim(),
+        model: document.getElementById('admModel').value.trim(),
+        color: document.getElementById('admColor').value.trim(),
+        size: document.getElementById('admSize').value.trim(),
+        date: document.getElementById('admDate').value.trim(),
+        price: document.getElementById('admPrice').value.trim()
+      };
+      if (!p.barcode || !p.name) return alert("Barkod ve Ürün Adı zorunludur!");
 
+      productRamCache.set(p.barcode, p);
+      if (db) {
+        await db.collection('products').doc(p.barcode).set({
+          ...p,
+          updatedBy: currentUser ? currentUser.username : 'admin',
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      renderAdminProductTable();
+      if (currentProduct.barcode === p.barcode) renderMainScreenProduct(p);
+      alert("Ürün sunucuya kaydedildi.");
+    }
 
-    <script>
-        const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-        const dayNamesShort = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+    function fillSingleProductForm(barcode) {
+      const p = productRamCache.get(String(barcode));
+      if (!p) return;
+      document.getElementById('admBarcode').value = p.barcode || '';
+      document.getElementById('admName').value = p.name || '';
+      document.getElementById('admModel').value = p.model || '';
+      document.getElementById('admColor').value = p.color || '';
+      document.getElementById('admSize').value = p.size || '';
+      document.getElementById('admDate').value = p.date || '';
+      document.getElementById('admPrice').value = p.price || '';
+    }
 
-        let appData = {
-            employees: [
-                { id: 1, name: "Ahmet Yılmaz", color: "#3b82f6", quota: 14 }, 
-                { id: 2, name: "Ayşe Demir", color: "#8b5cf6", quota: 14 },   
-                { id: 3, name: "Mehmet Kaya", color: "#10b981", quota: 20 }    
-            ],
-            leaves: [
-                { id: 101, empId: 1, date: "2026-08-12", type: "YI" },
-                { id: 102, empId: 1, date: "2026-08-13", type: "YI" },
-                { id: 104, empId: 1, date: "2026-08-15", type: "HT" }
-            ],
-            specialDays: [
-                { id: 1, name: "Zafer Bayramı", date: "2026-08-30" }
-            ],
-            settings: {
-                storeName: "Mağaza 4254 - Park Bornova AVM",
-                managerName: "Arda Ulaş"
-            }
-        };
+    function handleAdminExcelUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
 
-        let state = {
-            year: 2026,
-            month: 7, 
-            activeEmpId: null,
-            paintType: 'YI' 
-        };
+      const statusBox = document.getElementById('excelUploadStatus');
+      statusBox.classList.remove('hidden');
+      statusBox.innerText = "Excel okunuyor ve sunucuya aktarılıyor...";
 
-        function getInitials(name) { return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase(); }
-        function parseDate(dateStr) { const [y,m,d] = dateStr.split('-'); return new Date(y, m-1, d); }
-        function formatDate(y, m, d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
-        function getRandomColor() { const c = ['#ef4444','#f97316','#f59e0b','#84cc16','#10b981','#06b6d4','#3b82f6','#6366f1','#8b5cf6','#d946ef']; return c[Math.floor(Math.random()*c.length)]; }
+      const reader = new FileReader();
+      reader.onload = async function(evt) {
+        const data = new Uint8Array(evt.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
 
-        function getRemainingQuota(empId) {
-            const emp = appData.employees.find(e => e.id === empId);
-            if (!emp) return 0;
-            const usedYI = appData.leaves.filter(l => l.empId === empId && l.type === 'YI').length;
-            return (emp.quota || 0) - usedYI;
-        }
+        const parsedList = rows.map(r => ({
+          barcode: String(r['Barkod'] || r['BARKOD'] || r['barcode'] || '').trim(),
+          name: String(r['Ürün Adı'] || r['URUN_ADI'] || r['name'] || '').trim(),
+          model: String(r['Model'] || r['MODEL'] || r['model'] || '').trim(),
+          color: String(r['Renk'] || r['RENK'] || r['color'] || '').trim(),
+          size: String(r['Beden'] || r['BEDEN'] || r['size'] || 'STD').trim(),
+          date: String(r['Tarih'] || r['TARIH'] || r['date'] || '').trim(),
+          price: String(r['Fiyat'] || r['PSF'] || r['price'] || '').trim()
+        })).filter(item => item.barcode);
 
-        function checkAndMigrateData() {
-            let migrated = false;
-            let newLeaves = [];
-            
-            appData.leaves.forEach(l => {
-                if (l.start && l.end) {
-                    migrated = true;
-                    let curr = new Date(l.start);
-                    let end = new Date(l.end);
-                    while (curr <= end) {
-                        newLeaves.push({ id: Math.random(), empId: l.empId, date: formatDate(curr.getFullYear(), curr.getMonth(), curr.getDate()), type: l.type });
-                        curr.setDate(curr.getDate() + 1);
-                    }
-                } else if (l.date) {
-                    newLeaves.push(l);
-                }
+        // 450'lik paketler (Firestore Batch limiti 500'dür) halinde sunucuya bas
+        const chunkSize = 450;
+        for (let i = 0; i < parsedList.length; i += chunkSize) {
+          const slice = parsedList.slice(i, i + chunkSize);
+          const batch = db.batch();
+          slice.forEach(item => {
+            productRamCache.set(item.barcode, item);
+            const ref = db.collection('products').doc(item.barcode);
+            batch.set(ref, {
+              ...item,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-
-            appData.employees.forEach(e => {
-                if (e.quota === undefined) { e.quota = 14; migrated = true; }
-            });
-
-            if (!appData.specialDays) {
-                appData.specialDays = [];
-                migrated = true;
-            }
-
-            if (migrated) { appData.leaves = newLeaves; saveData(); }
+          });
+          await batch.commit();
         }
 
-        function initApp() {
-            const stored = localStorage.getItem('leavePlannerPro_v18');
-            if (stored) { appData = JSON.parse(stored); checkAndMigrateData(); } 
-            else { saveData(); }
+        statusBox.innerText = `Tamamlandı! ${parsedList.length} ürün Stock-Master sunucusuna aktarıldı.`;
+        renderAdminProductTable();
+      };
+      reader.readAsArrayBuffer(file);
+    }
 
-            const monthSel = document.getElementById('ui-month');
-            monthSel.innerHTML = monthNames.map((m, i) => `<option value="${i}">${m}</option>`).join('');
-            
-            document.getElementById('ui-month').value = state.month;
-            document.getElementById('ui-year').value = state.year;
-            document.getElementById('inp-store').value = appData.settings.storeName;
-            document.getElementById('inp-manager').value = appData.settings.managerName;
-            document.getElementById('inp-new-color').value = getRandomColor();
+    function renderAdminProductTable() {
+      const tbody = document.getElementById('admProductTableBody');
+      if (!tbody) return;
+      const q = (document.getElementById('admProductSearch')?.value || '').toLowerCase();
+      tbody.innerHTML = '';
 
-            renderApp();
+      let count = 0;
+      for (const [barcode, p] of productRamCache.entries()) {
+        if (q && !barcode.toLowerCase().includes(q) && !(p.name || '').toLowerCase().includes(q)) continue;
+        if (++count > 100) break; // Arayüz hızı için ilk 100 eşleşmeyi çiz
+
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2 font-mono font-bold">${p.barcode}</td>
+            <td class="p-2 font-bold">${p.name}</td>
+            <td class="p-2 text-slate-500">${p.model} / ${p.color} / ${p.size}</td>
+            <td class="p-2 font-bold text-emerald-700">${p.price}</td>
+            <td class="p-2 text-right">
+              <button onclick="fillSingleProductForm('${p.barcode}')" class="px-2.5 py-1 bg-slate-100 hover:bg-amber-500 hover:text-white rounded text-[11px] font-bold">
+                Seç
+              </button>
+            </td>
+          </tr>
+        `);
+      }
+    }
+
+    function renderSyncedUsersTable() {
+      const tbody = document.getElementById('admUsersTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      document.getElementById('usersCountBadge').innerText = `${syncedUsersMap.size} Kullanıcı`;
+
+      syncedUsersMap.forEach(u => {
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr class="hover:bg-slate-50">
+            <td class="p-2.5 font-bold text-slate-800">${u.username}</td>
+            <td class="p-2.5"><span class="px-2 py-0.5 bg-slate-100 rounded text-[10px]">${u.source}</span></td>
+            <td class="p-2.5 font-bold text-blue-700">${u.role}</td>
+            <td class="p-2.5 text-slate-500">${Array.isArray(u.permissions) ? u.permissions.join(', ') : 'TAM YETKİ'}</td>
+          </tr>
+        `);
+      });
+    }
+
+    async function saveUserToStockMaster() {
+      const uname = document.getElementById('usrUsername').value.trim();
+      const pass = document.getElementById('usrPassword').value.trim();
+      const role = document.getElementById('usrRole').value;
+      if (!uname || !pass) return alert("Kullanıcı adı ve şifre zorunludur!");
+
+      await db.collection('users').doc(uname).set({
+        username: uname,
+        password: pass,
+        role: role,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      alert(`Kullanıcı (${uname}) Stock-Master 'users' koleksiyonuna kaydedildi.`);
+    }
+
+    function downloadSampleExcel() {
+      const sample = [
+        { "Barkod": "3561000010248", "Ürün Adı": "SUET ÇANTA", "Model": "RY01", "Renk": "Siyah", "Beden": "STD", "Tarih": "22.09.20", "Fiyat": "3299,00 TL" }
+      ];
+      const ws = XLSX.utils.json_to_sheet(sample);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Urunler");
+      XLSX.writeFile(wb, "stock_master_etiket_sablon.xlsx");
+    }
+
+    /*************************************************************************
+     * 7. KAMERA BARKOD TARAYICI VE SES EFEKTLERİ
+     *************************************************************************/
+    let html5QrCode = null;
+    function toggleCameraScanner() {
+      const modal = document.getElementById('cameraModal');
+      if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        html5QrCode = new Html5Qrcode("interactiveScanner");
+        html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 12, qrbox: { width: 240, height: 110 } },
+          (decodedText) => {
+            document.getElementById('barcodeInput').value = decodedText;
+            toggleCameraScanner();
+            searchAndHandleBarcode();
+          },
+          () => {}
+        );
+      } else {
+        if (html5QrCode) {
+          html5QrCode.stop().then(() => {
+            html5QrCode.clear();
+            modal.classList.add('hidden');
+          }).catch(() => modal.classList.add('hidden'));
+        } else {
+          modal.classList.add('hidden');
         }
+      }
+    }
 
-        function saveData() { 
-            localStorage.setItem('leavePlannerPro_v18', JSON.stringify(appData)); 
-        }
+    function playBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 1950;
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.06);
+      } catch (e) {}
+    }
 
-        function setPaintType(type) {
-            state.paintType = type;
-            const btnYI = document.getElementById('btn-type-yi');
-            const btnHT = document.getElementById('btn-type-ht');
-            
-            if(type === 'YI') {
-                btnYI.className = "px-3 py-1.5 rounded-lg text-[10px] font-bold transition bg-white shadow-sm text-indigo-600";
-                btnHT.className = "px-3 py-1.5 rounded-lg text-[10px] font-bold transition text-slate-500 hover:text-orange-500";
-            } else {
-                btnHT.className = "px-3 py-1.5 rounded-lg text-[10px] font-bold transition bg-white shadow-sm text-orange-600";
-                btnYI.className = "px-3 py-1.5 rounded-lg text-[10px] font-bold transition text-slate-500 hover:text-indigo-500";
-            }
-        }
+    function playSuccessTone() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(660, ctx.currentTime);
+        osc.frequency.setValueAtTime(990, ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+      } catch (e) {}
+    }
 
-        function setActiveEmp(id) {
-            state.activeEmpId = id;
-            renderPaintBar(); 
-        }
-
-        function applyLeave(empId, dateStr, type, existingIdx) {
-            if (existingIdx > -1) {
-                appData.leaves[existingIdx].type = type;
-            } else {
-                appData.leaves.push({ id: Math.random(), empId: empId, date: dateStr, type: type });
-            }
-            saveData();
-            renderApp();
-        }
-
-        function handleCellClick(day) {
-            if(!state.activeEmpId) {
-                Swal.fire({ toast: true, position: 'top', icon: 'info', title: 'Lütfen alttan personel seçin.', showConfirmButton: false, timer: 2000 });
-                return;
-            }
-
-            const dateStr = formatDate(state.year, state.month, day);
-            const empId = state.activeEmpId;
-            const type = state.paintType;
-
-            const existingIdx = appData.leaves.findIndex(l => l.empId === empId && l.date === dateStr);
-
-            if (existingIdx > -1 && appData.leaves[existingIdx].type === type) {
-                appData.leaves.splice(existingIdx, 1);
-                saveData();
-                renderApp();
-            } else {
-                if (type === 'YI' && getRemainingQuota(empId) <= 0) {
-                    Swal.fire({
-                        title: 'Kota Uyarısı!',
-                        text: 'Bu personelin yıllık izin hakkı doldu (0 Gün). Yine de atamak istiyor musunuz?',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#3b82f6',
-                        cancelButtonColor: '#94a3b8',
-                        confirmButtonText: 'Evet, Ata',
-                        cancelButtonText: 'İptal'
-                    }).then((result) => {
-                        if (result.isConfirmed) { applyLeave(empId, dateStr, type, existingIdx); }
-                    });
-                } else {
-                    applyLeave(empId, dateStr, type, existingIdx);
-                }
-            }
-        }
-
-        function changeMonth(delta) {
-            state.month += delta;
-            if(state.month > 11) { state.month = 0; state.year++; }
-            if(state.month < 0) { state.month = 11; state.year--; }
-            document.getElementById('ui-month').value = state.month;
-            document.getElementById('ui-year').value = state.year;
-            renderApp();
-        }
-
-        function getStripStyles(d, empId, type, startDay) {
-            const prevDateStr = formatDate(state.year, state.month, d - 1);
-            const nextDateStr = formatDate(state.year, state.month, d + 1);
-
-            const isPrevConnected = appData.leaves.some(l => l.empId === empId && l.type === type && l.date === prevDateStr);
-            const isNextConnected = appData.leaves.some(l => l.empId === empId && l.type === type && l.date === nextDateStr);
-            
-            const isRowStart = (startDay + d - 1) % 7 === 0 || d === 1;
-            const isRowEnd = (startDay + d) % 7 === 0 || d === new Date(state.year, state.month + 1, 0).getDate();
-
-            let styles = "";
-            let showText = !isPrevConnected || isRowStart;
-
-            if (isPrevConnected && !isRowStart) {
-                styles += "margin-left: -5px; padding-left: 5px; border-top-left-radius: 0; border-bottom-left-radius: 0; ";
-            } else {
-                styles += "border-top-left-radius: 4px; border-bottom-left-radius: 4px; ";
-            }
-
-            if (isNextConnected && !isRowEnd) {
-                styles += "margin-right: -5px; padding-right: 5px; border-top-right-radius: 0; border-bottom-right-radius: 0; ";
-            } else {
-                styles += "border-top-right-radius: 4px; border-bottom-right-radius: 4px; ";
-            }
-
-            return { styles, showText };
-        }
-
-        function renderApp() {
-            state.month = parseInt(document.getElementById('ui-month').value);
-            state.year = parseInt(document.getElementById('ui-year').value);
-            
-            renderPaintBar();
-            renderSettingsList();
-            renderCalendarUI();
-        }
-
-        function renderPaintBar() {
-            const container = document.getElementById('paint-employees-container');
-            container.innerHTML = '';
-            
-            appData.employees.forEach(emp => {
-                const isActive = state.activeEmpId === emp.id;
-                const activeClass = isActive ? 'active' : '';
-                const style = isActive ? `background-color: ${emp.color};` : `background-color: ${emp.color}dd; opacity: 0.8;`; 
-                const remYI = getRemainingQuota(emp.id);
-                const remColor = remYI > 0 ? 'text-indigo-500' : 'text-red-500';
-
-                container.innerHTML += `
-                    <div onclick="setActiveEmp(${emp.id})" class="flex flex-col items-center gap-1 cursor-pointer" title="${emp.name}">
-                        <div class="emp-avatar ${activeClass}" style="${style}">${getInitials(emp.name)}</div>
-                        <span class="text-[10px] font-bold ${isActive ? 'text-slate-800' : 'text-slate-400'} truncate max-w-[60px] text-center mt-0.5">${emp.name.split(' ')[0]}</span>
-                        <span class="text-[9px] font-bold ${remColor} mt-[-3px]">${remYI} Yİ</span>
-                    </div>
-                `;
-            });
-        }
-
-        function renderCalendarUI() {
-            const area = document.getElementById('ui-calendar');
-            const firstDay = new Date(state.year, state.month, 1);
-            const lastDay = new Date(state.year, state.month + 1, 0);
-            let startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; 
-            const totalDays = lastDay.getDate();
-
-            let html = '';
-            dayNamesShort.forEach(day => {
-                html += `<div class="bg-slate-100 text-center py-2.5 text-[11px] font-extrabold text-slate-500 uppercase tracking-wide">${day}</div>`;
-            });
-
-            for (let i = 0; i < startDay; i++) { html += `<div class="calendar-cell is-empty"></div>`; }
-
-            for (let d = 1; d <= totalDays; d++) {
-                const dateStr = formatDate(state.year, state.month, d);
-                
-                const specialDay = appData.specialDays.find(s => s.date === dateStr);
-                let specialHtml = '';
-                if (specialDay) {
-                    specialHtml = `<div class="bg-rose-100 text-rose-600 text-[8px] sm:text-[9px] font-bold px-1 py-0.5 rounded truncate text-center mb-1 w-full" title="${specialDay.name}">${specialDay.name}</div>`;
-                }
-
-                const dayLeaves = appData.leaves.filter(l => l.date === dateStr);
-                
-                let badges = '';
-                dayLeaves.sort((a,b) => a.empId - b.empId).forEach(l => {
-                    const emp = appData.employees.find(e => e.id === l.empId);
-                    if(emp) {
-                        const { styles, showText } = getStripStyles(d, emp.id, l.type, startDay);
-                        const bg = l.type === 'HT' ? '#f97316' : emp.color;
-                        const text = showText ? `${emp.name.split(' ')[0]} <span class="opacity-80">(${l.type})</span>` : '&nbsp;'; 
-                        
-                        badges += `
-                            <div class="px-1.5 py-1 text-[10px] font-bold text-white truncate shadow-sm mb-[2px] relative z-10" 
-                                 style="background-color: ${bg}; ${styles}">
-                                ${text}
-                            </div>
-                        `;
-                    }
-                });
-
-                const isToday = d === new Date().getDate() && state.month === new Date().getMonth() && state.year === new Date().getFullYear();
-                const todayClass = isToday ? 'border-t-4 border-indigo-500 bg-indigo-50/20' : '';
-
-                html += `
-                    <div class="calendar-cell ${todayClass}" onclick="handleCellClick(${d})">
-                        <div class="flex justify-between items-start mb-1 w-full">
-                            <div class="flex-1 overflow-hidden pr-1">${specialHtml}</div>
-                            <div class="text-right text-xs font-extrabold text-slate-400 shrink-0">${d}</div>
-                        </div>
-                        <div class="badges-container">${badges}</div>
-                    </div>
-                `;
-            }
-
-            const remaining = (7 - ((startDay + totalDays) % 7)) % 7;
-            for (let i = 0; i < remaining; i++) { html += `<div class="calendar-cell is-empty"></div>`; }
-            area.innerHTML = html;
-        }
-
-        function toggleSettings() {
-            const modal = document.getElementById('settings-modal');
-            const content = document.getElementById('settings-content');
-            if (modal.classList.contains('invisible')) {
-                modal.classList.remove('invisible', 'opacity-0');
-                content.classList.remove('scale-95');
-                content.classList.add('scale-100');
-            } else {
-                content.classList.remove('scale-100');
-                content.classList.add('scale-95');
-                modal.classList.add('opacity-0');
-                setTimeout(() => modal.classList.add('invisible'), 200);
-            }
-        }
-
-        function saveSettings() {
-            appData.settings.storeName = document.getElementById('inp-store').value;
-            appData.settings.managerName = document.getElementById('inp-manager').value;
-            saveData();
-        }
-
-        function addSpecialDay() {
-            const name = document.getElementById('inp-hol-name').value.trim();
-            const dateStr = document.getElementById('inp-hol-date').value;
-            if(!name || !dateStr) {
-                return Swal.fire('Hata', 'Lütfen tatil adı ve tarihi seçin.', 'warning');
-            }
-            
-            const newId = appData.specialDays.length ? Math.max(...appData.specialDays.map(e => e.id)) + 1 : 1;
-            appData.specialDays.push({ id: newId, name: name, date: dateStr });
-            
-            document.getElementById('inp-hol-name').value = '';
-            document.getElementById('inp-hol-date').value = '';
-            saveData();
-            renderSettingsList();
-            renderApp();
-        }
-
-        function removeSpecialDay(id) {
-            appData.specialDays = appData.specialDays.filter(e => e.id !== id);
-            saveData();
-            renderSettingsList();
-            renderApp();
-        }
-
-        function renderSettingsList() {
-            const empList = document.getElementById('settings-emp-list');
-            empList.innerHTML = '';
-            if(appData.employees.length === 0) empList.innerHTML = '<div class="text-xs text-slate-400 italic">Personel yok.</div>';
-            
-            appData.employees.forEach(emp => {
-                const rem = getRemainingQuota(emp.id);
-                empList.innerHTML += `
-                    <div class="flex justify-between items-center bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl">
-                        <div class="flex items-center gap-3">
-                            <div class="w-4 h-4 rounded-full shadow-sm" style="background-color: ${emp.color}"></div>
-                            <span class="text-sm font-bold text-slate-700">${emp.name} <span class="text-[10px] text-slate-400 font-normal ml-1">(Kota: ${emp.quota} / Kalan: ${rem})</span></span>
-                        </div>
-                        <button onclick="removeEmployee(${emp.id})" class="w-8 h-8 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 flex items-center justify-center transition">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
-                    </div>
-                `;
-            });
-
-            const holList = document.getElementById('settings-hol-list');
-            holList.innerHTML = '';
-            appData.specialDays.forEach(hol => {
-                const dObj = parseDate(hol.date);
-                const formatD = `${dObj.getDate()} ${monthNames[dObj.getMonth()]} ${dObj.getFullYear()}`;
-                holList.innerHTML += `
-                    <div class="flex justify-between items-center bg-rose-50 border border-rose-100 px-3 py-2 rounded-xl">
-                        <div class="flex items-center gap-3">
-                            <div class="w-2 h-2 rounded-full bg-rose-500"></div>
-                            <span class="text-xs font-bold text-rose-700">${hol.name} <span class="text-[10px] font-medium text-rose-500 ml-1">(${formatD})</span></span>
-                        </div>
-                        <button onclick="removeSpecialDay(${hol.id})" class="w-8 h-8 rounded-lg hover:bg-white text-rose-400 hover:text-red-500 flex items-center justify-center transition">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
-                    </div>
-                `;
-            });
-        }
-
-        function addEmployee() {
-            const name = document.getElementById('inp-new-emp').value.trim();
-            const color = document.getElementById('inp-new-color').value;
-            const quota = parseInt(document.getElementById('inp-new-quota').value) || 0;
-            
-            if(!name) return;
-            const newId = appData.employees.length ? Math.max(...appData.employees.map(e => e.id)) + 1 : 1;
-            appData.employees.push({ id: newId, name: name, color: color, quota: quota });
-            
-            document.getElementById('inp-new-emp').value = '';
-            document.getElementById('inp-new-color').value = getRandomColor();
-            document.getElementById('inp-new-quota').value = '14';
-            saveData();
-            renderSettingsList();
-            renderPaintBar(); 
-        }
-
-        function removeEmployee(id) {
-            appData.employees = appData.employees.filter(e => e.id !== id);
-            appData.leaves = appData.leaves.filter(l => l.empId !== id);
-            if(state.activeEmpId === id) state.activeEmpId = null;
-            saveData();
-            renderSettingsList();
-            renderPaintBar();
-            renderCalendarUI();
-        }
-
-        function exportData() {
-            const blob = new Blob([JSON.stringify(appData, null, 2)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; 
-            a.download = `IzinPlani_VeriYedegi_${new Date().toISOString().slice(0,10)}.json`; 
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function importData(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = e => {
-                try {
-                    const parsed = JSON.parse(e.target.result);
-                    if (parsed.employees) { appData = parsed; checkAndMigrateData(); initApp(); toggleSettings(); Swal.fire('Yüklendi','Veriler içe aktarıldı','success'); }
-                } catch (err) {}
-                event.target.value = '';
-            };
-            reader.readAsText(file);
-        }
-
-        function buildPDFDOM() {
-            document.getElementById('pdf-store-title').innerText = appData.settings.storeName || 'Kurum Adı';
-            document.getElementById('pdf-manager-label').innerText = appData.settings.managerName || 'Yönetici';
-            document.getElementById('pdf-date-title').innerText = `${monthNames[state.month]} ${state.year}`;
-
-            const firstDay = new Date(state.year, state.month, 1);
-            const lastDay = new Date(state.year, state.month + 1, 0);
-            let startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; 
-            const totalDays = lastDay.getDate();
-            const rowsCount = Math.ceil((startDay + totalDays) / 7);
-
-            let html = '<div class="pdf-grid">';
-            dayNamesShort.forEach(day => html += `<div class="pdf-header">${day}</div>`);
-
-            let cells = [];
-            for(let i=0; i<startDay; i++) cells.push(null);
-            for(let d=1; d<=totalDays; d++) cells.push(d);
-            while(cells.length % 7 !== 0) cells.push(null);
-
-            for(let r=0; r<rowsCount; r++) {
-                for(let c=0; c<7; c++) {
-                    const day = cells[r*7+c];
-                    if(!day) {
-                        html += `<div class="pdf-cell" style="background-color: #f8fafc;"></div>`;
-                    } else {
-                        const dateStr = formatDate(state.year, state.month, day);
-                        
-                        const specialDay = appData.specialDays.find(s => s.date === dateStr);
-                        let specialHtml = '';
-                        if(specialDay) {
-                            specialHtml = `<div style="color:#e11d48; font-size:10px; font-weight:800; background:#ffe4e6; padding:2px 4px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${specialDay.name}</div>`;
-                        }
-
-                        const dayLeaves = appData.leaves.filter(l => l.date === dateStr);
-                        
-                        let badges = '';
-                        dayLeaves.sort((a,b) => a.empId - b.empId).forEach(l => {
-                            const emp = appData.employees.find(e=>e.id === l.empId);
-                            if(emp) {
-                                const { styles, showText } = getStripStyles(day, emp.id, l.type, startDay);
-                                const bg = l.type === 'HT' ? '#f97316' : emp.color;
-                                const text = showText ? `${emp.name.split(' ')[0]} <span style="opacity:0.8;">(${l.type})</span>` : '&nbsp;';
-                                
-                                badges += `
-                                    <div style="background:${bg}; color:white; font-size:10px; font-weight:bold; padding:3px 6px; margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; ${styles}">
-                                        ${text}
-                                    </div>
-                                `;
-                            }
-                        });
-
-                        html += `
-                            <div class="pdf-cell" style="background-color: white;">
-                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 6px;">
-                                    <div style="flex:1; padding-right:4px;">${specialHtml}</div>
-                                    <div style="text-align: right; font-size: 13px; font-weight: 800; color: #94a3b8;">${day}</div>
-                                </div>
-                                <div style="display:flex; flex-direction:column;">${badges}</div>
-                            </div>
-                        `;
-                    }
-                }
-            }
-            html += '</div>';
-            document.getElementById('pdf-grid-container').innerHTML = html;
-
-            const notesContainer = document.getElementById('pdf-notes-container');
-            const grouped = {};
-            appData.leaves.forEach(l => {
-                const dateObj = parseDate(l.date);
-                if(dateObj.getMonth() === state.month && dateObj.getFullYear() === state.year) {
-                    if(!grouped[l.empId]) grouped[l.empId] = [];
-                    grouped[l.empId].push(l);
-                }
-            });
-
-            let notesHtml = '';
-            appData.employees.forEach(emp => {
-                if(grouped[emp.id]) {
-                    const leaves = grouped[emp.id].sort((a,b) => parseDate(a.date) - parseDate(b.date));
-                    let periods = [];
-                    let tempStart = null;
-                    let tempEnd = null;
-                    let tempType = null;
-
-                    for(let i=0; i<leaves.length; i++) {
-                        const current = leaves[i];
-                        const currDate = parseDate(current.date);
-
-                        if(!tempStart) {
-                            tempStart = currDate; tempEnd = currDate; tempType = current.type;
-                        } else {
-                            const expectedNext = new Date(tempEnd);
-                            expectedNext.setDate(expectedNext.getDate() + 1);
-
-                            if(currDate.getTime() === expectedNext.getTime() && current.type === tempType) {
-                                tempEnd = currDate; 
-                            } else {
-                                if(tempStart.getTime() === tempEnd.getTime()) {
-                                    periods.push(`${tempStart.getDate()} ${monthNames[state.month]} (${tempType})`);
-                                } else {
-                                    periods.push(`${tempStart.getDate()}-${tempEnd.getDate()} ${monthNames[state.month]} (${tempType})`);
-                                }
-                                tempStart = currDate; tempEnd = currDate; tempType = current.type;
-                            }
-                        }
-                    }
-                    if(tempStart) {
-                        if(tempStart.getTime() === tempEnd.getTime()) {
-                            periods.push(`${tempStart.getDate()} ${monthNames[state.month]} (${tempType})`);
-                        } else {
-                            periods.push(`${tempStart.getDate()}-${tempEnd.getDate()} ${monthNames[state.month]} (${tempType})`);
-                        }
-                    }
-
-                    const remYI = getRemainingQuota(emp.id);
-
-                    notesHtml += `
-                        <div class="avoid-page-break" style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; break-inside: avoid;">
-                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                                <div style="width:12px; height:12px; border-radius:50%; background:${emp.color};"></div>
-                                <strong style="color:#0f172a; font-size:12px;">${emp.name} <span style="font-weight:normal; color:#64748b; font-size:10px;">(Kalan: ${remYI} Yİ)</span></strong>
-                            </div>
-                            <div style="color:#475569; line-height: 1.5; font-size:11px;">${periods.join(', ')}</div>
-                        </div>
-                    `;
-                }
-            });
-            notesContainer.innerHTML = notesHtml || '<span style="color:#94a3b8; font-style:italic;">Bu döneme ait kayıt bulunmuyor.</span>';
-        }
-
-        function triggerPDF() {
-            Swal.fire({ title: 'PDF Hazırlanıyor...', text: 'Lütfen bekleyin', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-            
-            buildPDFDOM(); 
-            
-            const uiLayer = document.getElementById('app-wrapper');
-            const pdfLayer = document.getElementById('pdf-render-canvas');
-            
-            uiLayer.style.display = 'none';
-            document.body.classList.remove('is-app'); 
-            document.body.classList.add('is-pdf'); 
-            
-            pdfLayer.style.display = 'block';
-            
-            window.scrollTo(0,0);
-
-            const opt = {
-                margin:       [10, 0, 10, 0], 
-                filename:     `Izin_Plani_${monthNames[state.month]}_${state.year}.pdf`,
-                image:        { type: 'jpeg', quality: 1.0 },
-                html2canvas:  { 
-                    scale: 2, 
-                    useCORS: true,
-                    backgroundColor: '#ffffff'
-                },
-                jsPDF:        { unit: 'px', format: [1122, 793], orientation: 'landscape' },
-                pagebreak:    { mode: ['css', 'legacy'] }
-            };
-
-            setTimeout(() => {
-                html2pdf().set(opt).from(pdfLayer).save().then(() => {
-                    pdfLayer.style.display = 'none';
-                    uiLayer.style.display = 'flex';
-                    document.body.classList.remove('is-pdf'); 
-                    document.body.classList.add('is-app');
-                    
-                    Swal.close();
-                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'PDF İndirildi', showConfirmButton: false, timer: 1500 });
-                }).catch(err => {
-                    pdfLayer.style.display = 'none';
-                    uiLayer.style.display = 'flex';
-                    document.body.classList.remove('is-pdf'); 
-                    document.body.classList.add('is-app');
-                    
-                    Swal.close();
-                    Swal.fire('Hata', 'PDF oluşturulurken hata yaşandı.', 'error');
-                });
-            }, 1000); 
-        }
-
-        window.onload = initApp;
-    </script>
+    // Başlangıç
+    window.onload = () => {
+      initStockMasterServer();
+      renderMainScreenProduct(currentProduct);
+    };
+  </script>
 </body>
 </html>
