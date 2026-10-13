@@ -39,7 +39,7 @@
         <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" id="netDot" title="Sunucu Bağlantısı"></div>
         <div>
           <h1 class="font-bold text-sm tracking-wide leading-none">STOCK-MASTER ETİKET</h1>
-          <span class="text-[10px] text-slate-400 font-mono" id="syncStatusText">Sunucu: Senkronize (5x2 cm)</span>
+          <span class="text-[10px] text-slate-400 font-mono" id="syncStatusText">stock-master-a888d (5x2 cm)</span>
         </div>
       </div>
 
@@ -59,7 +59,7 @@
     </div>
   </header>
 
-  <!-- ANA EKRAN (Sadece Operasyonel Kullanım - Veri Değişimi ve Raporlama Yok) -->
+  <!-- ANA EKRAN (Sırasıyla: Fiyat -> Ürün Bilgisi -> Barkod Okutma -> Yazdır) -->
   <main class="max-w-xl mx-auto px-4 pt-4 space-y-3">
 
     <!-- 1. SIRA: FİYAT ALANI -->
@@ -198,7 +198,10 @@
       <div class="flex items-center justify-between border-b pb-3">
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-shield-halved text-amber-500 text-lg"></i>
-          <h3 class="font-black text-sm uppercase tracking-wider text-slate-800">Stock-Master Yönetim Girişi</h3>
+          <div>
+            <h3 class="font-black text-sm uppercase tracking-wider text-slate-800 leading-none">Stock-Master Giriş</h3>
+            <span class="text-[10px] text-slate-400 font-mono">Sunucu: stock-master-a888d</span>
+          </div>
         </div>
         <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-600">
           <i class="fa-solid fa-xmark text-lg"></i>
@@ -208,13 +211,13 @@
       <div class="space-y-3 text-xs">
         <div>
           <label class="font-bold text-slate-600 block mb-1">Kullanıcı Adı</label>
-          <input type="text" id="loginUsername" placeholder="Örn: arda.ulas" class="w-full px-3 py-2.5 border rounded-xl font-mono focus:border-blue-600 outline-none">
+          <input type="text" id="loginUsername" placeholder="Kullanıcı adınız" class="w-full px-3 py-2.5 border rounded-xl font-mono focus:border-blue-600 outline-none" onkeydown="if(event.key==='Enter') performLogin()">
         </div>
         <div>
           <label class="font-bold text-slate-600 block mb-1">Şifre</label>
           <input type="password" id="loginPassword" placeholder="••••••••" class="w-full px-3 py-2.5 border rounded-xl font-mono focus:border-blue-600 outline-none" onkeydown="if(event.key==='Enter') performLogin()">
         </div>
-        <div id="loginErrorMsg" class="hidden text-red-600 font-bold text-[11px] bg-red-50 p-2 rounded-lg"></div>
+        <div id="loginErrorMsg" class="hidden text-red-600 font-bold text-[11px] bg-red-50 p-2.5 rounded-lg border border-red-200"></div>
       </div>
 
       <button onclick="performLogin()" id="btnLoginSubmit" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow">
@@ -266,7 +269,6 @@
 
       <!-- SEKME 1: ANALİZ VE ETİKETLEME RAPORLARI -->
       <div id="tabAnalytics" class="py-5 space-y-5">
-        <!-- Özet KPI Kartları -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
             <span class="text-[11px] font-bold text-slate-400 uppercase">Toplam Etiket İşlemi</span>
@@ -286,7 +288,6 @@
           </div>
         </div>
 
-        <!-- En Çok Etiket Basılan Ürünler + Filtreleme -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
             <h4 class="text-xs font-black uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-1.5">
@@ -296,7 +297,6 @@
             <div id="topProductsList" class="space-y-2 text-xs"></div>
           </div>
 
-          <!-- Detaylı Canlı Etiketleme Log Tablosu -->
           <div class="lg:col-span-2 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h4 class="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
@@ -336,7 +336,7 @@
       <div id="tabData" class="hidden py-5 space-y-5">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
           
-          <!-- Tekil Ürün Ekle / Güncelle Kartı (5 Kolon) -->
+          <!-- Tekil Ürün Ekle / Güncelle Kartı -->
           <div class="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
             <h3 class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
               <i class="fa-solid fa-box-open text-amber-500"></i>
@@ -380,7 +380,7 @@
             </button>
           </div>
 
-          <!-- Excel Toplu Veri Aktarım & Sunucu Ürün Listesi (7 Kolon) -->
+          <!-- Excel Toplu Veri Aktarım & Sunucu Ürün Listesi -->
           <div class="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
               <div>
@@ -388,7 +388,7 @@
                   <i class="fa-solid fa-file-excel text-emerald-600"></i>
                   Excel İle Sunucuya Toplu Ürün Aktarımı
                 </h3>
-                <p class="text-[11px] text-slate-500">Yüklenen Excel verileri paketler halinde doğrudan Stock-Master Firestore sunucusuna yazılır.</p>
+                <p class="text-[11px] text-slate-500">Yüklenen Excel verileri paketler halinde doğrudan stock-master-a888d sunucusuna yazılır.</p>
               </div>
               <div class="flex items-center gap-2">
                 <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleAdminExcelUpload(event)">
@@ -404,7 +404,6 @@
 
             <div id="excelUploadStatus" class="hidden text-xs font-bold p-2.5 rounded-xl bg-blue-50 text-blue-800"></div>
 
-            <!-- Sunucudaki Ürünleri Arama ve Önbellek Tablosu -->
             <div class="flex items-center justify-between gap-2">
               <input type="text" id="admProductSearch" oninput="renderAdminProductTable()" placeholder="Sunucu önbelleğinde barkod veya ürün ara..." class="w-full text-xs px-3 py-2 border rounded-xl outline-none">
               <button onclick="fetchInitialProductsFromServer(true)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold shrink-0">
@@ -434,7 +433,6 @@
       <!-- SEKME 3: STOCK-MASTER USERS VE ROLLER EŞZAMANLAMA -->
       <div id="tabUsers" class="hidden py-5 space-y-5">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          <!-- Kullanıcı Ekle / Güncelle (4 Kolon) -->
           <div class="lg:col-span-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
             <h3 class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
               <i class="fa-solid fa-user-plus text-blue-600"></i>
@@ -443,7 +441,11 @@
             <div class="space-y-2.5 text-xs">
               <div>
                 <label class="font-bold text-slate-500">Kullanıcı Adı (username)</label>
-                <input type="text" id="usrUsername" placeholder="ornek.kullanici" class="w-full p-2 border rounded-lg font-mono">
+                <input type="text" id="usrUsername" placeholder="arda.ulas" class="w-full p-2 border rounded-lg font-mono">
+              </div>
+              <div>
+                <label class="font-bold text-slate-500">Ad Soyad (fullName)</label>
+                <input type="text" id="usrFullName" placeholder="Arda Ulaş" class="w-full p-2 border rounded-lg">
               </div>
               <div>
                 <label class="font-bold text-slate-500">Şifre (password)</label>
@@ -452,10 +454,10 @@
               <div>
                 <label class="font-bold text-slate-500">Rol (role)</label>
                 <select id="usrRole" class="w-full p-2 border rounded-lg font-bold">
-                  <option value="SUPERUSER">SUPERUSER (Tam Yetki)</option>
-                  <option value="ADMIN">ADMIN (Yönetim & Veri)</option>
-                  <option value="MANAGER">MANAGER (Mağaza Yöneticisi)</option>
-                  <option value="STAFF">STAFF (Personel)</option>
+                  <option value="SUPERUSER">SUPERUSER</option>
+                  <option value="ADMIN">ADMIN</option>
+                  <option value="MANAGER">MANAGER</option>
+                  <option value="STAFF">STAFF</option>
                 </select>
               </div>
               <button onclick="saveUserToStockMaster()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs">
@@ -464,11 +466,10 @@
             </div>
           </div>
 
-          <!-- Eşzamanlı Users, AdminUsers ve Roles Listesi (8 Kolon) -->
           <div class="lg:col-span-8 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
             <div class="flex items-center justify-between">
               <h3 class="text-xs font-black uppercase tracking-wider text-slate-800">
-                Stock-Master Eşzamanlı Kullanıcılar (`users` & `adminUsers`) ve Roller (`roles`)
+                Stock-Master Eşzamanlı Kullanıcılar (`users` / `adminUsers`) ve Roller (`roles`)
               </h3>
               <span id="usersCountBadge" class="text-[11px] bg-blue-50 text-blue-700 font-bold px-2.5 py-0.5 rounded-full">0 Kayıt</span>
             </div>
@@ -478,9 +479,9 @@
                 <thead class="bg-slate-50 text-slate-500 font-bold sticky top-0 border-b">
                   <tr>
                     <th class="p-2.5">Kullanıcı Adı</th>
+                    <th class="p-2.5">Ad Soyad</th>
                     <th class="p-2.5">Koleksiyon</th>
                     <th class="p-2.5">Rol</th>
-                    <th class="p-2.5">Yetkiler</th>
                   </tr>
                 </thead>
                 <tbody id="admUsersTableBody" class="divide-y divide-slate-100 font-mono text-[11px]"></tbody>
@@ -496,17 +497,18 @@
   <!-- UYGULAMA ÇEKİRDEK MANTIĞI -->
   <script>
     /*************************************************************************
-     * 1. STOCK-MASTER (urun-bulucu) FIRESTORE BAĞLANTISI & OFFLINE ÖNBELLEK
+     * 1. DOĞRU STOCK-MASTER (stock-master-a888d) FIRESTORE YAPILANDIRMASI
      *************************************************************************/
     const STOCK_MASTER_FIREBASE_CONFIG = {
-      apiKey: "AIzaSyDV1gzsnwQHATiYLXfQ9Tj247o9M_-pSso",
-      authDomain: "urun-bulucu.firebaseapp.com",
-      projectId: "urun-bulucu",
-      storageBucket: "urun-bulucu.firebasestorage.app"
+      apiKey: "AIzaSyBKGJj7qQFMf8qfwvWiAYkGzsDVWn8JmUo",
+      authDomain: "stock-master-a888d.firebaseapp.com",
+      projectId: "stock-master-a888d",
+      storageBucket: "stock-master-a888d.firebasestorage.app",
+      messagingSenderId: "510906975462",
+      appId: "1:510906975462:web:a7bfea7ab1cac868512727"
     };
 
     let db = null;
-    // Maksimum hız için RAM önbelleği (Minimum veri tüketimi)
     const productRamCache = new Map();
     let currentProduct = {
       barcode: "3561000010248",
@@ -518,9 +520,8 @@
       price: "3299,00 TL"
     };
 
-    // Oturum ve Yetki Durumu
     let currentUser = null;
-    let syncedUsersMap = new Map();
+    let syncedUsersMap = new Map(); // key: küçük harf username -> kullanıcı objesi
     let syncedRolesMap = new Map();
     let analyticsLogs = [];
     let unsubLogs = null;
@@ -532,20 +533,18 @@
         }
         db = firebase.firestore();
 
-        // Zayıf internette maksimum hız için yerel IndexedDB önbelleğini aktif et
+        // Zayıf internette maksimum hız için yerel IndexedDB önbelleği
         db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 
-        // Varsayılan ürünü RAM'e koy
         productRamCache.set(currentProduct.barcode, currentProduct);
 
-        // Stock-Master Users, AdminUsers ve Roles eşzamanlamasını başlat
+        // Users, AdminUsers ve Roles eşzamanlamasını başlat
         syncStockMasterUsersAndRoles();
 
-        // İlk açılışta ürünleri hafif önbelleğe çek
+        // Ürünleri önbelleğe çek
         fetchInitialProductsFromServer(false);
 
-        // Kayıtlı yönetici oturumu varsa geri yükle
-        const savedSession = sessionStorage.getItem('sm_active_user');
+        const savedSession = sessionStorage.getItem('sm_cloud_session');
         if (savedSession) {
           currentUser = JSON.parse(savedSession);
           updateAuthUI();
@@ -558,48 +557,72 @@
     }
 
     /*************************************************************************
-     * 2. USERS, ADMINUSERS VE ROLLERİN EŞZAMANLI SENKRONİZASYONU
+     * 2. USERS, ADMINUSERS VE ROLLERİN EŞZAMANLI SENKRONİZASYONU VE GİRİŞ
      *************************************************************************/
+    function registerUserDocToMap(docId, data, sourceName) {
+      if (!data) return;
+      const uname = String(data.username || data.user || docId || '').trim();
+      const rawPass = data.password !== undefined ? data.password : (data.pass !== undefined ? data.pass : data.sifre);
+      if (!uname) return;
+
+      const userObj = {
+        docId: docId,
+        username: uname,
+        fullName: data.fullName || data.name || uname,
+        password: String(rawPass !== undefined ? rawPass : '').trim(),
+        role: data.role || (sourceName === 'adminUsers' ? 'SUPERUSER' : 'ADMIN'),
+        permissions: data.permissions || null,
+        source: sourceName
+      };
+
+      // Hem küçük harf username hem de docId ile hızlı arama için kaydet
+      syncedUsersMap.set(uname.toLowerCase(), userObj);
+      syncedUsersMap.set(String(docId).toLowerCase(), userObj);
+    }
+
     function syncStockMasterUsersAndRoles() {
       if (!db) return;
 
-      // 1) 'adminUsers' koleksiyonu dinleyicisi
-      db.collection('adminUsers').onSnapshot(snap => {
-        snap.forEach(doc => {
-          const d = doc.data();
-          const uname = d.username || doc.id;
-          syncedUsersMap.set(uname, {
-            username: uname,
-            password: String(d.password || ''),
-            role: d.role || 'SUPERUSER',
-            permissions: d.permissions || ['ALL'],
-            source: 'adminUsers'
-          });
-        });
-        renderSyncedUsersTable();
-      });
-
-      // 2) 'users' koleksiyonu dinleyicisi
+      // 1) 'users' koleksiyonu
       db.collection('users').onSnapshot(snap => {
-        snap.forEach(doc => {
-          const d = doc.data();
-          const uname = d.username || doc.id;
-          syncedUsersMap.set(uname, {
-            username: uname,
-            password: String(d.password || ''),
-            role: d.role || 'ADMIN',
-            permissions: d.permissions || ['PRINT', 'MANAGE'],
-            source: 'users'
-          });
-        });
+        snap.forEach(doc => registerUserDocToMap(doc.id, doc.data(), 'users'));
         renderSyncedUsersTable();
-      });
+      }, err => console.warn("users dinleme uyarısı:", err));
 
-      // 3) 'roles' koleksiyonu dinleyicisi
+      // 2) 'adminUsers' koleksiyonu
+      db.collection('adminUsers').onSnapshot(snap => {
+        snap.forEach(doc => registerUserDocToMap(doc.id, doc.data(), 'adminUsers'));
+        renderSyncedUsersTable();
+      }, () => {});
+
+      // 3) 'admin_users' koleksiyonu (yedek uyumluluk)
+      db.collection('admin_users').onSnapshot(snap => {
+        snap.forEach(doc => registerUserDocToMap(doc.id, doc.data(), 'admin_users'));
+        renderSyncedUsersTable();
+      }, () => {});
+
+      // 4) 'roles' koleksiyonu
       db.collection('roles').onSnapshot(snap => {
         snap.forEach(doc => {
           syncedRolesMap.set(doc.id, doc.data());
         });
+        // Rolleri dinamik olarak select kutusuna da yansıt
+        updateRoleSelectOptions();
+      }, () => {});
+    }
+
+    function updateRoleSelectOptions() {
+      const selectEl = document.getElementById('usrRole');
+      if (!selectEl || syncedRolesMap.size === 0) return;
+      const existingValues = new Set(Array.from(selectEl.options).map(o => o.value));
+      syncedRolesMap.forEach((roleData, roleId) => {
+        const rName = roleData.name || roleId;
+        if (!existingValues.has(rName)) {
+          const opt = document.createElement('option');
+          opt.value = rName;
+          opt.textContent = rName;
+          selectEl.appendChild(opt);
+        }
       });
     }
 
@@ -618,44 +641,71 @@
     }
 
     async function performLogin() {
-      const uname = document.getElementById('loginUsername').value.trim();
-      const pass = document.getElementById('loginPassword').value.trim();
+      const unameInput = document.getElementById('loginUsername').value.trim();
+      const passInput = document.getElementById('loginPassword').value.trim();
       const errBox = document.getElementById('loginErrorMsg');
+      const btn = document.getElementById('btnLoginSubmit');
 
-      if (!uname || !pass) {
-        errBox.innerText = "Kullanıcı adı ve şifre giriniz.";
+      if (!unameInput || !passInput) {
+        errBox.innerText = "Lütfen kullanıcı adı ve şifrenizi girin.";
         errBox.classList.remove('hidden');
         return;
       }
 
-      // 1. Önce senkronize RAM haritasından kontrol et (0ms hız)
-      let matched = syncedUsersMap.get(uname);
+      btn.disabled = true;
+      btn.innerText = "DOĞRULANIYOR...";
+      errBox.classList.add('hidden');
 
-      // 2. Haritada henüz yoksa doğrudan sunucudan (adminUsers ve users) tekil sorgula
-      if (!matched && db) {
-        try {
-          const admDoc = await db.collection('adminUsers').doc(uname).get();
-          if (admDoc.exists) {
-            const d = admDoc.data();
-            matched = { username: uname, password: String(d.password || ''), role: d.role || 'SUPERUSER', source: 'adminUsers' };
-          } else {
-            const usrDoc = await db.collection('users').doc(uname).get();
-            if (usrDoc.exists) {
-              const d = usrDoc.data();
-              matched = { username: uname, password: String(d.password || ''), role: d.role || 'ADMIN', source: 'users' };
+      const searchKey = unameInput.toLowerCase();
+      let matchedUser = syncedUsersMap.get(searchKey);
+
+      // Eğer anlık haritada bulunamadıysa doğrudan stock-master-a888d sunucusundan tüm olası yollarla çek
+      if (!matchedUser && db) {
+        const collectionsToCheck = ['users', 'adminUsers', 'admin_users'];
+        for (const colName of collectionsToCheck) {
+          try {
+            // A) Doğrudan Document ID ile kontrol
+            const directDoc = await db.collection(colName).doc(unameInput).get();
+            if (directDoc.exists) {
+              registerUserDocToMap(directDoc.id, directDoc.data(), colName);
+              matchedUser = syncedUsersMap.get(searchKey);
+              if (matchedUser) break;
             }
+
+            // B) 'username' alanı ile sorgu
+            const qSnap = await db.collection(colName).where('username', '==', unameInput).limit(1).get();
+            if (!qSnap.empty) {
+              const d = qSnap.docs[0];
+              registerUserDocToMap(d.id, d.data(), colName);
+              matchedUser = syncedUsersMap.get(searchKey);
+              if (matchedUser) break;
+            }
+
+            // C) Koleksiyonun tamamını çekip küçük/büyük harf duyarsız eşleştir
+            const allSnap = await db.collection(colName).get();
+            allSnap.forEach(d => registerUserDocToMap(d.id, d.data(), colName));
+            matchedUser = syncedUsersMap.get(searchKey);
+            if (matchedUser) break;
+          } catch (e) {
+            console.warn(`${colName} sorgu hatası:`, e);
           }
-        } catch (e) {}
+        }
       }
 
-      if (matched && matched.password === pass) {
-        currentUser = matched;
-        sessionStorage.setItem('sm_active_user', JSON.stringify(currentUser));
+      btn.disabled = false;
+      btn.innerText = "SUNUCU İLE DOĞRULA & GİRİŞ YAP";
+
+      if (matchedUser && String(matchedUser.password) === String(passInput)) {
+        currentUser = matchedUser;
+        sessionStorage.setItem('sm_cloud_session', JSON.stringify(currentUser));
         updateAuthUI();
         closeLoginModal();
         openAdminPanel();
+      } else if (!matchedUser) {
+        errBox.innerText = `"${unameInput}" adlı kullanıcı stock-master-a888d veritabanında bulunamadı.`;
+        errBox.classList.remove('hidden');
       } else {
-        errBox.innerText = "Hatalı kullanıcı adı veya şifre! (Stock-Master yetkinizi kontrol edin)";
+        errBox.innerText = "Girilen şifre Firestore'daki şifre ile eşleşmiyor!";
         errBox.classList.remove('hidden');
       }
     }
@@ -664,7 +714,7 @@
       const btnText = document.getElementById('authBtnText');
       if (currentUser) {
         btnText.innerText = `Yönetim (${currentUser.username})`;
-        document.getElementById('adminUserBadge').innerText = `Yetkili: ${currentUser.username} | Rol: ${currentUser.role}`;
+        document.getElementById('adminUserBadge').innerText = `Yetkili: ${currentUser.fullName || currentUser.username} | Rol: ${currentUser.role}`;
       } else {
         btnText.innerText = "Giriş Yap";
       }
@@ -672,7 +722,7 @@
 
     function logoutAdmin() {
       currentUser = null;
-      sessionStorage.removeItem('sm_active_user');
+      sessionStorage.removeItem('sm_cloud_session');
       updateAuthUI();
       closeAdminPanel();
     }
@@ -694,16 +744,15 @@
 
       let foundProduct = null;
 
-      // ADIM 1: Önce RAM Önbelleğine bak (0ms, sıfır internet kullanımı)
+      // 1. Önce RAM Önbelleğine bak (0ms)
       if (productRamCache.has(rawBarcode)) {
         foundProduct = productRamCache.get(rawBarcode);
       }
 
-      // ADIM 2: RAM'de yoksa Firestore'dan doğrudan Doc ID ile çek (<300 byte paket)
+      // 2. RAM'de yoksa Firestore'dan doğrudan Doc ID ile çek
       if (!foundProduct && db) {
         try {
           const docRef = db.collection('products').doc(rawBarcode);
-          // Önce yerel IndexedDB önbelleğinden dene, yoksa sunucudan al
           let docSnap = await docRef.get({ source: 'cache' }).catch(() => null);
           if (!docSnap || !docSnap.exists) {
             docSnap = await docRef.get();
@@ -724,7 +773,6 @@
 
         const isDirectPrint = document.getElementById('directPrintToggle').checked;
         if (isDirectPrint) {
-          // Asenkron (bloklamayan) baskı + arka plan sunucu raporu
           sendZplToPrinter(foundProduct);
           logEventToServerAsync(foundProduct, 'DIRECT_PRINT');
         } else {
@@ -736,9 +784,7 @@
     }
 
     function renderMainScreenProduct(p) {
-      // 1. Fiyat
       document.getElementById('mainPriceDisplay').innerText = p.price || '0,00 TL';
-      // 2. Salt Okunur Ürün Bilgisi
       document.getElementById('mainBarcodeBadge').innerText = p.barcode || '-';
       document.getElementById('roName').innerText = p.name || '-';
       document.getElementById('roModel').innerText = p.model || '-';
@@ -746,7 +792,6 @@
       document.getElementById('roSize').innerText = p.size || '-';
       document.getElementById('roDate').innerText = p.date || '-';
 
-      // 3. 5x2 cm Önizleme Kartı
       document.getElementById('lblPreviewName').innerText = p.name || '';
       document.getElementById('lblPreviewModel').innerText = p.model || '';
       document.getElementById('lblPreviewColor').innerText = p.color || '';
@@ -884,7 +929,6 @@ ${barcodeCmd}
      *************************************************************************/
     function logEventToServerAsync(product, actionType) {
       if (!db) return;
-      // Fire-and-forget: Zayıf internette bile kullanıcıyı bekletmez, kuyruğa atar
       db.collection('label_logs').add({
         barcode: String(product.barcode || ''),
         productName: String(product.name || ''),
@@ -892,7 +936,7 @@ ${barcodeCmd}
         color: String(product.color || ''),
         size: String(product.size || ''),
         price: String(product.price || ''),
-        action: actionType, // 'DIRECT_PRINT', 'MANUAL_PRINT', 'SCAN_ONLY'
+        action: actionType,
         user: currentUser ? currentUser.username : 'Saha-Terminali',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         clientTime: new Date().toLocaleString('tr-TR')
@@ -903,7 +947,6 @@ ${barcodeCmd}
       if (!currentUser) return;
       document.getElementById('adminPanelModal').classList.remove('hidden');
 
-      // Analiz loglarını yalnızca yönetim ekranı açıldığında dinle (Ana ekranda sıfır veri yükü)
       if (!unsubLogs && db) {
         unsubLogs = db.collection('label_logs')
           .orderBy('createdAt', 'desc')
@@ -987,7 +1030,6 @@ ${barcodeCmd}
       document.getElementById('statManualPrints').innerText = manualCount;
       document.getElementById('statScanOnly').innerText = scanCount;
 
-      // En çok işlem gören ilk 5 ürün
       const topList = document.getElementById('topProductsList');
       topList.innerHTML = '';
       Object.entries(productCounter)
@@ -1097,7 +1139,6 @@ ${barcodeCmd}
           price: String(r['Fiyat'] || r['PSF'] || r['price'] || '').trim()
         })).filter(item => item.barcode);
 
-        // 450'lik paketler (Firestore Batch limiti 500'dür) halinde sunucuya bas
         const chunkSize = 450;
         for (let i = 0; i < parsedList.length; i += chunkSize) {
           const slice = parsedList.slice(i, i + chunkSize);
@@ -1113,7 +1154,7 @@ ${barcodeCmd}
           await batch.commit();
         }
 
-        statusBox.innerText = `Tamamlandı! ${parsedList.length} ürün Stock-Master sunucusuna aktarıldı.`;
+        statusBox.innerText = `Tamamlandı! ${parsedList.length} ürün stock-master-a888d sunucusuna aktarıldı.`;
         renderAdminProductTable();
       };
       reader.readAsArrayBuffer(file);
@@ -1128,7 +1169,7 @@ ${barcodeCmd}
       let count = 0;
       for (const [barcode, p] of productRamCache.entries()) {
         if (q && !barcode.toLowerCase().includes(q) && !(p.name || '').toLowerCase().includes(q)) continue;
-        if (++count > 100) break; // Arayüz hızı için ilk 100 eşleşmeyi çiz
+        if (++count > 100) break;
 
         tbody.insertAdjacentHTML('beforeend', `
           <tr class="hover:bg-slate-50">
@@ -1150,15 +1191,20 @@ ${barcodeCmd}
       const tbody = document.getElementById('admUsersTableBody');
       if (!tbody) return;
       tbody.innerHTML = '';
-      document.getElementById('usersCountBadge').innerText = `${syncedUsersMap.size} Kullanıcı`;
 
-      syncedUsersMap.forEach(u => {
+      // Tekil kullanıcıları filtrele (hem docId hem username anahtarı aynı objeyi gösterebilir)
+      const uniqueUsers = new Map();
+      syncedUsersMap.forEach(u => uniqueUsers.set(u.username.toLowerCase(), u));
+
+      document.getElementById('usersCountBadge').innerText = `${uniqueUsers.size} Kullanıcı`;
+
+      uniqueUsers.forEach(u => {
         tbody.insertAdjacentHTML('beforeend', `
           <tr class="hover:bg-slate-50">
             <td class="p-2.5 font-bold text-slate-800">${u.username}</td>
+            <td class="p-2.5 font-sans text-slate-600">${u.fullName || '-'}</td>
             <td class="p-2.5"><span class="px-2 py-0.5 bg-slate-100 rounded text-[10px]">${u.source}</span></td>
             <td class="p-2.5 font-bold text-blue-700">${u.role}</td>
-            <td class="p-2.5 text-slate-500">${Array.isArray(u.permissions) ? u.permissions.join(', ') : 'TAM YETKİ'}</td>
           </tr>
         `);
       });
@@ -1166,12 +1212,14 @@ ${barcodeCmd}
 
     async function saveUserToStockMaster() {
       const uname = document.getElementById('usrUsername').value.trim();
+      const fullName = document.getElementById('usrFullName').value.trim();
       const pass = document.getElementById('usrPassword').value.trim();
       const role = document.getElementById('usrRole').value;
       if (!uname || !pass) return alert("Kullanıcı adı ve şifre zorunludur!");
 
       await db.collection('users').doc(uname).set({
         username: uname,
+        fullName: fullName || uname,
         password: pass,
         role: role,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1250,7 +1298,6 @@ ${barcodeCmd}
       } catch (e) {}
     }
 
-    // Başlangıç
     window.onload = () => {
       initStockMasterServer();
       renderMainScreenProduct(currentProduct);
