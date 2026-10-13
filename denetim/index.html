@@ -3,326 +3,309 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Stock-Master | 5x2 ZPL Etiket & Bulut Sistemi</title>
+  <title>Label</title>
 
-  <!-- Tailwind CSS & FontAwesome -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <!-- JsBarcode, HTML5-QRCode, SheetJS -->
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-  <!-- Firebase v10 Compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+    body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
     .et-vertical-text {
       writing-mode: vertical-rl;
       transform: rotate(180deg);
     }
-    /* 5x2 cm (50mm x 20mm) -> 2.5 : 1 Oranlı Etiket Önizleme Kutusu */
-    .label-5x2-box {
-      width: 320px;
-      height: 128px;
+    .label-preview {
+      width: 310px;
+      height: 124px;
+    }
+    @keyframes transferPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.015); }
+    }
+    .transfer-active {
+      animation: transferPulse 1.2s infinite ease-in-out;
     }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen select-none pb-12">
+<body class="bg-slate-100 text-slate-900 min-h-screen select-none transition-colors duration-300" id="appBody">
 
-  <!-- ÜST BAR (Yalnızca Durum, Bluetooth ve Yönetici Girişi) -->
-  <header class="bg-slate-900 text-white shadow-md sticky top-0 z-40">
-    <div class="max-w-xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" id="netDot" title="Sunucu Bağlantısı"></div>
-        <div>
-          <h1 class="font-bold text-sm tracking-wide leading-none">STOCK-MASTER ETİKET</h1>
-          <span class="text-[10px] text-slate-400 font-mono" id="syncStatusText">stock-master-a888d (5x2 cm)</span>
-        </div>
-      </div>
+  <!-- İNCE ÜST BAR -->
+  <header class="bg-slate-900 text-white h-11 px-3 flex items-center justify-between sticky top-0 z-40 shadow-xs">
+    <div class="flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-emerald-400" id="netDot"></span>
+      <span class="font-extrabold text-sm tracking-tight">Label</span>
+    </div>
 
-      <div class="flex items-center gap-2">
-        <!-- Bluetooth Yazıcı Bağlantısı -->
-        <button id="btnConnectBle" onclick="connectBluetooth()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 flex items-center gap-1.5 transition">
-          <i class="fa-brands fa-bluetooth-b"></i>
-          <span id="bleStatusText">Yazıcı</span>
-        </button>
+    <div class="flex items-center gap-1.5">
+      <button id="btnConnectBle" onclick="connectBluetooth()" class="px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center gap-1.5 transition">
+        <i class="fa-brands fa-bluetooth-b text-blue-400" id="bleIcon"></i>
+        <span id="bleStatusText">Yazıcı</span>
+      </button>
 
-        <!-- Yönetim Giriş Yap / Panel Butonu -->
-        <button id="btnAuthAction" onclick="handleAuthButtonClick()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center gap-1.5 transition">
-          <i class="fa-solid fa-user-shield text-amber-400"></i>
-          <span id="authBtnText">Giriş Yap</span>
-        </button>
-      </div>
+      <button id="btnAuthAction" onclick="handleAuthButtonClick()" class="px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center gap-1.5 transition">
+        <i class="fa-solid fa-user text-slate-400 text-[11px]"></i>
+        <span id="authBtnText">Giriş</span>
+      </button>
     </div>
   </header>
 
-  <!-- ANA EKRAN (Sırasıyla: Fiyat -> Ürün Bilgisi -> Barkod Okutma -> Yazdır) -->
-  <main class="max-w-xl mx-auto px-4 pt-4 space-y-3">
+  <!-- ANA EKRAN -->
+  <main class="max-w-md mx-auto p-2.5 space-y-2.5">
 
-    <!-- 1. SIRA: FİYAT ALANI -->
-    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 text-center">
-      <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400 block">Perakende Satış Fiyatı (PSF)</span>
-      <div id="mainPriceDisplay" class="text-4xl font-black text-slate-900 tracking-tight mt-1">
+    <!-- 1. FİYAT & TRANSFER UYARI KARTI -->
+    <div id="priceCard" class="bg-white rounded-xl p-3.5 shadow-xs border border-slate-200 text-center transition-all duration-200">
+      <div id="transferBanner" class="hidden mb-1.5 py-1 px-3 rounded-lg bg-white/20 text-white font-black text-xs tracking-widest uppercase flex items-center justify-center gap-2">
+        <i class="fa-solid fa-truck-fast"></i>
+        <span>TRANSFER</span>
+      </div>
+      <div id="mainPriceDisplay" class="text-3xl font-black tracking-tight text-slate-900">
         3299,00 TL
       </div>
     </div>
 
-    <!-- 2. SIRA: ÜRÜN BİLGİSİ VE 5x2 CM ETİKET ÖNİZLEMESİ (SALT OKUNUR) -->
-    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
+    <!-- 2. ÜRÜN BİLGİSİ & ETİKET GÖRÜNÜMÜ -->
+    <div class="bg-white rounded-xl p-3 shadow-xs border border-slate-200 space-y-2.5">
+      <!-- Özet Satırı -->
       <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Ürün Bilgisi (Salt Okunur)</span>
-        <span id="mainBarcodeBadge" class="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">3561000010248</span>
+        <div id="roName" class="text-sm font-extrabold text-slate-900 truncate pr-2">SUET ÇANTA</div>
+        <span id="mainBarcodeBadge" class="text-[11px] font-mono font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">3561000010248</span>
       </div>
 
-      <!-- Salt Okunur Ürün Bilgileri Özeti -->
-      <div class="grid grid-cols-4 gap-2 text-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-        <div class="col-span-4 border-b border-slate-200 pb-1.5 mb-1">
-          <div class="text-[10px] text-slate-400 font-semibold">ÜRÜN ADI</div>
-          <div id="roName" class="text-sm font-black text-slate-800 truncate">SUET ÇANTA</div>
+      <div class="grid grid-cols-4 gap-1.5 text-center bg-slate-50 py-1.5 px-2 rounded-lg">
+        <div>
+          <span class="text-[9px] text-slate-400 font-bold block">MODEL</span>
+          <span id="roModel" class="text-xs font-bold text-slate-800">RY01</span>
         </div>
         <div>
-          <div class="text-[10px] text-slate-400 font-semibold">MODEL</div>
-          <div id="roModel" class="text-xs font-bold text-slate-800">RY01</div>
+          <span class="text-[9px] text-slate-400 font-bold block">RENK</span>
+          <span id="roColor" class="text-xs font-bold text-slate-800">Siyah</span>
         </div>
         <div>
-          <div class="text-[10px] text-slate-400 font-semibold">RENK</div>
-          <div id="roColor" class="text-xs font-bold text-slate-800">Siyah</div>
+          <span class="text-[9px] text-slate-400 font-bold block">BEDEN</span>
+          <span id="roSize" class="text-xs font-bold text-slate-800">STD</span>
         </div>
         <div>
-          <div class="text-[10px] text-slate-400 font-semibold">BEDEN</div>
-          <div id="roSize" class="text-xs font-bold text-slate-800">STD</div>
-        </div>
-        <div>
-          <div class="text-[10px] text-slate-400 font-semibold">TARİH</div>
-          <div id="roDate" class="text-xs font-mono font-bold text-slate-700">22.09.20</div>
+          <span class="text-[9px] text-slate-400 font-bold block">TARİH</span>
+          <span id="roDate" class="text-xs font-mono font-bold text-slate-700">22.09.20</span>
         </div>
       </div>
 
-      <!-- 5x2 cm (50mm x 20mm) Gerçek Oranlı Termal Etiket Önizlemesi -->
-      <div class="flex flex-col items-center justify-center bg-slate-50 border border-dashed border-slate-300 rounded-xl py-3">
-        <div class="text-[10px] text-slate-400 font-mono mb-1">5x2 cm (50x20 mm) Baskı Önizlemesi</div>
-        <div class="label-5x2-box bg-white border border-slate-300 rounded-md px-3 py-1.5 shadow-sm flex flex-col justify-between overflow-hidden">
-          <!-- Üst Satır: Ürün Adı -->
+      <!-- 5x2 Etiket Önizlemesi -->
+      <div class="flex justify-center bg-slate-50/70 py-2 rounded-lg border border-slate-200/80">
+        <div class="label-preview bg-white border border-slate-300 rounded px-2.5 py-1.5 shadow-2xs flex flex-col justify-between relative overflow-hidden">
+          <!-- Üst: Ürün Adı -->
           <div id="lblPreviewName" class="text-[11px] font-black uppercase tracking-tight text-slate-900 leading-none truncate">
             SUET ÇANTA
           </div>
 
-          <!-- 2. Satır: Model - Renk - Beden -->
+          <!-- Orta Üst: Model - Renk - Beden -->
           <div class="flex items-center justify-between text-[10px] font-bold text-slate-800 leading-none">
             <span id="lblPreviewModel" class="font-extrabold">RY01</span>
             <span id="lblPreviewColor">Siyah</span>
             <span id="lblPreviewSize">STD</span>
           </div>
 
-          <!-- Orta Satır: Dikey Tarih + Barkod -->
+          <!-- Orta: Dikey Tarih & Barkod -->
           <div class="flex items-center justify-between my-0.5">
-            <div class="w-4 flex items-center justify-center">
-              <span id="lblPreviewDate" class="et-vertical-text text-[8px] font-mono font-bold text-slate-600 leading-none">22.09.20</span>
+            <div class="w-3.5 flex items-center justify-center">
+              <span id="lblPreviewDate" class="et-vertical-text text-[7.5px] font-mono font-bold text-slate-600 leading-none">22.09.20</span>
             </div>
             <div class="flex-1 flex justify-center overflow-hidden">
-              <svg id="barcodeCanvas" class="max-h-[42px]"></svg>
+              <svg id="barcodeCanvas" class="max-h-[38px]"></svg>
             </div>
           </div>
 
-          <!-- Alt Satır: PSF Fiyat -->
-          <div class="text-center text-[11px] font-black tracking-tight text-slate-900 leading-none border-t border-slate-100 pt-0.5">
-            PSF : <span id="lblPreviewPrice">3299,00 TL</span>
+          <!-- Alt: PSF Fiyat & Sağ Alt Köşe Yerli Üretim Logosu -->
+          <div class="flex items-end justify-between border-t border-slate-100 pt-0.5 leading-none">
+            <div class="text-[11px] font-black tracking-tight text-slate-900 pl-4">
+              PSF : <span id="lblPreviewPrice">3299,00 TL</span>
+            </div>
+
+            <!-- Yerli Üretim Logosu (Sadece Yerli == X ise görünür) -->
+            <div id="yerliLogoBadge" class="hidden flex items-center gap-0.5 border border-slate-900 rounded-[2px] px-1 py-[1px] bg-white">
+              <svg class="w-3 h-2.5 text-slate-900 shrink-0" viewBox="0 0 24 20" fill="currentColor">
+                <path d="M12 2L2 18h20L12 2zm0 4.5l6.2 10H5.8L12 6.5z"/>
+                <circle cx="12" cy="13" r="2.2"/>
+              </svg>
+              <span class="text-[6.5px] font-black tracking-tighter leading-[6.5px] uppercase text-slate-900">YERLİ<br>ÜRETİM</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 3. SIRA: BARKOD OKUTMA ALANI (KAMERA İLE TARAMA ÖZELLİKLİ) -->
-    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
-      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-        Barkod Okutma Alanı
-      </label>
+    <!-- 3. BARKOD OKUTMA ALANI -->
+    <div class="bg-white rounded-xl p-3 shadow-xs border border-slate-200">
       <div class="relative flex items-center">
         <input type="text" id="barcodeInput" autofocus inputmode="numeric"
-               placeholder="Barkodu okutun veya yazın..."
-               class="w-full text-base font-mono font-bold px-3.5 py-3 bg-slate-50 border-2 border-slate-200 focus:border-blue-600 focus:bg-white rounded-xl outline-none transition pr-24"
+               placeholder="Barkod okutun..."
+               class="w-full text-base font-mono font-bold pl-3 pr-20 py-2.5 bg-slate-50 border border-slate-300 focus:border-slate-900 focus:bg-white rounded-lg outline-none transition"
                onkeydown="if(event.key==='Enter') searchAndHandleBarcode()">
         <div class="absolute right-1.5 flex items-center gap-1">
-          <button onclick="toggleCameraScanner()" class="p-2 bg-slate-200 hover:bg-blue-600 hover:text-white text-slate-700 rounded-lg transition" title="Kamera ile Barkod Tara">
-            <i class="fa-solid fa-camera text-base"></i>
+          <button onclick="toggleCameraScanner()" class="p-2 text-slate-600 hover:text-slate-900 bg-slate-200/70 hover:bg-slate-200 rounded-md transition" title="Kamera">
+            <i class="fa-solid fa-camera text-sm"></i>
           </button>
-          <button onclick="searchAndHandleBarcode()" class="p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition" title="Sorgula">
-            <i class="fa-solid fa-magnifying-glass text-base"></i>
+          <button onclick="searchAndHandleBarcode()" class="p-2 bg-slate-900 text-white rounded-md transition">
+            <i class="fa-solid fa-arrow-right text-sm"></i>
           </button>
         </div>
       </div>
 
-      <!-- Kamera Tarama Kutusu -->
-      <div id="cameraModal" class="hidden mt-3 p-2.5 bg-slate-900 rounded-xl">
-        <div id="interactiveScanner" class="w-full h-48 rounded-lg overflow-hidden bg-black"></div>
-        <button onclick="toggleCameraScanner()" class="w-full mt-2 py-2 bg-red-600 text-white rounded-lg text-xs font-bold">
-          Kamerayı Kapat
+      <!-- Kamera Alanı -->
+      <div id="cameraModal" class="hidden mt-2.5 p-2 bg-slate-900 rounded-lg">
+        <div id="interactiveScanner" class="w-full h-44 rounded overflow-hidden bg-black"></div>
+        <button onclick="toggleCameraScanner()" class="w-full mt-1.5 py-1.5 bg-red-600 text-white rounded text-xs font-bold">
+          Kapat
         </button>
-      </div>
-
-      <div id="scanNotice" class="mt-2 text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-        <i class="fa-solid fa-bolt text-amber-500"></i>
-        <span id="scanNoticeText">Hazır. El terminali, okuyucu veya kamera ile okutabilirsiniz.</span>
       </div>
     </div>
 
-    <!-- 4. SIRA: YAZDIR VE DİREKT YAZDIR ÖZELLİĞİ -->
-    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
-      <!-- Direkt Yazdır Şalteri -->
-      <div class="flex items-center justify-between bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200">
-        <div>
-          <span class="text-xs font-extrabold text-slate-800 block">Direkt Yazdır (Otomatik Baskı)</span>
-          <span class="text-[10px] text-slate-500">Barkod okutulur okutulmaz beklemeden 5x2 etiket basılır</span>
-        </div>
-        <label class="relative inline-flex items-center cursor-pointer">
+    <!-- 4. YAZDIR & DİREKT YAZDIR -->
+    <div class="bg-white rounded-xl p-3 shadow-xs border border-slate-200 space-y-2.5">
+      <div class="flex items-center justify-between px-1">
+        <!-- Direkt Yazdır -->
+        <label class="flex items-center gap-2.5 cursor-pointer">
           <input type="checkbox" id="directPrintToggle" class="sr-only peer" checked>
-          <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+          <div class="w-10 h-5.5 bg-slate-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4.5 after:w-4.5 after:transition-all relative peer-checked:bg-emerald-600"></div>
+          <span class="text-xs font-bold text-slate-800">Direkt Yazdır</span>
         </label>
+
+        <!-- Baskı Adedi -->
+        <div class="flex items-center gap-1.5 bg-slate-100 rounded-lg p-1">
+          <button onclick="changeQty(-1)" class="w-6 h-6 rounded bg-white shadow-2xs text-xs font-bold text-slate-700 active:scale-95">-</button>
+          <span id="printQty" class="text-xs font-mono font-bold w-5 text-center">1</span>
+          <button onclick="changeQty(1)" class="w-6 h-6 rounded bg-white shadow-2xs text-xs font-bold text-slate-700 active:scale-95">+</button>
+        </div>
       </div>
 
-      <!-- Büyük Yazdır Butonu -->
-      <button onclick="manualPrintTrigger()" class="w-full py-4 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white font-black rounded-xl text-base flex items-center justify-center gap-2.5 shadow-lg transition">
-        <i class="fa-solid fa-print text-amber-400 text-lg"></i>
-        <span>ETİKET YAZDIR (5x2 ZPL)</span>
+      <button onclick="manualPrintTrigger()" class="w-full py-3.5 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white font-extrabold rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm transition">
+        <i class="fa-solid fa-print"></i>
+        <span>YAZDIR</span>
       </button>
     </div>
 
   </main>
 
-  <!-- GİRİŞ YAP (STOCK-MASTER KULLANICI DOĞRULAMA) MODALI -->
-  <div id="loginModal" class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-200">
-      <div class="flex items-center justify-between border-b pb-3">
-        <div class="flex items-center gap-2">
-          <i class="fa-solid fa-shield-halved text-amber-500 text-lg"></i>
-          <div>
-            <h3 class="font-black text-sm uppercase tracking-wider text-slate-800 leading-none">Stock-Master Giriş</h3>
-            <span class="text-[10px] text-slate-400 font-mono">Sunucu: stock-master-a888d</span>
-          </div>
-        </div>
+  <!-- GİRİŞ MODALI -->
+  <div id="loginModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xs w-full p-5 space-y-4 shadow-xl">
+      <div class="flex items-center justify-between border-b pb-2.5">
+        <h3 class="font-extrabold text-sm text-slate-800">Yönetici Girişi</h3>
         <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-600">
-          <i class="fa-solid fa-xmark text-lg"></i>
+          <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
-      <div class="space-y-3 text-xs">
+      <div class="space-y-2.5 text-xs">
         <div>
-          <label class="font-bold text-slate-600 block mb-1">Kullanıcı Adı</label>
-          <input type="text" id="loginUsername" placeholder="Kullanıcı adınız" class="w-full px-3 py-2.5 border rounded-xl font-mono focus:border-blue-600 outline-none" onkeydown="if(event.key==='Enter') performLogin()">
+          <label class="font-semibold text-slate-600 block mb-1">Kullanıcı Adı</label>
+          <input type="text" id="loginUsername" class="w-full px-3 py-2 border rounded-lg font-mono focus:border-slate-900 outline-none" onkeydown="if(event.key==='Enter') performLogin()">
         </div>
         <div>
-          <label class="font-bold text-slate-600 block mb-1">Şifre</label>
-          <input type="password" id="loginPassword" placeholder="••••••••" class="w-full px-3 py-2.5 border rounded-xl font-mono focus:border-blue-600 outline-none" onkeydown="if(event.key==='Enter') performLogin()">
+          <label class="font-semibold text-slate-600 block mb-1">Şifre</label>
+          <input type="password" id="loginPassword" class="w-full px-3 py-2 border rounded-lg font-mono focus:border-slate-900 outline-none" onkeydown="if(event.key==='Enter') performLogin()">
         </div>
-        <div id="loginErrorMsg" class="hidden text-red-600 font-bold text-[11px] bg-red-50 p-2.5 rounded-lg border border-red-200"></div>
+        <div id="loginErrorMsg" class="hidden text-red-600 font-semibold text-[11px] bg-red-50 p-2 rounded"></div>
       </div>
 
-      <button onclick="performLogin()" id="btnLoginSubmit" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow">
-        Sunucu İle Doğrula & Giriş Yap
+      <button onclick="performLogin()" id="btnLoginSubmit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs transition">
+        Giriş Yap
       </button>
     </div>
   </div>
 
-  <!-- YÖNETİM PANELİ TAM EKRAN MODALI (SADECE YETKİLİ GİRİŞİYLE AÇILIR) -->
+  <!-- YÖNETİM PANELİ -->
   <div id="adminPanelModal" class="hidden fixed inset-0 z-50 bg-slate-100 overflow-y-auto">
-    <!-- Yönetim Üst Bar -->
-    <div class="bg-slate-900 text-white sticky top-0 z-20 px-4 py-3 shadow flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <i class="fa-solid fa-sliders text-amber-400 text-lg"></i>
-        <div>
-          <h2 class="font-black text-sm tracking-wide">STOCK-MASTER YÖNETİM & ANALİZ PANELİ</h2>
-          <p class="text-[11px] text-slate-400" id="adminUserBadge">Yetkili: -</p>
-        </div>
+    <div class="bg-slate-900 text-white sticky top-0 z-20 px-4 h-12 flex items-center justify-between shadow-xs">
+      <div class="flex items-center gap-2">
+        <span class="font-extrabold text-sm">Label Yönetim</span>
+        <span class="text-[11px] text-slate-400 border-l border-slate-700 pl-2" id="adminUserBadge"></span>
       </div>
 
       <div class="flex items-center gap-2">
-        <button onclick="logoutAdmin()" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg text-xs font-bold flex items-center gap-1.5">
-          <i class="fa-solid fa-right-from-bracket"></i>
-          Çıkış Yap
+        <button onclick="logoutAdmin()" class="px-2.5 py-1 bg-red-600/90 hover:bg-red-600 rounded text-xs font-semibold">
+          Çıkış
         </button>
-        <button onclick="closeAdminPanel()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-bold flex items-center gap-1.5">
-          <i class="fa-solid fa-arrow-left"></i>
-          Ana Ekrana Dön
+        <button onclick="closeAdminPanel()" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-semibold">
+          Kapat
         </button>
       </div>
     </div>
 
-    <!-- Yönetim Sekmeleri -->
-    <div class="max-w-6xl mx-auto px-4 pt-4">
-      <div class="flex flex-wrap gap-2 border-b border-slate-300 pb-3">
-        <button onclick="switchAdminTab('tabAnalytics')" id="btnTabAnalytics" class="px-4 py-2 rounded-xl text-xs font-black bg-slate-900 text-white flex items-center gap-2">
-          <i class="fa-solid fa-chart-pie text-amber-400"></i>
-          Analiz & Etiket Raporları
+    <div class="max-w-5xl mx-auto p-4">
+      <!-- Sekmeler -->
+      <div class="flex gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
+        <button onclick="switchAdminTab('tabAnalytics')" id="btnTabAnalytics" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white shrink-0">
+          Analiz
         </button>
-        <button onclick="switchAdminTab('tabData')" id="btnTabData" class="px-4 py-2 rounded-xl text-xs font-black bg-white text-slate-700 hover:bg-slate-200 flex items-center gap-2">
-          <i class="fa-solid fa-database text-emerald-600"></i>
-          Excel & Tekil Ürün Yönetimi
+        <button onclick="switchAdminTab('tabData')" id="btnTabData" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-700 border shrink-0">
+          Ürün & Excel
         </button>
-        <button onclick="switchAdminTab('tabUsers')" id="btnTabUsers" class="px-4 py-2 rounded-xl text-xs font-black bg-white text-slate-700 hover:bg-slate-200 flex items-center gap-2">
-          <i class="fa-solid fa-users-gear text-blue-600"></i>
-          Users & Roller (Stock-Master)
+        <button onclick="switchAdminTab('tabUsers')" id="btnTabUsers" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-700 border shrink-0">
+          Kullanıcılar
         </button>
       </div>
 
-      <!-- SEKME 1: ANALİZ VE ETİKETLEME RAPORLARI -->
-      <div id="tabAnalytics" class="py-5 space-y-5">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span class="text-[11px] font-bold text-slate-400 uppercase">Toplam Etiket İşlemi</span>
-            <div id="statTotalLogs" class="text-2xl font-black text-slate-900 mt-1">0</div>
+      <!-- SEKME 1: ANALİZ -->
+      <div id="tabAnalytics" class="py-4 space-y-4">
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+            <span class="text-[11px] font-semibold text-slate-400">Toplam İşlem</span>
+            <div id="statTotalLogs" class="text-xl font-black text-slate-900 mt-0.5">0</div>
           </div>
-          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span class="text-[11px] font-bold text-emerald-600 uppercase">Direkt (Otomatik) Baskı</span>
-            <div id="statAutoPrints" class="text-2xl font-black text-emerald-700 mt-1">0</div>
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+            <span class="text-[11px] font-semibold text-emerald-600">Direkt Yazdır</span>
+            <div id="statAutoPrints" class="text-xl font-black text-emerald-700 mt-0.5">0</div>
           </div>
-          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span class="text-[11px] font-bold text-blue-600 uppercase">Manuel Buton Baskı</span>
-            <div id="statManualPrints" class="text-2xl font-black text-blue-700 mt-1">0</div>
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+            <span class="text-[11px] font-semibold text-blue-600">Manuel Yazdır</span>
+            <div id="statManualPrints" class="text-xl font-black text-blue-700 mt-0.5">0</div>
           </div>
-          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span class="text-[11px] font-bold text-amber-600 uppercase">Sadece Sorgulama</span>
-            <div id="statScanOnly" class="text-2xl font-black text-amber-600 mt-1">0</div>
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+            <span class="text-[11px] font-semibold text-amber-600">Sorgulama</span>
+            <div id="statScanOnly" class="text-xl font-black text-amber-600 mt-0.5">0</div>
+          </div>
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200 col-span-2 sm:col-span-1">
+            <span class="text-[11px] font-semibold text-purple-600">Transfer Ürün</span>
+            <div id="statTransferCount" class="text-xl font-black text-purple-700 mt-0.5">0</div>
           </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <h4 class="text-xs font-black uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-1.5">
-              <i class="fa-solid fa-ranking-star text-amber-500"></i>
-              En Çok Basılan / Okutulan Ürünler
-            </h4>
-            <div id="topProductsList" class="space-y-2 text-xs"></div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200">
+            <h4 class="text-xs font-bold text-slate-700 mb-2.5">En Çok İşlem Görenler</h4>
+            <div id="topProductsList" class="space-y-1.5 text-xs"></div>
           </div>
 
-          <div class="lg:col-span-2 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+          <div class="lg:col-span-2 bg-white p-4 rounded-xl border border-slate-200 space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-2">
-              <h4 class="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                <i class="fa-solid fa-list-check text-blue-600"></i>
-                Sunucu Etiketleme ve Baskı Kayıtları (label_logs)
-              </h4>
+              <h4 class="text-xs font-bold text-slate-700">Etiket Hareketleri</h4>
               <div class="flex items-center gap-2">
-                <input type="text" id="logFilterInput" oninput="renderAnalyticsView()" placeholder="Barkod veya ürün filtrele..." class="text-xs px-2.5 py-1.5 border rounded-lg outline-none">
-                <button onclick="exportLogsToExcel()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1">
-                  <i class="fa-solid fa-file-excel"></i>
-                  Raporu İndir
+                <input type="text" id="logFilterInput" oninput="renderAnalyticsView()" placeholder="Ara..." class="text-xs px-2.5 py-1 border rounded-lg outline-none">
+                <button onclick="exportLogsToExcel()" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-xs font-semibold">
+                  Excel İndir
                 </button>
               </div>
             </div>
 
-            <div class="overflow-x-auto max-h-80 overflow-y-auto border border-slate-100 rounded-xl">
+            <div class="overflow-x-auto max-h-80 overflow-y-auto border border-slate-100 rounded-lg">
               <table class="w-full text-left text-xs">
-                <thead class="bg-slate-50 text-slate-500 font-bold sticky top-0 border-b">
+                <thead class="bg-slate-50 text-slate-500 font-semibold sticky top-0 border-b">
                   <tr>
-                    <th class="p-2.5">Tarih / Saat</th>
-                    <th class="p-2.5">Barkod</th>
-                    <th class="p-2.5">Ürün Adı</th>
-                    <th class="p-2.5">Model / Renk</th>
-                    <th class="p-2.5">Fiyat</th>
-                    <th class="p-2.5">İşlem Türü</th>
-                    <th class="p-2.5">Kullanıcı</th>
+                    <th class="p-2">Saat</th>
+                    <th class="p-2">Barkod</th>
+                    <th class="p-2">Ürün</th>
+                    <th class="p-2">Fiyat</th>
+                    <th class="p-2">Özellik</th>
+                    <th class="p-2">İşlem</th>
                   </tr>
                 </thead>
                 <tbody id="adminLogTableBody" class="divide-y divide-slate-100 font-mono text-[11px]"></tbody>
@@ -332,94 +315,97 @@
         </div>
       </div>
 
-      <!-- SEKME 2: EXCEL VE TEKİL ÜRÜN VERİ YÖNETİMİ -->
-      <div id="tabData" class="hidden py-5 space-y-5">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <!-- SEKME 2: ÜRÜN & EXCEL YÖNETİMİ -->
+      <div id="tabData" class="hidden py-4 space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
           
-          <!-- Tekil Ürün Ekle / Güncelle Kartı -->
-          <div class="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-            <h3 class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
-              <i class="fa-solid fa-box-open text-amber-500"></i>
-              Tekil Ürün Ekle / Sunucuda Güncelle
-            </h3>
+          <!-- Tekil Ürün Formu -->
+          <div class="lg:col-span-5 bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+            <h3 class="text-xs font-bold text-slate-800">Tekil Ürün Kaydı</h3>
 
-            <div class="grid grid-cols-2 gap-2.5 text-xs">
+            <div class="grid grid-cols-2 gap-2 text-xs">
               <div class="col-span-2">
-                <label class="font-bold text-slate-500">Barkod Numarası (Doc ID)</label>
-                <input type="text" id="admBarcode" placeholder="3561000010248" class="w-full p-2 border rounded-lg font-mono font-bold">
-              </div>
-              <div class="col-span-2">
-                <label class="font-bold text-slate-500">Ürün Adı</label>
-                <input type="text" id="admName" placeholder="SUET ÇANTA" class="w-full p-2 border rounded-lg">
-              </div>
-              <div>
-                <label class="font-bold text-slate-500">Model Kodu</label>
-                <input type="text" id="admModel" placeholder="RY01" class="w-full p-2 border rounded-lg">
-              </div>
-              <div>
-                <label class="font-bold text-slate-500">Renk</label>
-                <input type="text" id="admColor" placeholder="Siyah" class="w-full p-2 border rounded-lg">
-              </div>
-              <div>
-                <label class="font-bold text-slate-500">Beden</label>
-                <input type="text" id="admSize" placeholder="STD" class="w-full p-2 border rounded-lg">
-              </div>
-              <div>
-                <label class="font-bold text-slate-500">Etiket Tarihi</label>
-                <input type="text" id="admDate" placeholder="22.09.20" class="w-full p-2 border rounded-lg font-mono">
+                <label class="text-slate-500 font-semibold">Barkod</label>
+                <input type="text" id="admBarcode" class="w-full p-2 border rounded-lg font-mono font-bold">
               </div>
               <div class="col-span-2">
-                <label class="font-bold text-slate-500">PSF Fiyat</label>
-                <input type="text" id="admPrice" placeholder="3299,00 TL" class="w-full p-2 border rounded-lg font-bold text-emerald-700">
+                <label class="text-slate-500 font-semibold">Ürün Adı</label>
+                <input type="text" id="admName" class="w-full p-2 border rounded-lg">
               </div>
+              <div>
+                <label class="text-slate-500 font-semibold">Model</label>
+                <input type="text" id="admModel" class="w-full p-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="text-slate-500 font-semibold">Renk</label>
+                <input type="text" id="admColor" class="w-full p-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="text-slate-500 font-semibold">Beden</label>
+                <input type="text" id="admSize" class="w-full p-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="text-slate-500 font-semibold">Tarih</label>
+                <input type="text" id="admDate" class="w-full p-2 border rounded-lg font-mono">
+              </div>
+              <div class="col-span-2">
+                <label class="text-slate-500 font-semibold">Fiyat</label>
+                <input type="text" id="admPrice" class="w-full p-2 border rounded-lg font-bold">
+              </div>
+
+              <!-- Yerli Üretim & Transfer Checkboxları -->
+              <label class="flex items-center gap-2 p-2 bg-slate-50 border rounded-lg cursor-pointer">
+                <input type="checkbox" id="admDomestic" class="w-4 h-4 accent-slate-900">
+                <span class="font-bold text-slate-700">Yerli Üretim (X)</span>
+              </label>
+
+              <label class="flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-200 rounded-lg cursor-pointer">
+                <input type="checkbox" id="admTransfer" class="w-4 h-4 accent-emerald-600">
+                <span class="font-bold text-emerald-800">Transfer Ürün (X)</span>
+              </label>
             </div>
 
-            <button onclick="saveSingleProductToServer()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2">
-              <i class="fa-solid fa-cloud-arrow-up text-amber-400"></i>
-              Ürünü Sunucuya Kaydet
+            <button onclick="saveSingleProductToServer()" class="w-full py-2.5 bg-slate-900 text-white font-bold rounded-lg text-xs">
+              Kaydet
             </button>
           </div>
 
-          <!-- Excel Toplu Veri Aktarım & Sunucu Ürün Listesi -->
-          <div class="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <!-- Excel Yükleme & Ürün Listesi -->
+          <div class="lg:col-span-7 bg-white p-4 rounded-xl border border-slate-200 space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
               <div>
-                <h3 class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
-                  <i class="fa-solid fa-file-excel text-emerald-600"></i>
-                  Excel İle Sunucuya Toplu Ürün Aktarımı
-                </h3>
-                <p class="text-[11px] text-slate-500">Yüklenen Excel verileri paketler halinde doğrudan stock-master-a888d sunucusuna yazılır.</p>
+                <h3 class="text-xs font-bold text-slate-800">Excel Veri Aktarımı</h3>
+                <p class="text-[11px] text-slate-400">Yerli ve Transfer sütunlarında "X" olan ürünler otomatik işlenir.</p>
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1.5">
                 <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleAdminExcelUpload(event)">
-                <button onclick="document.getElementById('excelFileInput').click()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5">
-                  <i class="fa-solid fa-upload"></i>
-                  Excel Seç & Sunucuya Bas
+                <button onclick="document.getElementById('excelFileInput').click()" class="px-3 py-1.5 bg-emerald-600 text-white font-bold rounded-lg text-xs">
+                  Excel Yükle
                 </button>
-                <button onclick="downloadSampleExcel()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs">
-                  Şablon İndir
+                <button onclick="downloadSampleExcel()" class="px-2.5 py-1.5 bg-slate-100 text-slate-700 font-semibold rounded-lg text-xs">
+                  Şablon
                 </button>
               </div>
             </div>
 
-            <div id="excelUploadStatus" class="hidden text-xs font-bold p-2.5 rounded-xl bg-blue-50 text-blue-800"></div>
+            <div id="excelUploadStatus" class="hidden text-xs font-semibold p-2 rounded-lg bg-emerald-50 text-emerald-800"></div>
 
-            <div class="flex items-center justify-between gap-2">
-              <input type="text" id="admProductSearch" oninput="renderAdminProductTable()" placeholder="Sunucu önbelleğinde barkod veya ürün ara..." class="w-full text-xs px-3 py-2 border rounded-xl outline-none">
-              <button onclick="fetchInitialProductsFromServer(true)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold shrink-0">
-                <i class="fa-solid fa-rotate"></i> Yenile
+            <div class="flex items-center gap-2">
+              <input type="text" id="admProductSearch" oninput="renderAdminProductTable()" placeholder="Barkod veya ürün ara..." class="w-full text-xs px-3 py-1.5 border rounded-lg outline-none">
+              <button onclick="fetchInitialProductsFromServer(true)" class="px-2.5 py-1.5 bg-slate-100 rounded-lg text-xs font-semibold shrink-0">
+                Yenile
               </button>
             </div>
 
-            <div class="overflow-x-auto max-h-64 overflow-y-auto border border-slate-100 rounded-xl">
+            <div class="overflow-x-auto max-h-64 overflow-y-auto border border-slate-100 rounded-lg">
               <table class="w-full text-left text-xs">
-                <thead class="bg-slate-50 text-slate-500 font-bold sticky top-0 border-b">
+                <thead class="bg-slate-50 text-slate-500 font-semibold sticky top-0 border-b">
                   <tr>
                     <th class="p-2">Barkod</th>
-                    <th class="p-2">Ürün Adı</th>
-                    <th class="p-2">Model/Renk/Beden</th>
+                    <th class="p-2">Ürün</th>
                     <th class="p-2">Fiyat</th>
-                    <th class="p-2 text-right">Düzenle</th>
+                    <th class="p-2">Durum</th>
+                    <th class="p-2 text-right">Seç</th>
                   </tr>
                 </thead>
                 <tbody id="admProductTableBody" class="divide-y divide-slate-100"></tbody>
@@ -430,58 +416,50 @@
         </div>
       </div>
 
-      <!-- SEKME 3: STOCK-MASTER USERS VE ROLLER EŞZAMANLAMA -->
-      <div id="tabUsers" class="hidden py-5 space-y-5">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          <div class="lg:col-span-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-            <h3 class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
-              <i class="fa-solid fa-user-plus text-blue-600"></i>
-              Stock-Master Kullanıcı & Rol Tanımla
-            </h3>
-            <div class="space-y-2.5 text-xs">
-              <div>
-                <label class="font-bold text-slate-500">Kullanıcı Adı (username)</label>
-                <input type="text" id="usrUsername" placeholder="arda.ulas" class="w-full p-2 border rounded-lg font-mono">
-              </div>
-              <div>
-                <label class="font-bold text-slate-500">Ad Soyad (fullName)</label>
-                <input type="text" id="usrFullName" placeholder="Arda Ulaş" class="w-full p-2 border rounded-lg">
-              </div>
-              <div>
-                <label class="font-bold text-slate-500">Şifre (password)</label>
-                <input type="text" id="usrPassword" placeholder="••••••" class="w-full p-2 border rounded-lg font-mono">
-              </div>
-              <div>
-                <label class="font-bold text-slate-500">Rol (role)</label>
-                <select id="usrRole" class="w-full p-2 border rounded-lg font-bold">
-                  <option value="SUPERUSER">SUPERUSER</option>
-                  <option value="ADMIN">ADMIN</option>
-                  <option value="MANAGER">MANAGER</option>
-                  <option value="STAFF">STAFF</option>
-                </select>
-              </div>
-              <button onclick="saveUserToStockMaster()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs">
-                Kullanıcıyı Eşzamanlı Kaydet
-              </button>
+      <!-- SEKME 3: KULLANICILAR -->
+      <div id="tabUsers" class="hidden py-4 space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div class="lg:col-span-4 bg-white p-4 rounded-xl border border-slate-200 space-y-2.5 text-xs">
+            <h3 class="font-bold text-slate-800">Kullanıcı Tanımla</h3>
+            <div>
+              <label class="text-slate-500 font-semibold">Kullanıcı Adı</label>
+              <input type="text" id="usrUsername" class="w-full p-2 border rounded-lg font-mono">
             </div>
+            <div>
+              <label class="text-slate-500 font-semibold">Ad Soyad</label>
+              <input type="text" id="usrFullName" class="w-full p-2 border rounded-lg">
+            </div>
+            <div>
+              <label class="text-slate-500 font-semibold">Şifre</label>
+              <input type="text" id="usrPassword" class="w-full p-2 border rounded-lg font-mono">
+            </div>
+            <div>
+              <label class="text-slate-500 font-semibold">Rol</label>
+              <select id="usrRole" class="w-full p-2 border rounded-lg font-semibold">
+                <option value="SUPERUSER">SUPERUSER</option>
+                <option value="ADMIN">ADMIN</option>
+                <option value="MANAGER">MANAGER</option>
+                <option value="STAFF">STAFF</option>
+              </select>
+            </div>
+            <button onclick="saveUserToStockMaster()" class="w-full py-2 bg-slate-900 text-white font-bold rounded-lg">
+              Kaydet
+            </button>
           </div>
 
-          <div class="lg:col-span-8 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+          <div class="lg:col-span-8 bg-white p-4 rounded-xl border border-slate-200 space-y-2.5">
             <div class="flex items-center justify-between">
-              <h3 class="text-xs font-black uppercase tracking-wider text-slate-800">
-                Stock-Master Eşzamanlı Kullanıcılar (`users` / `adminUsers`) ve Roller (`roles`)
-              </h3>
-              <span id="usersCountBadge" class="text-[11px] bg-blue-50 text-blue-700 font-bold px-2.5 py-0.5 rounded-full">0 Kayıt</span>
+              <h3 class="text-xs font-bold text-slate-800">Kayıtlı Kullanıcılar</h3>
+              <span id="usersCountBadge" class="text-[11px] bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded">0</span>
             </div>
 
-            <div class="overflow-x-auto max-h-72 overflow-y-auto border border-slate-100 rounded-xl">
+            <div class="overflow-x-auto max-h-72 overflow-y-auto border border-slate-100 rounded-lg">
               <table class="w-full text-left text-xs">
-                <thead class="bg-slate-50 text-slate-500 font-bold sticky top-0 border-b">
+                <thead class="bg-slate-50 text-slate-500 font-semibold sticky top-0 border-b">
                   <tr>
-                    <th class="p-2.5">Kullanıcı Adı</th>
-                    <th class="p-2.5">Ad Soyad</th>
-                    <th class="p-2.5">Koleksiyon</th>
-                    <th class="p-2.5">Rol</th>
+                    <th class="p-2">Kullanıcı</th>
+                    <th class="p-2">Ad Soyad</th>
+                    <th class="p-2">Rol</th>
                   </tr>
                 </thead>
                 <tbody id="admUsersTableBody" class="divide-y divide-slate-100 font-mono text-[11px]"></tbody>
@@ -494,12 +472,8 @@
     </div>
   </div>
 
-  <!-- UYGULAMA ÇEKİRDEK MANTIĞI -->
   <script>
-    /*************************************************************************
-     * 1. DOĞRU STOCK-MASTER (stock-master-a888d) FIRESTORE YAPILANDIRMASI
-     *************************************************************************/
-    const STOCK_MASTER_FIREBASE_CONFIG = {
+    const FIREBASE_CONFIG = {
       apiKey: "AIzaSyBKGJj7qQFMf8qfwvWiAYkGzsDVWn8JmUo",
       authDomain: "stock-master-a888d.firebaseapp.com",
       projectId: "stock-master-a888d",
@@ -510,6 +484,8 @@
 
     let db = null;
     const productRamCache = new Map();
+    let printQuantity = 1;
+
     let currentProduct = {
       barcode: "3561000010248",
       name: "SUET ÇANTA",
@@ -517,31 +493,33 @@
       color: "Siyah",
       size: "STD",
       date: "22.09.20",
-      price: "3299,00 TL"
+      price: "3299,00 TL",
+      domestic: true,
+      transfer: false
     };
 
     let currentUser = null;
-    let syncedUsersMap = new Map(); // key: küçük harf username -> kullanıcı objesi
+    let syncedUsersMap = new Map();
     let syncedRolesMap = new Map();
     let analyticsLogs = [];
     let unsubLogs = null;
 
-    function initStockMasterServer() {
+    function isXFlag(val) {
+      if (val === true || val === 1) return true;
+      const s = String(val || '').trim().toUpperCase();
+      return s === 'X' || s === 'EVET' || s === 'TRUE' || s === '1';
+    }
+
+    function initServer() {
       try {
         if (!firebase.apps.length) {
-          firebase.initializeApp(STOCK_MASTER_FIREBASE_CONFIG);
+          firebase.initializeApp(FIREBASE_CONFIG);
         }
         db = firebase.firestore();
-
-        // Zayıf internette maksimum hız için yerel IndexedDB önbelleği
         db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 
         productRamCache.set(currentProduct.barcode, currentProduct);
-
-        // Users, AdminUsers ve Roles eşzamanlamasını başlat
-        syncStockMasterUsersAndRoles();
-
-        // Ürünleri önbelleğe çek
+        syncUsersAndRoles();
         fetchInitialProductsFromServer(false);
 
         const savedSession = sessionStorage.getItem('sm_cloud_session');
@@ -550,15 +528,11 @@
           updateAuthUI();
         }
       } catch (err) {
-        console.error("Sunucu başlatma hatası:", err);
-        document.getElementById('syncStatusText').innerText = "Sunucu: Çevrimdışı Önbellek";
         document.getElementById('netDot').classList.replace('bg-emerald-400', 'bg-amber-400');
       }
     }
 
-    /*************************************************************************
-     * 2. USERS, ADMINUSERS VE ROLLERİN EŞZAMANLI SENKRONİZASYONU VE GİRİŞ
-     *************************************************************************/
+    // KULLANICI & ROL SENKRONİZASYONU
     function registerUserDocToMap(docId, data, sourceName) {
       if (!data) return;
       const uname = String(data.username || data.user || docId || '').trim();
@@ -566,64 +540,30 @@
       if (!uname) return;
 
       const userObj = {
-        docId: docId,
+        docId,
         username: uname,
         fullName: data.fullName || data.name || uname,
         password: String(rawPass !== undefined ? rawPass : '').trim(),
         role: data.role || (sourceName === 'adminUsers' ? 'SUPERUSER' : 'ADMIN'),
-        permissions: data.permissions || null,
         source: sourceName
       };
 
-      // Hem küçük harf username hem de docId ile hızlı arama için kaydet
       syncedUsersMap.set(uname.toLowerCase(), userObj);
       syncedUsersMap.set(String(docId).toLowerCase(), userObj);
     }
 
-    function syncStockMasterUsersAndRoles() {
+    function syncUsersAndRoles() {
       if (!db) return;
-
-      // 1) 'users' koleksiyonu
-      db.collection('users').onSnapshot(snap => {
-        snap.forEach(doc => registerUserDocToMap(doc.id, doc.data(), 'users'));
-        renderSyncedUsersTable();
-      }, err => console.warn("users dinleme uyarısı:", err));
-
-      // 2) 'adminUsers' koleksiyonu
-      db.collection('adminUsers').onSnapshot(snap => {
-        snap.forEach(doc => registerUserDocToMap(doc.id, doc.data(), 'adminUsers'));
-        renderSyncedUsersTable();
-      }, () => {});
-
-      // 3) 'admin_users' koleksiyonu (yedek uyumluluk)
-      db.collection('admin_users').onSnapshot(snap => {
-        snap.forEach(doc => registerUserDocToMap(doc.id, doc.data(), 'admin_users'));
-        renderSyncedUsersTable();
-      }, () => {});
-
-      // 4) 'roles' koleksiyonu
-      db.collection('roles').onSnapshot(snap => {
-        snap.forEach(doc => {
-          syncedRolesMap.set(doc.id, doc.data());
-        });
-        // Rolleri dinamik olarak select kutusuna da yansıt
-        updateRoleSelectOptions();
-      }, () => {});
-    }
-
-    function updateRoleSelectOptions() {
-      const selectEl = document.getElementById('usrRole');
-      if (!selectEl || syncedRolesMap.size === 0) return;
-      const existingValues = new Set(Array.from(selectEl.options).map(o => o.value));
-      syncedRolesMap.forEach((roleData, roleId) => {
-        const rName = roleData.name || roleId;
-        if (!existingValues.has(rName)) {
-          const opt = document.createElement('option');
-          opt.value = rName;
-          opt.textContent = rName;
-          selectEl.appendChild(opt);
-        }
+      ['users', 'adminUsers', 'admin_users'].forEach(col => {
+        db.collection(col).onSnapshot(snap => {
+          snap.forEach(doc => registerUserDocToMap(doc.id, doc.data(), col));
+          renderSyncedUsersTable();
+        }, () => {});
       });
+
+      db.collection('roles').onSnapshot(snap => {
+        snap.forEach(doc => syncedRolesMap.set(doc.id, doc.data()));
+      }, () => {});
     }
 
     function handleAuthButtonClick() {
@@ -647,53 +587,37 @@
       const btn = document.getElementById('btnLoginSubmit');
 
       if (!unameInput || !passInput) {
-        errBox.innerText = "Lütfen kullanıcı adı ve şifrenizi girin.";
+        errBox.innerText = "Kullanıcı adı ve şifre girin.";
         errBox.classList.remove('hidden');
         return;
       }
 
       btn.disabled = true;
-      btn.innerText = "DOĞRULANIYOR...";
+      btn.innerText = "Kontrol ediliyor...";
       errBox.classList.add('hidden');
 
       const searchKey = unameInput.toLowerCase();
       let matchedUser = syncedUsersMap.get(searchKey);
 
-      // Eğer anlık haritada bulunamadıysa doğrudan stock-master-a888d sunucusundan tüm olası yollarla çek
       if (!matchedUser && db) {
-        const collectionsToCheck = ['users', 'adminUsers', 'admin_users'];
-        for (const colName of collectionsToCheck) {
+        for (const colName of ['users', 'adminUsers', 'admin_users']) {
           try {
-            // A) Doğrudan Document ID ile kontrol
             const directDoc = await db.collection(colName).doc(unameInput).get();
             if (directDoc.exists) {
               registerUserDocToMap(directDoc.id, directDoc.data(), colName);
               matchedUser = syncedUsersMap.get(searchKey);
               if (matchedUser) break;
             }
-
-            // B) 'username' alanı ile sorgu
-            const qSnap = await db.collection(colName).where('username', '==', unameInput).limit(1).get();
-            if (!qSnap.empty) {
-              const d = qSnap.docs[0];
-              registerUserDocToMap(d.id, d.data(), colName);
-              matchedUser = syncedUsersMap.get(searchKey);
-              if (matchedUser) break;
-            }
-
-            // C) Koleksiyonun tamamını çekip küçük/büyük harf duyarsız eşleştir
             const allSnap = await db.collection(colName).get();
             allSnap.forEach(d => registerUserDocToMap(d.id, d.data(), colName));
             matchedUser = syncedUsersMap.get(searchKey);
             if (matchedUser) break;
-          } catch (e) {
-            console.warn(`${colName} sorgu hatası:`, e);
-          }
+          } catch (e) {}
         }
       }
 
       btn.disabled = false;
-      btn.innerText = "SUNUCU İLE DOĞRULA & GİRİŞ YAP";
+      btn.innerText = "Giriş Yap";
 
       if (matchedUser && String(matchedUser.password) === String(passInput)) {
         currentUser = matchedUser;
@@ -701,11 +625,8 @@
         updateAuthUI();
         closeLoginModal();
         openAdminPanel();
-      } else if (!matchedUser) {
-        errBox.innerText = `"${unameInput}" adlı kullanıcı stock-master-a888d veritabanında bulunamadı.`;
-        errBox.classList.remove('hidden');
       } else {
-        errBox.innerText = "Girilen şifre Firestore'daki şifre ile eşleşmiyor!";
+        errBox.innerText = "Kullanıcı adı veya şifre hatalı.";
         errBox.classList.remove('hidden');
       }
     }
@@ -713,10 +634,10 @@
     function updateAuthUI() {
       const btnText = document.getElementById('authBtnText');
       if (currentUser) {
-        btnText.innerText = `Yönetim (${currentUser.username})`;
-        document.getElementById('adminUserBadge').innerText = `Yetkili: ${currentUser.fullName || currentUser.username} | Rol: ${currentUser.role}`;
+        btnText.innerText = currentUser.username;
+        document.getElementById('adminUserBadge').innerText = `${currentUser.fullName || currentUser.username} (${currentUser.role})`;
       } else {
-        btnText.innerText = "Giriş Yap";
+        btnText.innerText = "Giriş";
       }
     }
 
@@ -727,9 +648,12 @@
       closeAdminPanel();
     }
 
-    /*************************************************************************
-     * 3. MİNİMUM VERİ İLE MAKSİMUM HIZDA BARKOD SORGULAMA VE BASKI
-     *************************************************************************/
+    // BARKOD OKUMA, TRANSFER UYARISI VE YERLİ ÜRETİM GÖSTERİMİ
+    function changeQty(delta) {
+      printQuantity = Math.max(1, Math.min(20, printQuantity + delta));
+      document.getElementById('printQty').innerText = printQuantity;
+    }
+
     async function searchAndHandleBarcode() {
       const inputEl = document.getElementById('barcodeInput');
       const rawBarcode = inputEl.value.trim();
@@ -737,19 +661,9 @@
 
       inputEl.value = '';
       inputEl.focus();
-      playBeep();
 
-      const noticeEl = document.getElementById('scanNoticeText');
-      noticeEl.innerText = `Sorgulanıyor: ${rawBarcode}...`;
+      let foundProduct = productRamCache.get(rawBarcode) || null;
 
-      let foundProduct = null;
-
-      // 1. Önce RAM Önbelleğine bak (0ms)
-      if (productRamCache.has(rawBarcode)) {
-        foundProduct = productRamCache.get(rawBarcode);
-      }
-
-      // 2. RAM'de yoksa Firestore'dan doğrudan Doc ID ile çek
       if (!foundProduct && db) {
         try {
           const docRef = db.collection('products').doc(rawBarcode);
@@ -761,30 +675,59 @@
             foundProduct = docSnap.data();
             productRamCache.set(rawBarcode, foundProduct);
           }
-        } catch (err) {
-          console.warn("Hızlı sorgu uyarısı:", err);
-        }
+        } catch (err) {}
       }
 
       if (foundProduct) {
         currentProduct = foundProduct;
         renderMainScreenProduct(foundProduct);
-        noticeEl.innerText = `Bulundu: ${foundProduct.name} (${foundProduct.price})`;
+
+        const isTransfer = isXFlag(foundProduct.transfer);
+        if (isTransfer) {
+          triggerTransferAlert();
+        } else {
+          playBeep();
+        }
 
         const isDirectPrint = document.getElementById('directPrintToggle').checked;
         if (isDirectPrint) {
-          sendZplToPrinter(foundProduct);
+          sendZplToPrinter(foundProduct, printQuantity);
           logEventToServerAsync(foundProduct, 'DIRECT_PRINT');
+          printQuantity = 1;
+          document.getElementById('printQty').innerText = '1';
         } else {
           logEventToServerAsync(foundProduct, 'SCAN_ONLY');
         }
       } else {
-        noticeEl.innerText = `Sunucuda bulunamadı: ${rawBarcode}`;
+        playErrorBeep();
       }
     }
 
     function renderMainScreenProduct(p) {
-      document.getElementById('mainPriceDisplay').innerText = p.price || '0,00 TL';
+      const isTransfer = isXFlag(p.transfer);
+      const isDomestic = isXFlag(p.domestic);
+
+      // Fiyat & Transfer Görsel Durumu
+      const priceCard = document.getElementById('priceCard');
+      const priceDisplay = document.getElementById('mainPriceDisplay');
+      const transferBanner = document.getElementById('transferBanner');
+      const appBody = document.getElementById('appBody');
+
+      priceDisplay.innerText = p.price || '0,00 TL';
+
+      if (isTransfer) {
+        priceCard.className = "bg-emerald-600 rounded-xl p-3.5 shadow-md border border-emerald-500 text-center transition-all duration-200 transfer-active";
+        priceDisplay.className = "text-3xl font-black tracking-tight text-white";
+        transferBanner.classList.remove('hidden');
+        appBody.className = "bg-emerald-500 text-slate-900 min-h-screen select-none transition-colors duration-300";
+      } else {
+        priceCard.className = "bg-white rounded-xl p-3.5 shadow-xs border border-slate-200 text-center transition-all duration-200";
+        priceDisplay.className = "text-3xl font-black tracking-tight text-slate-900";
+        transferBanner.classList.add('hidden');
+        appBody.className = "bg-slate-100 text-slate-900 min-h-screen select-none transition-colors duration-300";
+      }
+
+      // Ürün Bilgileri
       document.getElementById('mainBarcodeBadge').innerText = p.barcode || '-';
       document.getElementById('roName').innerText = p.name || '-';
       document.getElementById('roModel').innerText = p.model || '-';
@@ -792,6 +735,7 @@
       document.getElementById('roSize').innerText = p.size || '-';
       document.getElementById('roDate').innerText = p.date || '-';
 
+      // Etiket Önizleme
       document.getElementById('lblPreviewName').innerText = p.name || '';
       document.getElementById('lblPreviewModel').innerText = p.model || '';
       document.getElementById('lblPreviewColor').innerText = p.color || '';
@@ -799,7 +743,37 @@
       document.getElementById('lblPreviewDate').innerText = p.date || '';
       document.getElementById('lblPreviewPrice').innerText = p.price || '';
 
+      // Yerli Üretim Logosu (Sağ Alt Köşe)
+      const yerliBadge = document.getElementById('yerliLogoBadge');
+      if (isDomestic) {
+        yerliBadge.classList.remove('hidden');
+      } else {
+        yerliBadge.classList.add('hidden');
+      }
+
       drawCompactBarcode(p.barcode || '3561000010248');
+    }
+
+    function triggerTransferAlert() {
+      // Titreşim
+      if (navigator.vibrate) {
+        navigator.vibrate([250, 100, 250, 100, 350]);
+      }
+      // Belirgin Üçlü Uyarı Sesi
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [0, 0.14, 0.28].forEach((offset, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = "square";
+          osc.frequency.setValueAtTime(idx === 2 ? 1320 : 980, ctx.currentTime + offset);
+          gain.gain.setValueAtTime(0.12, ctx.currentTime + offset);
+          osc.start(ctx.currentTime + offset);
+          osc.stop(ctx.currentTime + offset + 0.1);
+        });
+      } catch (e) {}
     }
 
     function drawCompactBarcode(barcode) {
@@ -809,10 +783,10 @@
         JsBarcode("#barcodeCanvas", cleanCode, {
           format: isEAN13 ? "EAN13" : "CODE128",
           width: 1.35,
-          height: 26,
+          height: 25,
           displayValue: true,
           font: "monospace",
-          fontSize: 10,
+          fontSize: 9.5,
           textMargin: 1,
           margin: 0
         });
@@ -820,23 +794,21 @@
         JsBarcode("#barcodeCanvas", cleanCode, {
           format: "CODE128",
           width: 1.3,
-          height: 26,
+          height: 25,
           displayValue: true,
-          fontSize: 10,
+          fontSize: 9.5,
           margin: 0
         });
       }
     }
 
-    /*************************************************************************
-     * 4. 5x2 CM (50mm x 20mm) ZPL ÜRETİMİ VE BLUETOOTH AKTARIMI
-     *************************************************************************/
+    // 5x2 ZPL ÜRETİMİ (SAĞ ALT KÖŞE YERLİ ÜRETİM LOGOLU) VE BLUETOOTH BASKI
     let bleDevice = null;
     let bleCharacteristic = null;
 
     async function connectBluetooth() {
       try {
-        document.getElementById('bleStatusText').innerText = "Aranıyor...";
+        document.getElementById('bleStatusText').innerText = "...";
         bleDevice = await navigator.bluetooth.requestDevice({
           acceptAllDevices: true,
           optionalServices: [
@@ -861,22 +833,27 @@
         }
 
         if (bleCharacteristic) {
-          document.getElementById('bleStatusText').innerText = "Hazır";
-          document.getElementById('btnConnectBle').classList.replace('bg-blue-600', 'bg-emerald-600');
+          document.getElementById('bleStatusText').innerText = "Bağlı";
+          document.getElementById('bleIcon').className = "fa-brands fa-bluetooth-b text-emerald-400";
         }
       } catch (err) {
         document.getElementById('bleStatusText').innerText = "Yazıcı";
-        alert("Bluetooth yazıcı bağlantısı kurulamadı: " + err.message);
       }
     }
 
-    function generate5x2ZPL(p) {
-      // 50mm x 20mm (203 DPI -> 400 dots genişlik x 160 dots yükseklik)
+    function generate5x2ZPL(p, qty = 1) {
       const cleanBarcode = String(p.barcode || '').trim();
       const isEAN13 = (cleanBarcode.length === 13 && /^\d+$/.test(cleanBarcode));
+      const isDomestic = isXFlag(p.domestic);
+
       const barcodeCmd = isEAN13
-        ? `^FO85,60^BY2^BEN,45,Y,N^FD${cleanBarcode}^FS`
-        : `^FO75,60^BY1.8^BCN,45,Y,N,N^FD${cleanBarcode}^FS`;
+        ? `^FO80,58^BY2^BEN,44,Y,N^FD${cleanBarcode}^FS`
+        : `^FO70,58^BY1.8^BCN,44,Y,N,N^FD${cleanBarcode}^FS`;
+
+      // Sağ alt köşe Yerli Üretim kutusu ve sembolü
+      const domesticZpl = isDomestic
+        ? `^FO302,122^GB86,32,2^FS^FO308,126^A0N,12,12^FDYERLI^FS^FO308,139^A0N,12,12^FDURETIM^FS`
+        : '';
 
       return `^XA
 ^PW400
@@ -884,24 +861,28 @@
 ^CI28
 ^FO20,10^A0N,20,20^FD${p.name || ''}^FS
 ^FO20,34^A0N,18,18^FD${p.model || ''}^FS
-^FO175,34^A0N,18,18^FD${p.color || ''}^FS
+^FO170,34^A0N,18,18^FD${p.color || ''}^FS
 ^FO320,34^A0N,18,18^FD${p.size || ''}^FS
-^FO20,62^A0B,15,15^FD${p.date || ''}^FS
+^FO20,60^A0B,15,15^FD${p.date || ''}^FS
 ${barcodeCmd}
-^FO75,130^A0N,22,22^FDPSF : ${p.price || ''}^FS
+^FO45,130^A0N,21,21^FDPSF : ${p.price || ''}^FS
+${domesticZpl}
+^PQ${qty}
 ^XZ`;
     }
 
     function manualPrintTrigger() {
-      sendZplToPrinter(currentProduct);
+      sendZplToPrinter(currentProduct, printQuantity);
       logEventToServerAsync(currentProduct, 'MANUAL_PRINT');
+      printQuantity = 1;
+      document.getElementById('printQty').innerText = '1';
+      document.getElementById('barcodeInput').focus();
     }
 
-    async function sendZplToPrinter(product) {
-      const zpl = generate5x2ZPL(product);
+    async function sendZplToPrinter(product, qty = 1) {
+      const zpl = generate5x2ZPL(product, qty);
       if (!bleCharacteristic) {
-        console.log("5x2 ZPL Çıktısı:\n", zpl);
-        document.getElementById('scanNoticeText').innerText = "Simülasyon: 5x2 ZPL hazırlandı (Yazıcı bağlı değil).";
+        console.log(zpl);
         playSuccessTone();
         return;
       }
@@ -920,13 +901,11 @@ ${barcodeCmd}
         }
         playSuccessTone();
       } catch (e) {
-        alert("Yazıcıya veri gönderilemedi: " + e.message);
+        alert("Yazıcı bağlantı hatası: " + e.message);
       }
     }
 
-    /*************************************************************************
-     * 5. ARKA PLAN SESSİZ LOGLAMA VE YÖNETİM ANALİZ PANELİ
-     *************************************************************************/
+    // ARKA PLAN LOGLAMA & YÖNETİM EKRANI
     function logEventToServerAsync(product, actionType) {
       if (!db) return;
       db.collection('label_logs').add({
@@ -936,8 +915,10 @@ ${barcodeCmd}
         color: String(product.color || ''),
         size: String(product.size || ''),
         price: String(product.price || ''),
+        domestic: isXFlag(product.domestic),
+        transfer: isXFlag(product.transfer),
         action: actionType,
-        user: currentUser ? currentUser.username : 'Saha-Terminali',
+        user: currentUser ? currentUser.username : 'Terminal',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         clientTime: new Date().toLocaleString('tr-TR')
       }).catch(() => {});
@@ -963,6 +944,7 @@ ${barcodeCmd}
 
     function closeAdminPanel() {
       document.getElementById('adminPanelModal').classList.add('hidden');
+      document.getElementById('barcodeInput').focus();
     }
 
     function switchAdminTab(tabId) {
@@ -971,22 +953,16 @@ ${barcodeCmd}
       });
       document.getElementById(tabId).classList.remove('hidden');
 
-      const mapBtn = {
-        tabAnalytics: 'btnTabAnalytics',
-        tabData: 'btnTabData',
-        tabUsers: 'btnTabUsers'
-      };
+      const mapBtn = { tabAnalytics: 'btnTabAnalytics', tabData: 'btnTabData', tabUsers: 'btnTabUsers' };
       Object.values(mapBtn).forEach(btnId => {
-        document.getElementById(btnId).className = "px-4 py-2 rounded-xl text-xs font-black bg-white text-slate-700 hover:bg-slate-200 flex items-center gap-2";
+        document.getElementById(btnId).className = "px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-700 border shrink-0";
       });
-      document.getElementById(mapBtn[tabId]).className = "px-4 py-2 rounded-xl text-xs font-black bg-slate-900 text-white flex items-center gap-2";
+      document.getElementById(mapBtn[tabId]).className = "px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white shrink-0";
     }
 
     function renderAnalyticsView() {
       const filterQ = (document.getElementById('logFilterInput')?.value || '').toLowerCase();
-      let autoCount = 0;
-      let manualCount = 0;
-      let scanCount = 0;
+      let autoCount = 0, manualCount = 0, scanCount = 0, transferCount = 0;
       const productCounter = {};
 
       const tbody = document.getElementById('adminLogTableBody');
@@ -997,6 +973,8 @@ ${barcodeCmd}
         else if (log.action === 'MANUAL_PRINT') manualCount++;
         else scanCount++;
 
+        if (log.transfer) transferCount++;
+
         const key = `${log.barcode} - ${log.productName || ''}`;
         productCounter[key] = (productCounter[key] || 0) + 1;
 
@@ -1005,21 +983,25 @@ ${barcodeCmd}
           (log.productName && log.productName.toLowerCase().includes(filterQ));
 
         if (match) {
-          const badge = log.action === 'DIRECT_PRINT'
-            ? '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">DİREKT BASKI</span>'
+          const actionBadge = log.action === 'DIRECT_PRINT'
+            ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Direkt</span>'
             : (log.action === 'MANUAL_PRINT'
-              ? '<span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">MANUEL BASKI</span>'
-              : '<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">SORGULAMA</span>');
+              ? '<span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">Yazdır</span>'
+              : '<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">Sorgu</span>');
+
+          const flags = [
+            log.transfer ? '<span class="px-1.5 py-0.5 rounded bg-emerald-600 text-white font-bold text-[10px]">TRANSFER</span>' : '',
+            log.domestic ? '<span class="px-1.5 py-0.5 rounded bg-slate-200 text-slate-800 font-bold text-[10px]">YERLİ</span>' : ''
+          ].filter(Boolean).join(' ');
 
           tbody.insertAdjacentHTML('beforeend', `
             <tr class="hover:bg-slate-50">
-              <td class="p-2.5 text-slate-500">${log.clientTime || '-'}</td>
-              <td class="p-2.5 font-bold">${log.barcode}</td>
-              <td class="p-2.5 font-sans font-bold text-slate-800">${log.productName || '-'}</td>
-              <td class="p-2.5 font-sans">${log.model || ''} / ${log.color || ''}</td>
-              <td class="p-2.5 font-bold text-emerald-700">${log.price || ''}</td>
-              <td class="p-2.5">${badge}</td>
-              <td class="p-2.5 text-slate-500">${log.user || '-'}</td>
+              <td class="p-2 text-slate-400">${log.clientTime || '-'}</td>
+              <td class="p-2 font-bold">${log.barcode}</td>
+              <td class="p-2 font-sans font-semibold text-slate-800">${log.productName || '-'}</td>
+              <td class="p-2 font-bold">${log.price || ''}</td>
+              <td class="p-2 font-sans space-x-1">${flags || '-'}</td>
+              <td class="p-2 font-sans">${actionBadge}</td>
             </tr>
           `);
         }
@@ -1029,6 +1011,7 @@ ${barcodeCmd}
       document.getElementById('statAutoPrints').innerText = autoCount;
       document.getElementById('statManualPrints').innerText = manualCount;
       document.getElementById('statScanOnly').innerText = scanCount;
+      document.getElementById('statTransferCount').innerText = transferCount;
 
       const topList = document.getElementById('topProductsList');
       topList.innerHTML = '';
@@ -1037,43 +1020,41 @@ ${barcodeCmd}
         .slice(0, 6)
         .forEach(([title, count]) => {
           topList.insertAdjacentHTML('beforeend', `
-            <div class="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-              <span class="font-bold text-slate-700 truncate pr-2">${title}</span>
-              <span class="bg-slate-900 text-white text-[10px] font-mono px-2 py-0.5 rounded-full shrink-0">${count} işlem</span>
+            <div class="flex items-center justify-between bg-slate-50 px-2.5 py-1.5 rounded border border-slate-100">
+              <span class="font-semibold text-slate-700 truncate pr-2">${title}</span>
+              <span class="bg-slate-900 text-white text-[10px] font-mono px-2 py-0.5 rounded shrink-0">${count}</span>
             </div>
           `);
         });
     }
 
     function exportLogsToExcel() {
-      if (!analyticsLogs.length) return alert("İndirilecek kayıt bulunamadı.");
+      if (!analyticsLogs.length) return;
       const rows = analyticsLogs.map(l => ({
-        "Tarih Saat": l.clientTime || '',
+        "Tarih": l.clientTime || '',
         "Barkod": l.barcode,
         "Ürün Adı": l.productName,
         "Model": l.model,
         "Renk": l.color,
         "Beden": l.size,
         "Fiyat": l.price,
+        "Yerli": l.domestic ? 'X' : '',
+        "Transfer": l.transfer ? 'X' : '',
         "İşlem": l.action,
         "Kullanıcı": l.user
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Etiket_Raporu");
-      XLSX.writeFile(wb, `etiket_analiz_raporu_${Date.now()}.xlsx`);
+      XLSX.utils.book_append_sheet(wb, ws, "Rapor");
+      XLSX.writeFile(wb, `label_rapor_${Date.now()}.xlsx`);
     }
 
-    /*************************************************************************
-     * 6. YÖNETİM PANELİ: EXCEL VE TEKİL ÜRÜN SUNUCU AKTARIMI
-     *************************************************************************/
+    // ÜRÜN & EXCEL YÖNETİMİ
     async function fetchInitialProductsFromServer(forceServer = false) {
       if (!db) return;
       try {
         const snap = await db.collection('products').limit(500).get(forceServer ? { source: 'server' } : undefined);
-        snap.forEach(doc => {
-          productRamCache.set(doc.id, doc.data());
-        });
+        snap.forEach(doc => productRamCache.set(doc.id, doc.data()));
         renderAdminProductTable();
       } catch (e) {}
     }
@@ -1086,21 +1067,22 @@ ${barcodeCmd}
         color: document.getElementById('admColor').value.trim(),
         size: document.getElementById('admSize').value.trim(),
         date: document.getElementById('admDate').value.trim(),
-        price: document.getElementById('admPrice').value.trim()
+        price: document.getElementById('admPrice').value.trim(),
+        domestic: document.getElementById('admDomestic').checked,
+        transfer: document.getElementById('admTransfer').checked
       };
-      if (!p.barcode || !p.name) return alert("Barkod ve Ürün Adı zorunludur!");
+      if (!p.barcode || !p.name) return alert("Barkod ve Ürün Adı girin.");
 
       productRamCache.set(p.barcode, p);
       if (db) {
         await db.collection('products').doc(p.barcode).set({
           ...p,
-          updatedBy: currentUser ? currentUser.username : 'admin',
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       }
       renderAdminProductTable();
       if (currentProduct.barcode === p.barcode) renderMainScreenProduct(p);
-      alert("Ürün sunucuya kaydedildi.");
+      alert("Kaydedildi.");
     }
 
     function fillSingleProductForm(barcode) {
@@ -1113,6 +1095,8 @@ ${barcodeCmd}
       document.getElementById('admSize').value = p.size || '';
       document.getElementById('admDate').value = p.date || '';
       document.getElementById('admPrice').value = p.price || '';
+      document.getElementById('admDomestic').checked = isXFlag(p.domestic);
+      document.getElementById('admTransfer').checked = isXFlag(p.transfer);
     }
 
     function handleAdminExcelUpload(e) {
@@ -1121,7 +1105,7 @@ ${barcodeCmd}
 
       const statusBox = document.getElementById('excelUploadStatus');
       statusBox.classList.remove('hidden');
-      statusBox.innerText = "Excel okunuyor ve sunucuya aktarılıyor...";
+      statusBox.innerText = "Yükleniyor...";
 
       const reader = new FileReader();
       reader.onload = async function(evt) {
@@ -1129,15 +1113,21 @@ ${barcodeCmd}
         const wb = XLSX.read(data, { type: 'array' });
         const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
 
-        const parsedList = rows.map(r => ({
-          barcode: String(r['Barkod'] || r['BARKOD'] || r['barcode'] || '').trim(),
-          name: String(r['Ürün Adı'] || r['URUN_ADI'] || r['name'] || '').trim(),
-          model: String(r['Model'] || r['MODEL'] || r['model'] || '').trim(),
-          color: String(r['Renk'] || r['RENK'] || r['color'] || '').trim(),
-          size: String(r['Beden'] || r['BEDEN'] || r['size'] || 'STD').trim(),
-          date: String(r['Tarih'] || r['TARIH'] || r['date'] || '').trim(),
-          price: String(r['Fiyat'] || r['PSF'] || r['price'] || '').trim()
-        })).filter(item => item.barcode);
+        const parsedList = rows.map(r => {
+          const yerliVal = r['Yerli'] || r['YERLİ'] || r['YERLI'] || r['yerli'] || '';
+          const transferVal = r['Transfer'] || r['TRANSFER'] || r['transfer'] || '';
+          return {
+            barcode: String(r['Barkod'] || r['BARKOD'] || r['barcode'] || '').trim(),
+            name: String(r['Ürün Adı'] || r['URUN_ADI'] || r['name'] || '').trim(),
+            model: String(r['Model'] || r['MODEL'] || r['model'] || '').trim(),
+            color: String(r['Renk'] || r['RENK'] || r['color'] || '').trim(),
+            size: String(r['Beden'] || r['BEDEN'] || r['size'] || 'STD').trim(),
+            date: String(r['Tarih'] || r['TARIH'] || r['date'] || '').trim(),
+            price: String(r['Fiyat'] || r['PSF'] || r['price'] || '').trim(),
+            domestic: isXFlag(yerliVal),
+            transfer: isXFlag(transferVal)
+          };
+        }).filter(item => item.barcode);
 
         const chunkSize = 450;
         for (let i = 0; i < parsedList.length; i += chunkSize) {
@@ -1154,7 +1144,7 @@ ${barcodeCmd}
           await batch.commit();
         }
 
-        statusBox.innerText = `Tamamlandı! ${parsedList.length} ürün stock-master-a888d sunucusuna aktarıldı.`;
+        statusBox.innerText = `${parsedList.length} ürün aktarıldı.`;
         renderAdminProductTable();
       };
       reader.readAsArrayBuffer(file);
@@ -1171,14 +1161,19 @@ ${barcodeCmd}
         if (q && !barcode.toLowerCase().includes(q) && !(p.name || '').toLowerCase().includes(q)) continue;
         if (++count > 100) break;
 
+        const badges = [
+          isXFlag(p.domestic) ? '<span class="px-1.5 py-0.5 bg-slate-200 text-slate-800 rounded text-[10px] font-bold">Yerli</span>' : '',
+          isXFlag(p.transfer) ? '<span class="px-1.5 py-0.5 bg-emerald-600 text-white rounded text-[10px] font-bold">Transfer</span>' : ''
+        ].filter(Boolean).join(' ');
+
         tbody.insertAdjacentHTML('beforeend', `
           <tr class="hover:bg-slate-50">
             <td class="p-2 font-mono font-bold">${p.barcode}</td>
-            <td class="p-2 font-bold">${p.name}</td>
-            <td class="p-2 text-slate-500">${p.model} / ${p.color} / ${p.size}</td>
-            <td class="p-2 font-bold text-emerald-700">${p.price}</td>
+            <td class="p-2 font-semibold">${p.name}</td>
+            <td class="p-2 font-bold">${p.price}</td>
+            <td class="p-2 space-x-1">${badges || '-'}</td>
             <td class="p-2 text-right">
-              <button onclick="fillSingleProductForm('${p.barcode}')" class="px-2.5 py-1 bg-slate-100 hover:bg-amber-500 hover:text-white rounded text-[11px] font-bold">
+              <button onclick="fillSingleProductForm('${p.barcode}')" class="px-2 py-1 bg-slate-100 hover:bg-slate-900 hover:text-white rounded text-[11px] font-semibold">
                 Seç
               </button>
             </td>
@@ -1192,19 +1187,16 @@ ${barcodeCmd}
       if (!tbody) return;
       tbody.innerHTML = '';
 
-      // Tekil kullanıcıları filtrele (hem docId hem username anahtarı aynı objeyi gösterebilir)
       const uniqueUsers = new Map();
       syncedUsersMap.forEach(u => uniqueUsers.set(u.username.toLowerCase(), u));
-
-      document.getElementById('usersCountBadge').innerText = `${uniqueUsers.size} Kullanıcı`;
+      document.getElementById('usersCountBadge').innerText = uniqueUsers.size;
 
       uniqueUsers.forEach(u => {
         tbody.insertAdjacentHTML('beforeend', `
           <tr class="hover:bg-slate-50">
-            <td class="p-2.5 font-bold text-slate-800">${u.username}</td>
-            <td class="p-2.5 font-sans text-slate-600">${u.fullName || '-'}</td>
-            <td class="p-2.5"><span class="px-2 py-0.5 bg-slate-100 rounded text-[10px]">${u.source}</span></td>
-            <td class="p-2.5 font-bold text-blue-700">${u.role}</td>
+            <td class="p-2 font-bold text-slate-800">${u.username}</td>
+            <td class="p-2 font-sans text-slate-600">${u.fullName || '-'}</td>
+            <td class="p-2 font-bold text-slate-700">${u.role}</td>
           </tr>
         `);
       });
@@ -1215,7 +1207,7 @@ ${barcodeCmd}
       const fullName = document.getElementById('usrFullName').value.trim();
       const pass = document.getElementById('usrPassword').value.trim();
       const role = document.getElementById('usrRole').value;
-      if (!uname || !pass) return alert("Kullanıcı adı ve şifre zorunludur!");
+      if (!uname || !pass) return alert("Kullanıcı adı ve şifre zorunludur.");
 
       await db.collection('users').doc(uname).set({
         username: uname,
@@ -1225,22 +1217,21 @@ ${barcodeCmd}
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
 
-      alert(`Kullanıcı (${uname}) Stock-Master 'users' koleksiyonuna kaydedildi.`);
+      alert("Kullanıcı kaydedildi.");
     }
 
     function downloadSampleExcel() {
       const sample = [
-        { "Barkod": "3561000010248", "Ürün Adı": "SUET ÇANTA", "Model": "RY01", "Renk": "Siyah", "Beden": "STD", "Tarih": "22.09.20", "Fiyat": "3299,00 TL" }
+        { "Barkod": "3561000010248", "Ürün Adı": "SUET ÇANTA", "Model": "RY01", "Renk": "Siyah", "Beden": "STD", "Tarih": "22.09.20", "Fiyat": "3299,00 TL", "Yerli": "X", "Transfer": "" },
+        { "Barkod": "8680001234567", "Ürün Adı": "DERİ CÜZDAN", "Model": "CZ02", "Renk": "Taba", "Beden": "STD", "Tarih": "01.10.26", "Fiyat": "899,00 TL", "Yerli": "X", "Transfer": "X" }
       ];
       const ws = XLSX.utils.json_to_sheet(sample);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Urunler");
-      XLSX.writeFile(wb, "stock_master_etiket_sablon.xlsx");
+      XLSX.writeFile(wb, "label_urun_sablonu.xlsx");
     }
 
-    /*************************************************************************
-     * 7. KAMERA BARKOD TARAYICI VE SES EFEKTLERİ
-     *************************************************************************/
+    // KAMERA VE SESLER
     let html5QrCode = null;
     function toggleCameraScanner() {
       const modal = document.getElementById('cameraModal');
@@ -1249,7 +1240,7 @@ ${barcodeCmd}
         html5QrCode = new Html5Qrcode("interactiveScanner");
         html5QrCode.start(
           { facingMode: "environment" },
-          { fps: 12, qrbox: { width: 240, height: 110 } },
+          { fps: 12, qrbox: { width: 230, height: 100 } },
           (decodedText) => {
             document.getElementById('barcodeInput').value = decodedText;
             toggleCameraScanner();
@@ -1276,10 +1267,26 @@ ${barcodeCmd}
         const gain = ctx.createGain();
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.frequency.value = 1950;
+        osc.frequency.value = 1900;
         gain.gain.setValueAtTime(0.08, ctx.currentTime);
         osc.start();
         osc.stop(ctx.currentTime + 0.06);
+      } catch (e) {}
+    }
+
+    function playErrorBeep() {
+      try {
+        if (navigator.vibrate) navigator.vibrate(150);
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "sawtooth";
+        osc.frequency.value = 260;
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.18);
       } catch (e) {}
     }
 
@@ -1291,15 +1298,15 @@ ${barcodeCmd}
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.frequency.setValueAtTime(660, ctx.currentTime);
-        osc.frequency.setValueAtTime(990, ctx.currentTime + 0.08);
-        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        osc.frequency.setValueAtTime(990, ctx.currentTime + 0.07);
+        gain.gain.setValueAtTime(0.07, ctx.currentTime);
         osc.start();
-        osc.stop(ctx.currentTime + 0.2);
+        osc.stop(ctx.currentTime + 0.16);
       } catch (e) {}
     }
 
     window.onload = () => {
-      initStockMasterServer();
+      initServer();
       renderMainScreenProduct(currentProduct);
     };
   </script>
